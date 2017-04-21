@@ -92,6 +92,8 @@ private:
     void _loadCacheFile();
     void _saveCacheFile();
 
+    void _setupOSPVolume();
+
     std::map<size_t, OSPModel> _models;
     OSPModel _simulationModel;
     std::vector<OSPMaterial> _ospMaterials;
@@ -104,6 +106,7 @@ private:
     OSPData _ospSimulationData;
     OSPData _ospTransferFunctionDiffuseData;
     OSPData _ospTransferFunctionEmissionData;
+    OSPTransferFunction _ospTF{nullptr};
 
     std::map<size_t, OSPGeometry> _ospExtendedSpheres;
     std::map<size_t, OSPData> _ospExtendedSpheresData;

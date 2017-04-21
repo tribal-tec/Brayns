@@ -198,7 +198,8 @@ enum class RendererType
     basic,
     proximity,
     simulation,
-    particle
+    particle,
+    scivis
 };
 typedef std::vector<RendererType> RendererTypes;
 typedef std::map<RendererType, RendererPtr> RendererMap;

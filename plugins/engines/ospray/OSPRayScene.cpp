@@ -33,6 +33,8 @@
 
 #include <boost/algorithm/string/predicate.hpp> // ends_with
 
+#include "apps/common/importer/Importer.h"
+
 namespace brayns
 {
 const size_t CACHE_VERSION = 6;
@@ -1093,6 +1095,33 @@ void OSPRayScene::commitTransferFunctionData()
         ospSet1f(osprayRenderer->impl(), "transferFunctionRange",
                  _transferFunction.getValuesRange().y() -
                      _transferFunction.getValuesRange().x());
+
+        if (!_ospTF)
+            continue;
+
+        std::vector<ospcommon::vec3f> colors;
+        std::vector<float> opacityValues;
+
+        for (const auto& color : _transferFunction.getDiffuseColors())
+        {
+            colors.push_back({color.r(), color.g(), color.b()});
+            opacityValues.push_back(color.a());
+        }
+
+        OSPData colorsData =
+            ospNewData(colors.size(), OSP_FLOAT3, colors.data());
+        ospSetData(_ospTF, "colors", colorsData);
+
+        // ospcommon::vec2f range(_transferFunction.getValuesRange().x(),
+        // _transferFunction.getValuesRange().y());
+        ospcommon::vec2f range(12000, 40000);
+        ospSet2f(_ospTF, "valueRange", range.x, range.y);
+
+        OSPData opacityValuesData =
+            ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
+        ospSetData(_ospTF, "opacities", opacityValuesData);
+
+        ospCommit(_ospTF);
     }
 }
 
@@ -1101,6 +1130,13 @@ void OSPRayScene::commitVolumeData()
     VolumeHandlerPtr volumeHandler = getVolumeHandler();
     if (!volumeHandler)
         return;
+
+    if (boost::algorithm::ends_with(
+            _parametersManager.getVolumeParameters().getFilename(), ".osp"))
+    {
+        _setupOSPVolume();
+        return;
+    }
 
     const float timestamp =
         _parametersManager.getSceneParameters().getTimestamp();
@@ -1223,6 +1259,66 @@ void OSPRayScene::saveSceneToCacheFile()
 
 bool OSPRayScene::isVolumeSupported(const std::string& volumeFile) const
 {
-    return boost::algorithm::ends_with(volumeFile, ".raw");
+    return boost::algorithm::ends_with(volumeFile, ".raw") ||
+           boost::algorithm::ends_with(volumeFile, ".osp");
+}
+
+void OSPRayScene::_setupOSPVolume()
+{
+    if (_ospTF)
+        return;
+
+    _ospTF = ospNewTransferFunction("piecewise_linear");
+
+    std::vector<ospcommon::vec3f> colors;
+    colors.push_back(ospcommon::vec3f(0, 0, 0));
+    colors.push_back(ospcommon::vec3f(0, 0.120394, 0.302678));
+    colors.push_back(ospcommon::vec3f(0, 0.216587, 0.524575));
+    colors.push_back(ospcommon::vec3f(0.0552529, 0.345022, 0.659495));
+    colors.push_back(ospcommon::vec3f(0.128054, 0.492592, 0.720287));
+    colors.push_back(ospcommon::vec3f(0.188952, 0.641306, 0.792096));
+    colors.push_back(ospcommon::vec3f(0.327672, 0.784939, 0.873426));
+    colors.push_back(ospcommon::vec3f(0.60824, 0.892164, 0.935546));
+    colors.push_back(ospcommon::vec3f(0.881376, 0.912184, 0.818097));
+    colors.push_back(ospcommon::vec3f(0.9514, 0.835615, 0.449271));
+    colors.push_back(ospcommon::vec3f(0.904479, 0.690486, 0));
+    colors.push_back(ospcommon::vec3f(0.854063, 0.510857, 0));
+    colors.push_back(ospcommon::vec3f(0.777096, 0.330175, 0.000885023));
+    colors.push_back(ospcommon::vec3f(0.672862, 0.139086, 0.00270085));
+    colors.push_back(ospcommon::vec3f(0.508812, 0, 0));
+    colors.push_back(ospcommon::vec3f(0.299413, 0.000366217, 0.000549325));
+    colors.push_back(ospcommon::vec3f(0.0157473, 0.00332647, 0));
+
+    OSPData colorsData = ospNewData(colors.size(), OSP_FLOAT3, colors.data());
+    ospSetData(_ospTF, "colors", colorsData);
+
+    ospcommon::vec2f range(12000, 30000);
+    ospSet2f(_ospTF, "valueRange", range.x, range.y);
+
+    std::vector<float> opacityValues(256, 0.9);
+    for (size_t i = 0; i < 30; ++i)
+        opacityValues[i] = 0;
+    for (size_t i = 30; i < 256; ++i)
+        opacityValues[i] = float(i - 20) / 255.f;
+    OSPData opacityValuesData =
+        ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
+    ospSetData(_ospTF, "opacities", opacityValuesData);
+
+    ospCommit(_ospTF);
+
+    ospray::importer::Group* imported = ospray::importer::import(
+        _parametersManager.getVolumeParameters().getFilename());
+    ospray::importer::Volume* vol = imported->volume[0];
+
+    getWorldBounds().merge({0, 0, 0});
+    getWorldBounds().merge(
+        {vol->dimensions.x, vol->dimensions.y, vol->dimensions.z});
+
+    ospSetObject(vol->handle, "transferFunction", _ospTF);
+    ospCommit(vol->handle);
+
+    auto model = ospNewModel();
+    ospAddVolume(model, vol->handle);
+    _models.insert({0, model});
 }
 }

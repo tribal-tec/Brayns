@@ -22,6 +22,7 @@
 
 #include <brayns/common/log.h>
 #include <brayns/common/material/Material.h>
+#include <brayns/common/volume/AmrHandler.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/io/NESTLoader.h>
 #include <brayns/io/TransferFunctionLoader.h>
@@ -602,6 +603,38 @@ VolumeHandlerPtr Scene::getVolumeHandler()
     }
 
     return _volumeHandler;
+}
+
+AmrHandlerPtr Scene::getAmrHandler()
+{
+    const auto& volumeFile =
+        _parametersManager.getVolumeParameters().getFilename();
+    if (volumeFile.empty())
+        return nullptr;
+
+    if (_amrHandler)
+        return _amrHandler;
+
+    try
+    {
+        _amrHandler.reset(
+            new AmrHandler(_parametersManager.getVolumeParameters()));
+        if (!volumeFile.empty())
+        {
+            if (!isAmrSupported(volumeFile))
+            {
+                _amrHandler.reset();
+                return nullptr;
+            }
+            _amrHandler->attachVolumeToFile(volumeFile);
+        }
+    }
+    catch (const std::runtime_error& e)
+    {
+        BRAYNS_ERROR << e.what() << std::endl;
+    }
+
+    return _amrHandler;
 }
 
 bool Scene::empty() const

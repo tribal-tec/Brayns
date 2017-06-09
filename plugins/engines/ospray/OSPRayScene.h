@@ -77,6 +77,7 @@ public:
 
     /** @copydoc Scene::isVolumeSupported */
     bool isVolumeSupported(const std::string& volumeFile) const final;
+    bool isAmrSupported(const std::string& volumeFile) const final;
 
     OSPModel* modelImpl(const size_t timestamp);
     OSPModel* simulationModelImpl() { return &_simulationModel; };
@@ -128,6 +129,10 @@ private:
     std::map<size_t, std::map<size_t, size_t>> _timestampConesIndices;
 
     float _currentTimestamp;
+
+    OSPVolume _amrVolume{nullptr};
+    OSPData _brickInfoData;
+    OSPData _brickDataData;
 };
 }
 #endif // OSPRAYSCENE_H

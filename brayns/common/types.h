@@ -157,6 +157,9 @@ typedef std::shared_ptr<CADiffusionSimulationHandler>
 class VolumeHandler;
 typedef std::shared_ptr<VolumeHandler> VolumeHandlerPtr;
 
+class AmrHandler;
+typedef std::shared_ptr<AmrHandler> AmrHandlerPtr;
+
 typedef std::vector<std::string> strings;
 typedef std::vector<float> floats;
 typedef std::vector<int> ints;
@@ -202,7 +205,8 @@ enum class RendererType
     basic,
     proximity,
     simulation,
-    particle
+    particle,
+    scivis
 };
 typedef std::vector<RendererType> RendererTypes;
 typedef std::map<RendererType, RendererPtr> RendererMap;

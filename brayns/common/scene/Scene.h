@@ -220,6 +220,8 @@ public:
     */
     BRAYNS_API VolumeHandlerPtr getVolumeHandler();
 
+    BRAYNS_API AmrHandlerPtr getAmrHandler();
+
     /**
         Sets the Calcium diffusion simulation handler
     */
@@ -256,6 +258,8 @@ public:
      *         If false, a default scene will be constructed.
      */
     BRAYNS_API virtual bool isVolumeSupported(
+        const std::string& volumeFile) const = 0;
+    BRAYNS_API virtual bool isAmrSupported(
         const std::string& volumeFile) const = 0;
 
     /**
@@ -316,6 +320,7 @@ protected:
 
     // Volume
     VolumeHandlerPtr _volumeHandler;
+    AmrHandlerPtr _amrHandler;
 
     // Simulation
     AbstractSimulationHandlerPtr _simulationHandler;

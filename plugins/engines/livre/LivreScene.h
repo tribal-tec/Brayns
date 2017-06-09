@@ -61,6 +61,10 @@ public:
 
     /** @copydoc Scene::isVolumeSupported */
     bool isVolumeSupported(const std::string& volumeFile) const final;
+    bool isAmrSupported(const std::string& /*volumeFile*/) const final
+    {
+        return false;
+    }
 
 private:
     livre::Engine& _livre;

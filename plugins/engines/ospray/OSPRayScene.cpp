@@ -1096,6 +1096,11 @@ void OSPRayScene::commitTransferFunctionData()
             ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
         ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
 
+        ospcommon::vec2f valueRange{_transferFunction.getValuesRange()[0],
+                                    _transferFunction.getValuesRange()[1]};
+        ospSet2f(_ospTransferFunction, "valueRange", valueRange.x,
+                 valueRange.y);
+
         ospCommit(_ospTransferFunction);
     }
 
@@ -1142,7 +1147,13 @@ void OSPRayScene::commitVolumeData()
     if (amrHandler)
     {
         if (_amrVolume)
+        {
+            ospSet1i(_amrVolume, "singleShade", 1);
+            ospSet1i(_amrVolume, "preIntegration", 1);
+            ospSet1i(_amrVolume, "gradientShadingEnabled", 0);
+            ospSet1i(_amrVolume, "adaptiveSampling", 0);
             return;
+        }
 
         ospLoadModule("amr");
 
@@ -1162,83 +1173,6 @@ void OSPRayScene::commitVolumeData()
         std::vector<OSPData> brickData;
         ospcommon::vec2f valueRange{0, 255};
 
-#if 0
-        const float near = 0.1f;
-        const float far = 15.f;
-        const livre::Frustumf proj(45, 4.f / 3.f, near, far);
-        const livre::Matrix4f modelView(livre::Vector3f{0, 0, -2}, {0, 0, 0},
-                                        {0, 1, 0});
-
-        livre::Frustum frustum(modelView, proj.computePerspectiveMatrix());
-
-        // livre::DataSource datasource{ servus::URI("mem://") };
-        livre::DataSource datasource{servus::URI(amrHandler->getFile())};
-
-        const auto& volInfo = datasource.getVolumeInfo();
-
-        Boxf& worldBounds = getWorldBounds();
-        worldBounds.reset();
-
-        livre::SelectVisibles visitor(datasource, frustum, 1000, 1 /*sse*/,
-                                      0 /*minLOD*/, 0 /*maxLOD*/,
-                                      livre::Range{0, 1}, {});
-
-        livre::DFSTraversal traverser;
-        traverser.traverse(datasource.getVolumeInfo().rootNode, visitor,
-                           0 /*frame*/);
-
-        const auto visibles = visitor.getVisibles();
-        std::cout << visibles.size() << std::endl;
-
-        const osp::vec3i maxBlockSize{(int)volInfo.maximumBlockSize.x(),
-                                      (int)volInfo.maximumBlockSize.y(),
-                                      (int)volInfo.maximumBlockSize.z()};
-
-        brickInfo.reserve(visibles.size());
-        brickData.reserve(visibles.size());
-        for (const auto& nodeID : visibles)
-        {
-            ospcommon::vec3i region_lo(
-                nodeID.getPosition().x() * maxBlockSize.x -
-                    2u * volInfo.overlap.x(),
-                nodeID.getPosition().y() * maxBlockSize.y -
-                    2u * volInfo.overlap.y(),
-                nodeID.getPosition().z() * maxBlockSize.z -
-                    2u * volInfo.overlap.z());
-            if (region_lo.x < 0)
-                region_lo.x = 0;
-            if (region_lo.y < 0)
-                region_lo.y = 0;
-            if (region_lo.z < 0)
-                region_lo.z = 0;
-
-            const auto& node = datasource.getNode(nodeID);
-            const auto voxelBox = node.getBlockSize() + 2u * volInfo.overlap;
-
-            BrickInfo brick;
-            auto lower = region_lo;
-            auto upper = ospcommon::vec3i{region_lo.x + int(voxelBox.x()) - 1,
-                                          region_lo.y + int(voxelBox.y()) - 1,
-                                          region_lo.z + int(voxelBox.z()) - 1};
-            PRINT(lower);
-            PRINT(upper);
-            brick.box = {lower, upper};
-            brickInfo.push_back(brick);
-
-            worldBounds.merge(Vector3f(lower.x, lower.y, lower.z));
-            worldBounds.merge(Vector3f(upper.x + 1, upper.y + 1, upper.z + 1));
-
-            livre::ConstMemoryUnitPtr dataBlock = datasource.getData(nodeID);
-
-            const size_t voxels = voxelBox.product();
-            std::unique_ptr<float> data1(new float[voxels * sizeof(float)]);
-            for (size_t i = 0; i < voxels; ++i)
-                data1.get()[i] = dataBlock->getData<uint8_t>()[i];
-
-            OSPData data = ospNewData(voxels, OSP_FLOAT, data1.get(), 0);
-            brickData.push_back(data);
-        }
-#else
         Boxf& worldBounds = getWorldBounds();
         worldBounds.reset();
 
@@ -1257,9 +1191,6 @@ void OSPRayScene::commitVolumeData()
                                           int(worldBox.getMax().y()) - 1,
                                           int(worldBox.getMax().z()) - 1};
 
-            //            PRINT(lower);
-            //            PRINT(upper);
-
             brick.box = {lower, upper};
             brickInfo.push_back(brick);
 
@@ -1271,113 +1202,6 @@ void OSPRayScene::commitVolumeData()
                            amrHandler->getData(nodeID).get(), 0);
             brickData.push_back(data);
         }
-
-#endif
-        //        std::vector<float*> brickPtrs;
-        //        {
-        //            int maxLevel = 0; // 1<<30;
-        //            char* maxLevelEnv = getenv("CHOMBO_MAX_LEVEL");
-        //            if (maxLevelEnv)
-        //            {
-        //                maxLevel = atoi(maxLevelEnv);
-        //                std::cout << "#osp.amr: found the CHOMBO_MAX_LEVEL env
-        //                var!"
-        //                          << std::endl;
-        //                std::cout
-        //                    << "#osp.amr: will only parse chombo file up to
-        //                    level "
-        //                    << maxLevel << std::endl;
-        //            }
-        //            else
-        //            {
-        //                std::cout
-        //                    << "#osp.amr: CHOMBO_MAX_LEVEL not set. Parsing
-        //                    all levels."
-        //                    << std::endl;
-        //                std::cout << "#osp.amr: If running out of memory, try
-        //                setting "
-        //                             "lower max level."
-        //                          << std::endl;
-        //            }
-
-        //            std::string infoFileName =
-        //                "/home/nachbaur/dev/OSPRay/release_amr/rat-amr.info";
-        //            std::string dataFileName =
-        //                "/home/nachbaur/dev/OSPRay/release_amr/rat-amr.data";
-        //            PRINT(infoFileName);
-        //            PRINT(dataFileName);
-        //            FILE* infoFile = fopen(infoFileName.c_str(), "rb");
-        //            assert(infoFile);
-        //            FILE* dataFile = fopen(dataFileName.c_str(), "rb");
-        //            assert(dataFile);
-
-        //            Boxf& worldBounds = getWorldBounds();
-        //            worldBounds.reset();
-        //            int BS = 4;
-        //            BrickInfo bi;
-        //            while (fread(&bi, sizeof(bi), 1, infoFile))
-        //            {
-        //                if (bi.level > maxLevel)
-        //                    continue;
-
-        //                float* bd = new float[BS * BS * BS];
-        //                int nr = fread(bd, sizeof(float), BS * BS * BS,
-        //                dataFile);
-        //                if (nr < BS * BS * BS)
-        //                    return;
-
-        //                brickInfo.push_back(bi);
-        //                auto worldbox =
-        //                    (ospcommon::vec3f(bi.box.upper) +
-        //                    ospcommon::vec3f(1.f)) *
-        //                    bi.dt;
-        //                worldBounds.merge({worldbox.x, worldbox.y,
-        //                worldbox.z});
-
-        //                assert(nr == BS * BS * BS);
-        //                //                float maxVal = 0;
-        //                //                for (int i=0;i<BS*BS*BS;i++)
-        //                //                    maxVal = std::max( bd[i], maxVal
-        //                );
-        //                ////                  valueRange.extend(bd[i]);
-        //                //                PRINT(maxVal);
-        //                brickPtrs.push_back(bd);
-        //            }
-        //            // cout << "read file; found " << brickInfo.size() << "
-        //            bricks" <<
-        //            // endl;
-
-        //            fclose(infoFile);
-        //            fclose(dataFile);
-        //        }
-
-        //        for (size_t bID = 0; bID < brickInfo.size(); bID++)
-        //        {
-        //            BrickInfo bi = brickInfo[bID];
-
-        //            OSPData data =
-        //                ospNewData(bi.size().product(), OSP_FLOAT,
-        //                brickPtrs[bID],
-        //                           OSP_DATA_SHARED_BUFFER); //
-        //                           brickData.value,0);
-        //            brickData.push_back(data);
-        //        }
-
-        //        BrickInfo brick1;
-        //        brick1.box = { {0,0,0}, {3,3,3} };
-        //        BrickInfo brick2;
-        //        brick2.box = { {0,0,4}, {3,3,7} };
-        //        brickInfo.push_back( brick1 );
-        //        brickInfo.push_back( brick2 );
-
-        //        brickData.reserve(visibles.size());
-        //        for (size_t bID=0;bID<brickInfo.size();bID++) {
-        //          BrickInfo bi = brickInfo[bID];
-
-        //          OSPData data = ospNewData(bi.size().product(),OSP_FLOAT,
-        //                                    brickPtrs[bID],OSP_DATA_SHARED_BUFFER);
-        //          brickData.push_back(data);
-        //        }
 
         _amrVolume = ospNewVolume("chombo_volume");
 

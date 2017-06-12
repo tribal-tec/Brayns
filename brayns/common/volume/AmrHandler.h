@@ -22,6 +22,8 @@
 
 #include <brayns/common/types.h>
 #include <brayns/parameters/VolumeParameters.h>
+#include <livre/data/DataSource.h>
+#include <livre/data/NodeId.h>
 
 namespace brayns
 {
@@ -57,11 +59,18 @@ public:
      */
     uint64_t getSize() const;
 
+    template <typename T>
+    struct Deleter
+    {
+        void operator()(T* ptr) { delete[] ptr; }
+    };
+    using DataPtr = std::unique_ptr<float, Deleter<float>>;
+
     /**
      * @brief Returns a pointer to a given frame in the memory mapped file.
      * @return Pointer to volume
      */
-    void* getData() const;
+    DataPtr getData(const livre::NodeId& nodeID) const;
 
     /**
     * @brief Attaches a memory mapped file to the scene so that renderers can
@@ -78,11 +87,15 @@ public:
     void setHistogram(const Histogram& histogram) { _histogram = histogram; }
     /** @return the histogram of the currently loaded volume. */
     const Histogram& getHistogram();
-    /** @return the number of frames of the current volume. */
+
+    livre::NodeIds getVisibles(int lod) const;
+    livre::Boxui getBox(const livre::NodeId& nodeID) const;
+    size_t getNumVoxels(const livre::NodeId& nodeID) const;
 
 private:
     const VolumeParameters _volumeParameters;
     Histogram _histogram;
     std::string _file;
+    std::unique_ptr<livre::DataSource> _datasource;
 };
 }

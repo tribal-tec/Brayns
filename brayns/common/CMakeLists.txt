@@ -69,7 +69,7 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
 )
 
 set(BRAYNSCOMMON_LINK_LIBRARIES
-    PUBLIC braynsParameters vmmlib
+    PUBLIC braynsParameters vmmlib LivreData
       ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY}
 )
 

@@ -1086,6 +1086,19 @@ void OSPRayScene::commitMaterials(const bool updateOnly)
 
 void OSPRayScene::commitTransferFunctionData()
 {
+    if (_amrVolume)
+    {
+        std::vector<float> opacityValues;
+        opacityValues.resize(_transferFunction.getDiffuseColors().size());
+        for (size_t i = 0; i < _transferFunction.getDiffuseColors().size(); ++i)
+            opacityValues[i] = _transferFunction.getDiffuseColors()[i][3];
+        OSPData opacityValuesData =
+            ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
+        ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
+
+        ospCommit(_ospTransferFunction);
+    }
+
     for (const auto& renderer : _renderers)
     {
         OSPRayRenderer* osprayRenderer =
@@ -1147,9 +1160,9 @@ void OSPRayScene::commitVolumeData()
 
         std::vector<BrickInfo> brickInfo;
         std::vector<OSPData> brickData;
-        ospcommon::vec2f valueRange{30, 180};
+        ospcommon::vec2f valueRange{0, 255};
 
-#if 1
+#if 0
         const float near = 0.1f;
         const float far = 15.f;
         const livre::Frustumf proj(45, 4.f / 3.f, near, far);
@@ -1167,7 +1180,7 @@ void OSPRayScene::commitVolumeData()
         worldBounds.reset();
 
         livre::SelectVisibles visitor(datasource, frustum, 1000, 1 /*sse*/,
-                                      1 /*minLOD*/, 1 /*maxLOD*/,
+                                      0 /*minLOD*/, 0 /*maxLOD*/,
                                       livre::Range{0, 1}, {});
 
         livre::DFSTraversal traverser;
@@ -1207,12 +1220,11 @@ void OSPRayScene::commitVolumeData()
             auto upper = ospcommon::vec3i{region_lo.x + int(voxelBox.x()) - 1,
                                           region_lo.y + int(voxelBox.y()) - 1,
                                           region_lo.z + int(voxelBox.z()) - 1};
+            PRINT(lower);
+            PRINT(upper);
             brick.box = {lower, upper};
             brickInfo.push_back(brick);
 
-            // worldBounds.merge(Vector3f(region_lo.x, region_lo.y,
-            // region_lo.z));
-            // worldBounds.merge(voxelBox);
             worldBounds.merge(Vector3f(lower.x, lower.y, lower.z));
             worldBounds.merge(Vector3f(upper.x + 1, upper.y + 1, upper.z + 1));
 
@@ -1227,85 +1239,130 @@ void OSPRayScene::commitVolumeData()
             brickData.push_back(data);
         }
 #else
-        std::vector<float*> brickPtrs;
+        Boxf& worldBounds = getWorldBounds();
+        worldBounds.reset();
+
+        const int lod = 0;
+        const auto visibles = amrHandler->getVisibles(lod);
+        brickInfo.reserve(visibles.size());
+        brickData.reserve(visibles.size());
+        for (const auto& nodeID : visibles)
         {
-            int maxLevel = 0; // 1<<30;
-            char* maxLevelEnv = getenv("CHOMBO_MAX_LEVEL");
-            if (maxLevelEnv)
-            {
-                maxLevel = atoi(maxLevelEnv);
-                std::cout << "#osp.amr: found the CHOMBO_MAX_LEVEL env var!"
-                          << std::endl;
-                std::cout
-                    << "#osp.amr: will only parse chombo file up to level "
-                    << maxLevel << std::endl;
-            }
-            else
-            {
-                std::cout
-                    << "#osp.amr: CHOMBO_MAX_LEVEL not set. Parsing all levels."
-                    << std::endl;
-                std::cout << "#osp.amr: If running out of memory, try setting "
-                             "lower max level."
-                          << std::endl;
-            }
+            BrickInfo brick;
+            const auto worldBox = amrHandler->getBox(nodeID);
+            auto lower = ospcommon::vec3i{int(worldBox.getMin().x()),
+                                          int(worldBox.getMin().y()),
+                                          int(worldBox.getMin().z())};
+            auto upper = ospcommon::vec3i{int(worldBox.getMax().x()) - 1,
+                                          int(worldBox.getMax().y()) - 1,
+                                          int(worldBox.getMax().z()) - 1};
 
-            std::string infoFileName =
-                "/home/nachbaur/dev/OSPRay/release_amr/rat-amr.info";
-            std::string dataFileName =
-                "/home/nachbaur/dev/OSPRay/release_amr/rat-amr.data";
-            PRINT(infoFileName);
-            PRINT(dataFileName);
-            FILE* infoFile = fopen(infoFileName.c_str(), "rb");
-            assert(infoFile);
-            FILE* dataFile = fopen(dataFileName.c_str(), "rb");
-            assert(dataFile);
+            //            PRINT(lower);
+            //            PRINT(upper);
 
-            Boxf& worldBounds = getWorldBounds();
-            worldBounds.reset();
-            int BS = 4;
-            BrickInfo bi;
-            while (fread(&bi, sizeof(bi), 1, infoFile))
-            {
-                if (bi.level > maxLevel)
-                    continue;
+            brick.box = {lower, upper};
+            brickInfo.push_back(brick);
 
-                float* bd = new float[BS * BS * BS];
-                int nr = fread(bd, sizeof(float), BS * BS * BS, dataFile);
-                if (nr < BS * BS * BS)
-                    return;
-
-                brickInfo.push_back(bi);
-                auto worldbox =
-                    (ospcommon::vec3f(bi.box.upper) + ospcommon::vec3f(1.f)) *
-                    bi.dt;
-                worldBounds.merge({worldbox.x, worldbox.y, worldbox.z});
-
-                assert(nr == BS * BS * BS);
-                //                float maxVal = 0;
-                //                for (int i=0;i<BS*BS*BS;i++)
-                //                    maxVal = std::max( bd[i], maxVal );
-                ////                  valueRange.extend(bd[i]);
-                //                PRINT(maxVal);
-                brickPtrs.push_back(bd);
-            }
-            // cout << "read file; found " << brickInfo.size() << " bricks" <<
-            // endl;
-
-            fclose(infoFile);
-            fclose(dataFile);
-        }
-
-        for (size_t bID = 0; bID < brickInfo.size(); bID++)
-        {
-            BrickInfo bi = brickInfo[bID];
+            worldBounds.merge(Vector3f(lower.x, lower.y, lower.z));
+            worldBounds.merge(Vector3f(upper.x + 1, upper.y + 1, upper.z + 1));
 
             OSPData data =
-                ospNewData(bi.size().product(), OSP_FLOAT, brickPtrs[bID],
-                           OSP_DATA_SHARED_BUFFER); // brickData.value,0);
+                ospNewData(amrHandler->getNumVoxels(nodeID), OSP_FLOAT,
+                           amrHandler->getData(nodeID).get(), 0);
             brickData.push_back(data);
         }
+
 #endif
+        //        std::vector<float*> brickPtrs;
+        //        {
+        //            int maxLevel = 0; // 1<<30;
+        //            char* maxLevelEnv = getenv("CHOMBO_MAX_LEVEL");
+        //            if (maxLevelEnv)
+        //            {
+        //                maxLevel = atoi(maxLevelEnv);
+        //                std::cout << "#osp.amr: found the CHOMBO_MAX_LEVEL env
+        //                var!"
+        //                          << std::endl;
+        //                std::cout
+        //                    << "#osp.amr: will only parse chombo file up to
+        //                    level "
+        //                    << maxLevel << std::endl;
+        //            }
+        //            else
+        //            {
+        //                std::cout
+        //                    << "#osp.amr: CHOMBO_MAX_LEVEL not set. Parsing
+        //                    all levels."
+        //                    << std::endl;
+        //                std::cout << "#osp.amr: If running out of memory, try
+        //                setting "
+        //                             "lower max level."
+        //                          << std::endl;
+        //            }
+
+        //            std::string infoFileName =
+        //                "/home/nachbaur/dev/OSPRay/release_amr/rat-amr.info";
+        //            std::string dataFileName =
+        //                "/home/nachbaur/dev/OSPRay/release_amr/rat-amr.data";
+        //            PRINT(infoFileName);
+        //            PRINT(dataFileName);
+        //            FILE* infoFile = fopen(infoFileName.c_str(), "rb");
+        //            assert(infoFile);
+        //            FILE* dataFile = fopen(dataFileName.c_str(), "rb");
+        //            assert(dataFile);
+
+        //            Boxf& worldBounds = getWorldBounds();
+        //            worldBounds.reset();
+        //            int BS = 4;
+        //            BrickInfo bi;
+        //            while (fread(&bi, sizeof(bi), 1, infoFile))
+        //            {
+        //                if (bi.level > maxLevel)
+        //                    continue;
+
+        //                float* bd = new float[BS * BS * BS];
+        //                int nr = fread(bd, sizeof(float), BS * BS * BS,
+        //                dataFile);
+        //                if (nr < BS * BS * BS)
+        //                    return;
+
+        //                brickInfo.push_back(bi);
+        //                auto worldbox =
+        //                    (ospcommon::vec3f(bi.box.upper) +
+        //                    ospcommon::vec3f(1.f)) *
+        //                    bi.dt;
+        //                worldBounds.merge({worldbox.x, worldbox.y,
+        //                worldbox.z});
+
+        //                assert(nr == BS * BS * BS);
+        //                //                float maxVal = 0;
+        //                //                for (int i=0;i<BS*BS*BS;i++)
+        //                //                    maxVal = std::max( bd[i], maxVal
+        //                );
+        //                ////                  valueRange.extend(bd[i]);
+        //                //                PRINT(maxVal);
+        //                brickPtrs.push_back(bd);
+        //            }
+        //            // cout << "read file; found " << brickInfo.size() << "
+        //            bricks" <<
+        //            // endl;
+
+        //            fclose(infoFile);
+        //            fclose(dataFile);
+        //        }
+
+        //        for (size_t bID = 0; bID < brickInfo.size(); bID++)
+        //        {
+        //            BrickInfo bi = brickInfo[bID];
+
+        //            OSPData data =
+        //                ospNewData(bi.size().product(), OSP_FLOAT,
+        //                brickPtrs[bID],
+        //                           OSP_DATA_SHARED_BUFFER); //
+        //                           brickData.value,0);
+        //            brickData.push_back(data);
+        //        }
+
         //        BrickInfo brick1;
         //        brick1.box = { {0,0,0}, {3,3,3} };
         //        BrickInfo brick2;
@@ -1336,15 +1393,15 @@ void OSPRayScene::commitVolumeData()
         ospSet1i(_amrVolume, "adaptiveSampling", 0);
         ospSet2f(_amrVolume, "voxelRange", valueRange.x, valueRange.y);
 
-        OSPTransferFunction transferFunction =
-            ospNewTransferFunction("piecewise_linear");
+        _ospTransferFunction = ospNewTransferFunction("piecewise_linear");
         std::vector<float> opacityValues(256, 0.01f);
         for (size_t i = 0; i < 100; ++i)
             opacityValues[i] = 0.f;
         OSPData opacityValuesData =
             ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
-        ospSetData(transferFunction, "opacities", opacityValuesData);
-        ospSet2f(transferFunction, "valueRange", valueRange.x, valueRange.y);
+        ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
+        ospSet2f(_ospTransferFunction, "valueRange", valueRange.x,
+                 valueRange.y);
         std::vector<ospcommon::vec3f> colors;
         colors.push_back(ospcommon::vec3f(0.001462, 0.000466, 0.013866));
         colors.push_back(ospcommon::vec3f(0.002258, 0.001295, 0.018331));
@@ -1604,9 +1661,9 @@ void OSPRayScene::commitVolumeData()
         colors.push_back(ospcommon::vec3f(0.987053, 0.991438, 0.749504));
         OSPData colorsData =
             ospNewData(colors.size(), OSP_FLOAT3, colors.data());
-        ospSetData(transferFunction, "colors", colorsData);
-        ospCommit(transferFunction);
-        ospSetObject(_amrVolume, "transferFunction", transferFunction);
+        ospSetData(_ospTransferFunction, "colors", colorsData);
+        ospCommit(_ospTransferFunction);
+        ospSetObject(_amrVolume, "transferFunction", _ospTransferFunction);
 
         ospCommit(_amrVolume);
 

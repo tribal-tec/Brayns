@@ -133,6 +133,7 @@ private:
     OSPVolume _amrVolume{nullptr};
     OSPData _brickInfoData;
     OSPData _brickDataData;
+    OSPTransferFunction _ospTransferFunction;
 };
 }
 #endif // OSPRAYSCENE_H

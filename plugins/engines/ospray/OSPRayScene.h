@@ -130,7 +130,7 @@ private:
 
     float _currentTimestamp;
 
-    OSPVolume _amrVolume{nullptr};
+    OSPVolume _ospVolume{nullptr};
     OSPData _brickInfoData;
     OSPData _brickDataData;
     OSPTransferFunction _ospTransferFunction;

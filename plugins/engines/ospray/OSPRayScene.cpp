@@ -1086,7 +1086,7 @@ void OSPRayScene::commitMaterials(const bool updateOnly)
 
 void OSPRayScene::commitTransferFunctionData()
 {
-    if (_amrVolume)
+    if (_ospVolume)
     {
         std::vector<float> opacityValues;
         opacityValues.resize(_transferFunction.getDiffuseColors().size());
@@ -1146,16 +1146,18 @@ void OSPRayScene::commitVolumeData()
     AmrHandlerPtr amrHandler = getAmrHandler();
     if (amrHandler)
     {
-        if (_amrVolume)
+        const bool useAMR = false;
+        if (_ospVolume)
         {
-            ospSet1i(_amrVolume, "singleShade", 1);
-            ospSet1i(_amrVolume, "preIntegration", 1);
-            ospSet1i(_amrVolume, "gradientShadingEnabled", 0);
-            ospSet1i(_amrVolume, "adaptiveSampling", 0);
+            ospSet1i(_ospVolume, "singleShade", 1);
+            ospSet1i(_ospVolume, "preIntegration", 1);
+            ospSet1i(_ospVolume, "gradientShadingEnabled", 0);
+            ospSet1i(_ospVolume, "adaptiveSampling", 0);
             return;
         }
 
-        ospLoadModule("amr");
+        if (useAMR)
+            ospLoadModule("amr");
 
         struct BrickInfo
         {
@@ -1169,8 +1171,6 @@ void OSPRayScene::commitVolumeData()
             }
         };
 
-        std::vector<BrickInfo> brickInfo;
-        std::vector<OSPData> brickData;
         ospcommon::vec2f valueRange{0, 255};
 
         Boxf& worldBounds = getWorldBounds();
@@ -1178,44 +1178,107 @@ void OSPRayScene::commitVolumeData()
 
         const int lod = 0;
         const auto visibles = amrHandler->getVisibles(lod);
-        brickInfo.reserve(visibles.size());
-        brickData.reserve(visibles.size());
-        for (const auto& nodeID : visibles)
+
+        if (useAMR)
         {
-            BrickInfo brick;
-            const auto worldBox = amrHandler->getBox(nodeID);
-            auto lower = ospcommon::vec3i{int(worldBox.getMin().x()),
-                                          int(worldBox.getMin().y()),
-                                          int(worldBox.getMin().z())};
-            auto upper = ospcommon::vec3i{int(worldBox.getMax().x()) - 1,
-                                          int(worldBox.getMax().y()) - 1,
-                                          int(worldBox.getMax().z()) - 1};
+            std::vector<BrickInfo> brickInfo;
+            std::vector<OSPData> brickData;
 
-            brick.box = {lower, upper};
-            brickInfo.push_back(brick);
+            brickInfo.reserve(visibles.size());
+            brickData.reserve(visibles.size());
+            for (const auto& nodeID : visibles)
+            {
+                BrickInfo brick;
+                const auto worldBox = amrHandler->getBox(nodeID);
+                auto lower = ospcommon::vec3i{int(worldBox.getMin().x()),
+                                              int(worldBox.getMin().y()),
+                                              int(worldBox.getMin().z())};
+                auto upper = ospcommon::vec3i{int(worldBox.getMax().x()) - 1,
+                                              int(worldBox.getMax().y()) - 1,
+                                              int(worldBox.getMax().z()) - 1};
 
-            worldBounds.merge(Vector3f(lower.x, lower.y, lower.z));
-            worldBounds.merge(Vector3f(upper.x + 1, upper.y + 1, upper.z + 1));
+                brick.box = {lower, upper};
+                brickInfo.push_back(brick);
 
-            OSPData data =
-                ospNewData(amrHandler->getNumVoxels(nodeID), OSP_FLOAT,
-                           amrHandler->getData(nodeID).get(), 0);
-            brickData.push_back(data);
+                worldBounds.merge(Vector3f(lower.x, lower.y, lower.z));
+                worldBounds.merge(
+                    Vector3f(upper.x + 1, upper.y + 1, upper.z + 1));
+
+                OSPData data =
+                    ospNewData(amrHandler->getVoxelBox(nodeID).product(),
+                               OSP_FLOAT, amrHandler->getData(nodeID).get(), 0);
+                brickData.push_back(data);
+            }
+
+            _ospVolume = ospNewVolume("chombo_volume");
+
+            _brickDataData =
+                ospNewData(brickData.size(), OSP_OBJECT, &brickData[0], 0);
+            ospSetData(_ospVolume, "brickData", _brickDataData);
+            _brickInfoData = ospNewData(brickInfo.size() * sizeof(brickInfo[0]),
+                                        OSP_RAW, &brickInfo[0], 0);
+            ospSetData(_ospVolume, "brickInfo", _brickInfoData);
+        }
+        else
+        {
+            _ospVolume = ospNewVolume("block_bricked_volume");
+
+            const auto dim = amrHandler->getDimension(lod);
+            const ospcommon::vec3i dimension = {dim.x(), dim.y(), dim.z()};
+            ospSetVec3i(_ospVolume, "dimensions", (osp::vec3i&)dimension);
+
+            const auto gs = amrHandler->getGridSpacing(lod);
+            ospcommon::vec3f gridSpacing = {gs.x(), gs.y(), gs.z()};
+            ospSetVec3f(_ospVolume, "gridSpacing", (osp::vec3f&)gridSpacing);
+
+            switch (amrHandler->getDataType())
+            {
+            case livre::DT_FLOAT:
+                ospSetString(_ospVolume, "voxelType", "float");
+                break;
+            case livre::DT_UINT16:
+                ospSetString(_ospVolume, "voxelType", "ushort");
+                valueRange = {12500, 40000};
+                break;
+            case livre::DT_UINT32:
+                ospSetString(_ospVolume, "voxelType", "uint");
+                break;
+            case livre::DT_INT8:
+                ospSetString(_ospVolume, "voxelType", "char");
+                break;
+            case livre::DT_INT16:
+                ospSetString(_ospVolume, "voxelType", "short");
+                break;
+            case livre::DT_INT32:
+                ospSetString(_ospVolume, "voxelType", "int");
+                break;
+            case livre::DT_UINT8:
+            default:
+                ospSetString(_ospVolume, "voxelType", "uchar");
+                break;
+            }
+
+            for (const auto& nodeID : visibles)
+            {
+                const auto region_lo = amrHandler->getRegionLo(nodeID);
+                const auto voxelBox = amrHandler->getVoxelBox(nodeID);
+
+                worldBounds.merge(region_lo);
+                worldBounds.merge(voxelBox);
+
+                ospSetRegion(_ospVolume, amrHandler->getRawData(nodeID),
+                             osp::vec3i{int(region_lo.x()), int(region_lo.y()),
+                                        int(region_lo.z())},
+                             osp::vec3i{int(voxelBox.x()), int(voxelBox.y()),
+                                        int(voxelBox.z())});
+            }
         }
 
-        _amrVolume = ospNewVolume("chombo_volume");
-
-        _brickDataData =
-            ospNewData(brickData.size(), OSP_OBJECT, &brickData[0], 0);
-        ospSetData(_amrVolume, "brickData", _brickDataData);
-        _brickInfoData = ospNewData(brickInfo.size() * sizeof(brickInfo[0]),
-                                    OSP_RAW, &brickInfo[0], 0);
-        ospSetData(_amrVolume, "brickInfo", _brickInfoData);
-        ospSet1i(_amrVolume, "singleShade", 1);
-        ospSet1i(_amrVolume, "preIntegration", 1);
-        ospSet1i(_amrVolume, "gradientShadingEnabled", 0);
-        ospSet1i(_amrVolume, "adaptiveSampling", 0);
-        ospSet2f(_amrVolume, "voxelRange", valueRange.x, valueRange.y);
+        ospSet1i(_ospVolume, "singleShade", 1);
+        ospSet1i(_ospVolume, "preIntegration", 1);
+        ospSet1i(_ospVolume, "gradientShadingEnabled", 0);
+        ospSet1i(_ospVolume, "adaptiveSampling", 0);
+        ospSet2f(_ospVolume, "voxelRange", valueRange.x, valueRange.y);
 
         _ospTransferFunction = ospNewTransferFunction("piecewise_linear");
         std::vector<float> opacityValues(256, 0.01f);
@@ -1487,16 +1550,14 @@ void OSPRayScene::commitVolumeData()
             ospNewData(colors.size(), OSP_FLOAT3, colors.data());
         ospSetData(_ospTransferFunction, "colors", colorsData);
         ospCommit(_ospTransferFunction);
-        ospSetObject(_amrVolume, "transferFunction", _ospTransferFunction);
+        ospSetObject(_ospVolume, "transferFunction", _ospTransferFunction);
 
-        ospCommit(_amrVolume);
+        ospCommit(_ospVolume);
 
-        if (_models.size() == 0)
-            // If no timestamp is available, create a default model at timestamp
-            // 0
+        if (_models.empty())
             _models[0] = ospNewModel();
 
-        ospAddVolume(_models[0], _amrVolume);
+        ospAddVolume(_models[0], _ospVolume);
 
         return;
     }

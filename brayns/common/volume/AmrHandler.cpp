@@ -62,27 +62,13 @@ AmrHandler::DataPtr AmrHandler::getData(const livre::NodeId& nodeID) const
     return data1;
 }
 
-Vector3ui AmrHandler::getDimensions() const
+void* AmrHandler::getRawData(const livre::NodeId& nodeID) const
 {
-    return Vector3ui();
+    livre::ConstMemoryUnitPtr dataBlock = _datasource->getData(nodeID);
+    return (void*)dataBlock->getData<void>();
 }
 
-Vector3f AmrHandler::getElementSpacing() const
-{
-    return Vector3f();
-}
-
-Vector3f AmrHandler::getOffset() const
-{
-    return Vector3f();
-}
-
-uint64_t AmrHandler::getSize() const
-{
-    return 0;
-}
-
-livre::NodeIds AmrHandler::getVisibles(int lod) const
+livre::NodeIds AmrHandler::getVisibles(const size_t lod) const
 {
     const float near = 0.1f;
     const float far = 15.f;
@@ -102,7 +88,7 @@ livre::NodeIds AmrHandler::getVisibles(int lod) const
     return visitor.getVisibles();
 }
 
-livre::Boxui AmrHandler::getBox(const livre::NodeId& nodeID) const
+Boxui AmrHandler::getBox(const livre::NodeId& nodeID) const
 {
 #if 0
     const auto& volInfo = _datasource->getVolumeInfo();
@@ -116,9 +102,9 @@ livre::Boxui AmrHandler::getBox(const livre::NodeId& nodeID) const
     const auto& volInfo = _datasource->getVolumeInfo();
     const auto maxBlockSize = volInfo.maximumBlockSize;
 
-    livre::Vector3ui lower{nodeID.getPosition().x() * maxBlockSize.x(),
-                           nodeID.getPosition().y() * maxBlockSize.y(),
-                           nodeID.getPosition().z() * maxBlockSize.z()};
+    Vector3ui lower{nodeID.getPosition().x() * maxBlockSize.x(),
+                    nodeID.getPosition().y() * maxBlockSize.y(),
+                    nodeID.getPosition().z() * maxBlockSize.z()};
 
     if (lower.x() > 0)
         lower.x() -= 2 * volInfo.overlap.x();
@@ -130,17 +116,49 @@ livre::Boxui AmrHandler::getBox(const livre::NodeId& nodeID) const
     const auto& node = _datasource->getNode(nodeID);
     const auto voxelBox = node.getBlockSize() + 2u * volInfo.overlap;
 
-    livre::Vector3ui upper{lower + voxelBox};
+    Vector3ui upper{lower + voxelBox};
 
-    return livre::Boxui{lower, upper};
+    return Boxui{lower, upper};
 #endif
 }
 
-size_t AmrHandler::getNumVoxels(const livre::NodeId& nodeID) const
+vmml::Vector3ui AmrHandler::getVoxelBox(const livre::NodeId& nodeID) const
 {
     const auto& volInfo = _datasource->getVolumeInfo();
     const auto& node = _datasource->getNode(nodeID);
-    const auto voxelBox = node.getBlockSize() + 2u * volInfo.overlap;
-    return voxelBox.product();
+    return node.getBlockSize() + 2u * volInfo.overlap;
+}
+
+vmml::Vector3ui AmrHandler::getRegionLo(const livre::NodeId& nodeID) const
+{
+    const auto& volInfo = _datasource->getVolumeInfo();
+    return nodeID.getPosition() * volInfo.maximumBlockSize;
+}
+
+livre::DataType AmrHandler::getDataType() const
+{
+    return _datasource->getVolumeInfo().dataType;
+}
+
+Vector3i AmrHandler::getDimension(const size_t lod) const
+{
+    const auto& volInfo = _datasource->getVolumeInfo();
+    const uint32_t maxDepth = volInfo.rootNode.getDepth();
+    return Vector3i{(int)volInfo.voxels.x() >> (maxDepth - lod - 1),
+                    (int)volInfo.voxels.y() >> (maxDepth - lod - 1),
+                    (int)volInfo.voxels.z() >> (maxDepth - lod - 1)};
+}
+
+Vector3f AmrHandler::getGridSpacing(const size_t lod) const
+{
+    const auto& volInfo = _datasource->getVolumeInfo();
+    const size_t maxDepth = volInfo.rootNode.getDepth();
+    Vector3f gridSpacing{1, 1, 1};
+    if (lod < maxDepth)
+    {
+        const float spacing = 1 << (maxDepth - lod - 1);
+        gridSpacing = {spacing, spacing, spacing};
+    }
+    return gridSpacing;
 }
 }

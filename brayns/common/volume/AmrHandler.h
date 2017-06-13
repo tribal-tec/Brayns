@@ -34,31 +34,6 @@ public:
 
     ~AmrHandler();
 
-    /**
-     * @brief Returns the dimension of the 8bit volume
-     * @return Dimensions of the volume for the specified timestamp
-     */
-    Vector3ui getDimensions() const;
-
-    /**
-     * @brief Returns the voxel size of the 8bit volume
-     * @return Voxel size of the volume for the specified timestamp
-     */
-    Vector3f getElementSpacing() const;
-
-    /**
-     * @brief Returns the position offset of the 8bit volume in world
-     *        coordinates
-     * @return Volume offset position for the specified timestamp
-     */
-    Vector3f getOffset() const;
-
-    /**
-     * @brief Returns the size of the 8bit volume in bytes
-     * @return Size of the volume for the specified timestamp
-     */
-    uint64_t getSize() const;
-
     template <typename T>
     struct Deleter
     {
@@ -72,6 +47,8 @@ public:
      */
     DataPtr getData(const livre::NodeId& nodeID) const;
 
+    void* getRawData(const livre::NodeId& nodeID) const;
+
     /**
     * @brief Attaches a memory mapped file to the scene so that renderers can
     *        access the data as if it was in memory. The OS is in charge of
@@ -82,15 +59,19 @@ public:
     */
     void attachVolumeToFile(const std::string& volumeFile);
 
-    const std::string& getFile() const { return _file; }
     /** Set the histogram of the currently loaded volume. */
     void setHistogram(const Histogram& histogram) { _histogram = histogram; }
     /** @return the histogram of the currently loaded volume. */
     const Histogram& getHistogram();
 
-    livre::NodeIds getVisibles(int lod) const;
-    livre::Boxui getBox(const livre::NodeId& nodeID) const;
-    size_t getNumVoxels(const livre::NodeId& nodeID) const;
+    livre::NodeIds getVisibles(size_t lod) const;
+    Boxui getBox(const livre::NodeId& nodeID) const;
+    Vector3ui getVoxelBox(const livre::NodeId& nodeID) const;
+
+    Vector3i getDimension(size_t lod) const;
+    Vector3f getGridSpacing(size_t lod) const;
+    Vector3ui getRegionLo(const livre::NodeId& nodeID) const;
+    livre::DataType getDataType() const;
 
 private:
     const VolumeParameters _volumeParameters;

@@ -116,7 +116,8 @@ enum Shader: uint {
     basic,
     proximity,
     simulation,
-    particle
+    particle,
+    scivis
 }
 
 enum Shading: uint {
@@ -136,8 +137,9 @@ table Settings {
     timestamp: float;
     volume_samples_per_ray: uint;
     shader: Shader;
-    samples_per_pixel: uint;
+    samples_per_pixel: int;
     ambient_occlusion: float;
+    ambient_occlusion_samples: uint;
     shadows: float;
     soft_shadows: float;
     shading: Shading;

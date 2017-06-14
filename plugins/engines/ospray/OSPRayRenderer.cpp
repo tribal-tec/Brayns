@@ -66,6 +66,10 @@ void OSPRayRenderer::commit()
     SceneParameters& sp = _parametersManager.getSceneParameters();
     ShadingType mt = rp.getShading();
 
+    ospSet1i(_renderer, "shadowsEnabled", rp.getShadows() > 0.1f); // scivis
+    ospSet1f(_renderer, "aoWeight", rp.getAmbientOcclusionStrength());
+    ospSet1i(_renderer, "aoSamples", rp.getAmbientOcclusionSamples());
+
     Vector3f color = rp.getBackgroundColor();
     ospSet3f(_renderer, "bgColor", color.x(), color.y(), color.z());
     ospSet1f(_renderer, "shadows", rp.getShadows());

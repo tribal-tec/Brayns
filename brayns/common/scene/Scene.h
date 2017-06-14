@@ -32,6 +32,8 @@
 #include <brayns/common/transferFunction/TransferFunction.h>
 #include <brayns/common/types.h>
 
+#include <zerobuf/render/scene.h>
+
 namespace brayns
 {
 /**
@@ -300,6 +302,7 @@ public:
      */
     BRAYNS_API void setDirty();
 
+    void setScene(const ::brayns::v1::Scene& scene) { _scene = scene; }
 protected:
     // Parameters
     ParametersManager& _parametersManager;
@@ -329,6 +332,8 @@ protected:
 
     // Scene
     Boxf _bounds;
+
+    ::brayns::v1::Scene _scene;
 };
 }
 #endif // SCENE_H

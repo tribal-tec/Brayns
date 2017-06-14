@@ -31,6 +31,18 @@ table Material {
     glossiness: float;
 }
 
+table Volume {
+    single_shade: bool = true;
+    preintegration: bool = true;
+    gradient_shading: bool = true;
+    adaptive_scalar: float = 15;
+    adaptive_max_sampling_rate: float = 2;
+    adaptive_backtrack: float = 0.02;
+    adaptive_sampling: float = 1;
+    sampling_rate: float = 0.125;
+}
+
 table Scene {
     materials: [Material];
+    volume: Volume;
 }

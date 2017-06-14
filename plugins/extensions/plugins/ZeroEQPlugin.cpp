@@ -331,6 +331,8 @@ void ZeroEQPlugin::_sceneUpdated()
     auto& materials = _remoteScene.getMaterials();
     auto& scene = _engine->getScene();
 
+    scene.setScene(_remoteScene);
+
     for (size_t materialId = 0; materialId < materials.size(); ++materialId)
     {
         // Materials
@@ -352,6 +354,7 @@ void ZeroEQPlugin::_sceneUpdated()
         material.setGlossiness(m.getGlossiness());
     }
 
+    scene.commitTransferFunctionData();
     scene.commitMaterials(true);
     _engine->getRenderer().commit();
     _engine->getFrameBuffer().clear();
@@ -897,6 +900,9 @@ void ZeroEQPlugin::_initializeSettings()
     case RendererType::simulation:
         _remoteSettings.setShader(::brayns::v1::Shader::simulation);
         break;
+    case RendererType::scivis:
+        _remoteSettings.setShader(::brayns::v1::Shader::scivis);
+        break;
     default:
         _remoteSettings.setShader(::brayns::v1::Shader::basic);
         break;
@@ -918,6 +924,8 @@ void ZeroEQPlugin::_initializeSettings()
         renderingParameters.getSamplesPerPixel());
     _remoteSettings.setAmbientOcclusion(
         renderingParameters.getAmbientOcclusionStrength());
+    _remoteSettings.setAmbientOcclusionSamples(
+        renderingParameters.getAmbientOcclusionSamples());
     _remoteSettings.setShadows(renderingParameters.getShadows());
     _remoteSettings.setSoftShadows(renderingParameters.getSoftShadows());
     _remoteSettings.setRadiance(
@@ -984,6 +992,9 @@ void ZeroEQPlugin::_settingsUpdated()
     _parametersManager.set("ambient-occlusion",
                            std::to_string(
                                _remoteSettings.getAmbientOcclusion()));
+    _parametersManager.set("ambient-occlusion-samples",
+                           std::to_string(
+                               _remoteSettings.getAmbientOcclusionSamples()));
     _parametersManager.set("shadows",
                            std::to_string(_remoteSettings.getShadows()));
     _parametersManager.set("soft-shadows",

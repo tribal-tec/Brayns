@@ -992,7 +992,13 @@ void OSPRayScene::commitLights()
 
         if (_ospLightData == 0)
         {
-            _ospLightData = ospNewData(_lights.size(), OSP_OBJECT,
+            auto ambientLight =
+                ospNewLight(osprayRenderer->impl(), "AmbientLight");
+            ospSet3f(ambientLight, "color", 1.f, 1.f, 1.f);
+            ospCommit(ambientLight);
+            _ospLights.push_back(ambientLight);
+
+            _ospLightData = ospNewData(_ospLights.size(), OSP_OBJECT,
                                        &_ospLights[0], _getOSPDataFlags());
             ospCommit(_ospLightData);
         }
@@ -1101,6 +1107,10 @@ void OSPRayScene::commitTransferFunctionData()
         ospSet2f(_ospTransferFunction, "valueRange", valueRange.x,
                  valueRange.y);
 
+        const auto& vol = _scene.getVolume();
+        ospSet1i(_ospTransferFunction, "preIntegration",
+                 vol.getPreintegration());
+
         ospCommit(_ospTransferFunction);
     }
 
@@ -1149,38 +1159,50 @@ void OSPRayScene::commitVolumeData()
         const bool useAMR = false;
         if (_ospVolume)
         {
-            ospSet1i(_ospVolume, "singleShade", 1);
-            ospSet1i(_ospVolume, "preIntegration", 1);
-            ospSet1i(_ospVolume, "gradientShadingEnabled", 0);
-            ospSet1i(_ospVolume, "adaptiveSampling", 0);
+            const auto& vol = _scene.getVolume();
+            ospSet1i(_ospVolume, "singleShade", vol.getSingleShade());
+            ospSet1i(_ospVolume, "gradientShadingEnabled",
+                     vol.getGradientShading());
+            ospSet1f(_ospVolume, "adaptiveScalar", vol.getAdaptiveScalar());
+            ospSet1f(_ospVolume, "adaptiveMaxSamplingRate",
+                     vol.getAdaptiveMaxSamplingRate());
+            ospSet1f(_ospVolume, "adaptiveBacktrack",
+                     vol.getAdaptiveBacktrack());
+            ospSet1i(_ospVolume, "adaptiveSampling", vol.getAdaptiveSampling());
+            ospSet1f(_ospVolume, "samplingRate", vol.getSamplingRate());
+            osp::vec3f specular = osp::vec3f{0.135f, 0.135f, 0.135f};
+            ospSet3fv(_ospVolume, "specular", &specular.x);
+            ospCommit(_ospVolume);
             return;
         }
 
-        if (useAMR)
-            ospLoadModule("amr");
-
-        struct BrickInfo
-        {
-            ospcommon::box3i box;
-            int level = 0;
-            float dt = 1.0;
-
-            ospcommon::vec3i size() const
-            {
-                return box.size() + ospcommon::vec3i(1);
-            }
-        };
+        commitLights();
 
         ospcommon::vec2f valueRange{0, 255};
 
         Boxf& worldBounds = getWorldBounds();
         worldBounds.reset();
 
-        const int lod = 0;
+        const int lod = 1;
         const auto visibles = amrHandler->getVisibles(lod);
+        std::cout << visibles.size() << std::endl;
 
         if (useAMR)
         {
+            ospLoadModule("amr");
+
+            struct BrickInfo
+            {
+                ospcommon::box3i box;
+                int level = 0;
+                float dt = 1.0;
+
+                ospcommon::vec3i size() const
+                {
+                    return box.size() + ospcommon::vec3i(1);
+                }
+            };
+
             std::vector<BrickInfo> brickInfo;
             std::vector<OSPData> brickData;
 
@@ -1189,13 +1211,14 @@ void OSPRayScene::commitVolumeData()
             for (const auto& nodeID : visibles)
             {
                 BrickInfo brick;
-                const auto worldBox = amrHandler->getBox(nodeID);
-                auto lower = ospcommon::vec3i{int(worldBox.getMin().x()),
-                                              int(worldBox.getMin().y()),
-                                              int(worldBox.getMin().z())};
-                auto upper = ospcommon::vec3i{int(worldBox.getMax().x()) - 1,
-                                              int(worldBox.getMax().y()) - 1,
-                                              int(worldBox.getMax().z()) - 1};
+                const auto position = amrHandler->getPosition(nodeID);
+                const auto voxelBox = amrHandler->getVoxelBox(nodeID);
+                auto lower =
+                    ospcommon::vec3i{int(position.x()), int(position.y()),
+                                     int(position.z())};
+                auto upper = lower + ospcommon::vec3i{int(voxelBox.x()) - 1,
+                                                      int(voxelBox.y()) - 1,
+                                                      int(voxelBox.z()) - 1};
 
                 brick.box = {lower, upper};
                 brickInfo.push_back(brick);
@@ -1260,7 +1283,7 @@ void OSPRayScene::commitVolumeData()
 
             for (const auto& nodeID : visibles)
             {
-                const auto region_lo = amrHandler->getRegionLo(nodeID);
+                const auto region_lo = amrHandler->getPosition(nodeID);
                 const auto voxelBox = amrHandler->getVoxelBox(nodeID);
 
                 worldBounds.merge(region_lo);

@@ -65,12 +65,11 @@ public:
     const Histogram& getHistogram();
 
     livre::NodeIds getVisibles(size_t lod) const;
-    Boxui getBox(const livre::NodeId& nodeID) const;
     Vector3ui getVoxelBox(const livre::NodeId& nodeID) const;
 
     Vector3i getDimension(size_t lod) const;
     Vector3f getGridSpacing(size_t lod) const;
-    Vector3ui getRegionLo(const livre::NodeId& nodeID) const;
+    Vector3ui getPosition(const livre::NodeId& nodeID) const;
     livre::DataType getDataType() const;
 
 private:

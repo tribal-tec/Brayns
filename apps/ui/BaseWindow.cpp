@@ -148,10 +148,7 @@ void BaseWindow::mouseButton(const int button, const bool released,
     _lastButtonState = _currButtonState;
 
     if (released)
-    {
         _currButtonState = _currButtonState & ~(1 << button);
-        _brayns.getEngine().getCamera().resetModified();
-    }
     else
         _currButtonState = _currButtonState | (1 << button);
     _currModifiers = glutGetModifiers();
@@ -163,7 +160,6 @@ void BaseWindow::mouseButton(const int button, const bool released,
             return;
         const auto delta = (button == GLUT_WHEEL_SCROLL_UP) ? 1 : -1;
         _brayns.getCameraManipulator().wheel(pos, delta);
-        _brayns.getEngine().getCamera().resetModified();
     }
 }
 
@@ -241,7 +237,10 @@ void BaseWindow::display()
     auto& engine = _brayns.getEngine();
     auto& camera = engine.getCamera();
     if (camera.getModified())
+    {
         engine.getFrameBuffer().clear();
+        engine.getCamera().resetModified();
+    }
 
     const Vector2ui windowSize = _brayns.getParametersManager()
                                      .getApplicationParameters()

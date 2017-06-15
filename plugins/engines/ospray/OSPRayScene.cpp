@@ -1112,6 +1112,7 @@ void OSPRayScene::commitTransferFunctionData()
                  vol.getPreintegration());
 
         ospCommit(_ospTransferFunction);
+        return;
     }
 
     for (const auto& renderer : _renderers)
@@ -1184,7 +1185,7 @@ void OSPRayScene::commitVolumeData()
         worldBounds.reset();
 
         const int lod = 1;
-        const auto visibles = amrHandler->getVisibles(lod);
+        auto visibles = amrHandler->getVisibles(lod);
         std::cout << visibles.size() << std::endl;
 
         if (useAMR)
@@ -1223,9 +1224,8 @@ void OSPRayScene::commitVolumeData()
                 brick.box = {lower, upper};
                 brickInfo.push_back(brick);
 
-                worldBounds.merge(Vector3f(lower.x, lower.y, lower.z));
-                worldBounds.merge(
-                    Vector3f(upper.x + 1, upper.y + 1, upper.z + 1));
+                worldBounds.merge(position);
+                worldBounds.merge(voxelBox);
 
                 OSPData data =
                     ospNewData(amrHandler->getVoxelBox(nodeID).product(),
@@ -1254,6 +1254,9 @@ void OSPRayScene::commitVolumeData()
             ospcommon::vec3f gridSpacing = {gs.x(), gs.y(), gs.z()};
             ospSetVec3f(_ospVolume, "gridSpacing", (osp::vec3f&)gridSpacing);
 
+            worldBounds.merge(-(dim * gs) / 2);
+            worldBounds.merge(dim * gs);
+
             switch (amrHandler->getDataType())
             {
             case livre::DT_FLOAT:
@@ -1261,7 +1264,7 @@ void OSPRayScene::commitVolumeData()
                 break;
             case livre::DT_UINT16:
                 ospSetString(_ospVolume, "voxelType", "ushort");
-                valueRange = {12500, 40000};
+                valueRange = {12500, 40000}; // beechnut
                 break;
             case livre::DT_UINT32:
                 ospSetString(_ospVolume, "voxelType", "uint");
@@ -1281,17 +1284,15 @@ void OSPRayScene::commitVolumeData()
                 break;
             }
 
+            visibles.push_back({1, {0, 0, 0}});
             for (const auto& nodeID : visibles)
             {
-                const auto region_lo = amrHandler->getPosition(nodeID);
+                const auto position = amrHandler->getPosition(nodeID);
                 const auto voxelBox = amrHandler->getVoxelBox(nodeID);
 
-                worldBounds.merge(region_lo);
-                worldBounds.merge(voxelBox);
-
                 ospSetRegion(_ospVolume, amrHandler->getRawData(nodeID),
-                             osp::vec3i{int(region_lo.x()), int(region_lo.y()),
-                                        int(region_lo.z())},
+                             osp::vec3i{int(position.x()), int(position.y()),
+                                        int(position.z())},
                              osp::vec3i{int(voxelBox.x()), int(voxelBox.y()),
                                         int(voxelBox.z())});
             }

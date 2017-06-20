@@ -29,6 +29,7 @@
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
 #include <brayns/common/simulation/CADiffusionSimulationHandler.h>
 #include <brayns/common/simulation/SpikeSimulationHandler.h>
+#include <brayns/common/volume/BrickedVolumeHandler.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/parameters/ParametersManager.h>
 #include <zerobuf/render/camera.h>
@@ -1129,10 +1130,13 @@ bool ZeroEQPlugin::_requestSimulationHistogram()
 bool ZeroEQPlugin::_requestVolumeHistogram()
 {
     auto volumeHandler = _engine->getScene().getVolumeHandler();
-    if (!volumeHandler)
+    auto brickedVolumeHandler = _engine->getScene().getBrickedVolumeHandler();
+    if (!volumeHandler && !brickedVolumeHandler)
         return false;
 
-    const auto& histogram = volumeHandler->getHistogram();
+    const auto& histogram = volumeHandler
+                                ? volumeHandler->getHistogram()
+                                : brickedVolumeHandler->getHistogram();
     _remoteVolumeHistogram.setMin(histogram.range.x());
     _remoteVolumeHistogram.setMax(histogram.range.y());
     _remoteVolumeHistogram.setBins(histogram.values);

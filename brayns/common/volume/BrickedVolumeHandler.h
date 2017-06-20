@@ -22,8 +22,11 @@
 
 #include <brayns/common/types.h>
 #include <brayns/parameters/VolumeParameters.h>
+#include <lexis/render/Histogram.h>
 #include <livre/data/DataSource.h>
 #include <livre/data/NodeId.h>
+
+#include <future>
 
 namespace brayns
 {
@@ -58,8 +61,6 @@ public:
     */
     void attachVolumeToFile(const std::string& volumeFile);
 
-    /** Set the histogram of the currently loaded volume. */
-    void setHistogram(const Histogram& histogram) { _histogram = histogram; }
     /** @return the histogram of the currently loaded volume. */
     const Histogram& getHistogram();
 
@@ -74,7 +75,13 @@ public:
     static bool isVolumeSupported(const std::string& volumeFile);
 
 private:
+    void _calcHistogram(livre::ConstMemoryUnitPtr dataBlock,
+                        const livre::NodeId& nodeID) const;
+
     Histogram _histogram;
+    mutable lexis::render::Histogram _histoAccum;
+    mutable std::vector<std::future<lexis::render::Histogram>> _histoFutures;
+
     std::string _file;
     std::unique_ptr<livre::DataSource> _datasource;
     static bool _pluginsLoaded;

@@ -125,11 +125,6 @@ public:
      */
     void setTimestamp(const float timestamp);
 
-    /** Set the histogram of the currently loaded volume. */
-    void setHistogram(const Histogram& histogram)
-    {
-        _histograms[_timestamp] = histogram;
-    }
     /** @return the histogram of the currently loaded volume. */
     const Histogram& getHistogram();
     /** @return the number of frames of the current volume. */

@@ -280,7 +280,7 @@ struct Histogram
 {
     uint64_ts values;
     Vector2f range;
-    float timestamp;
+    float timestamp{0};
     bool empty() const { return values.empty(); }
 };
 

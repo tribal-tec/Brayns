@@ -30,8 +30,7 @@ namespace brayns
 class BrickedVolumeHandler
 {
 public:
-    BrickedVolumeHandler(const VolumeParameters& volumeParameters);
-
+    BrickedVolumeHandler();
     ~BrickedVolumeHandler();
 
     template <typename T>
@@ -75,7 +74,6 @@ public:
     static bool isVolumeSupported(const std::string& volumeFile);
 
 private:
-    const VolumeParameters _volumeParameters;
     Histogram _histogram;
     std::string _file;
     std::unique_ptr<livre::DataSource> _datasource;

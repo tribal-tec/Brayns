@@ -578,7 +578,6 @@ void OSPRayScene::_commitBrickedVolumeData()
     if (!brickedVolumeHandler)
         return;
 
-    const bool useAMR = false;
     if (_ospVolume)
     {
         const auto& vol = _scene.getVolume();
@@ -608,10 +607,8 @@ void OSPRayScene::_commitBrickedVolumeData()
     auto visibles = brickedVolumeHandler->getVisibles(lod);
     std::cout << visibles.size() << std::endl;
 
-    if (useAMR)
+    if (_parametersManager.getRenderingParameters().getModule() == "amr")
     {
-        ospLoadModule("amr");
-
         struct BrickInfo
         {
             ospcommon::box3i box;
@@ -726,7 +723,7 @@ void OSPRayScene::_commitBrickedVolumeData()
 
     _ospTransferFunction = ospNewTransferFunction("piecewise_linear");
     std::vector<float> opacityValues(256, 0.01f);
-    for (size_t i = 0; i < 100; ++i)
+    for (size_t i = 0; i < 1; ++i)
         opacityValues[i] = 0.f;
     OSPData opacityValuesData =
         ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
@@ -1420,11 +1417,12 @@ void OSPRayScene::commitLights()
 
         if (_ospLightData == 0)
         {
-            auto ambientLight =
-                ospNewLight(osprayRenderer->impl(), "AmbientLight");
-            ospSet3f(ambientLight, "color", 1.f, 1.f, 1.f);
-            ospCommit(ambientLight);
-            _ospLights.push_back(ambientLight);
+            //            auto ambientLight =
+            //                ospNewLight(osprayRenderer->impl(),
+            //                "AmbientLight");
+            //            ospSet3f(ambientLight, "color", 1.f, 1.f, 1.f);
+            //            ospCommit(ambientLight);
+            //            _ospLights.push_back(ambientLight);
 
             _ospLightData = ospNewData(_ospLights.size(), OSP_OBJECT,
                                        &_ospLights[0], _getOSPDataFlags());
@@ -1457,6 +1455,8 @@ void OSPRayScene::commitMaterials(const bool updateOnly)
             {
                 OSPRayRenderer* osprayRenderer =
                     dynamic_cast<OSPRayRenderer*>(renderer.get());
+                if (osprayRenderer->getName() == "scivis")
+                    continue;
                 _ospMaterials.push_back(ospNewMaterial(osprayRenderer->impl(),
                                                        "ExtendedOBJMaterial"));
             }

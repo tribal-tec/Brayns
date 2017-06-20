@@ -607,27 +607,26 @@ VolumeHandlerPtr Scene::getVolumeHandler()
 
 BrickedVolumeHandlerPtr Scene::getBrickedVolumeHandler()
 {
-    const auto& volumeFile =
-        _parametersManager.getVolumeParameters().getFilename();
-    if (volumeFile.empty())
-        return nullptr;
-
     if (_brickedVolumeHandler)
         return _brickedVolumeHandler;
 
+    auto volumeFile = _parametersManager.getVolumeParameters().getFilename();
+    if (volumeFile.empty())
+    {
+        if (_parametersManager.getRenderingParameters().getRenderer() ==
+            RendererType::scivis)
+            volumeFile = "mem://";
+        else
+            return nullptr;
+    }
+
     try
     {
-        _brickedVolumeHandler.reset(
-            new BrickedVolumeHandler(_parametersManager.getVolumeParameters()));
-        if (!volumeFile.empty())
-        {
-            if (!isBrickedVolumeSupported(volumeFile))
-            {
-                _brickedVolumeHandler.reset();
-                return nullptr;
-            }
-            _brickedVolumeHandler->attachVolumeToFile(volumeFile);
-        }
+        if (!isBrickedVolumeSupported(volumeFile))
+            return nullptr;
+
+        _brickedVolumeHandler.reset(new BrickedVolumeHandler);
+        _brickedVolumeHandler->attachVolumeToFile(volumeFile);
     }
     catch (const std::runtime_error& e)
     {

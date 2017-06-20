@@ -41,18 +41,8 @@ bool BrickedVolumeHandler::isVolumeSupported(const std::string& volumeFile)
     return livre::DataSource::handles(servus::URI(volumeFile));
 }
 
-BrickedVolumeHandler::BrickedVolumeHandler(
-    const VolumeParameters& volumeParameters)
-    : _volumeParameters(volumeParameters)
+BrickedVolumeHandler::BrickedVolumeHandler()
 {
-    if (!_pluginsLoaded)
-    {
-        livre::DataSource::loadPlugins();
-        _pluginsLoaded = true;
-    }
-
-    _datasource.reset(
-        new livre::DataSource{servus::URI(volumeParameters.getFilename())});
 }
 
 BrickedVolumeHandler::~BrickedVolumeHandler()
@@ -61,7 +51,13 @@ BrickedVolumeHandler::~BrickedVolumeHandler()
 
 void BrickedVolumeHandler::attachVolumeToFile(const std::string& volumeFile)
 {
-    _file = volumeFile;
+    if (!_pluginsLoaded)
+    {
+        livre::DataSource::loadPlugins();
+        _pluginsLoaded = true;
+    }
+
+    _datasource.reset(new livre::DataSource{servus::URI(volumeFile)});
 }
 
 BrickedVolumeHandler::DataPtr BrickedVolumeHandler::getData(

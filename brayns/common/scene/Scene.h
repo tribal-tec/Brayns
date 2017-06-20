@@ -265,10 +265,6 @@ public:
         const std::string& volumeFile) const = 0;
 
     /**
-     * @return Active renderers
-     */
-    BRAYNS_API Renderers& getRenderers() { return _renderers; }
-    /**
      * @brief Sets spheres as dirty, meaning that they need to be serialized
      *        and sent to the rendering engine
      */

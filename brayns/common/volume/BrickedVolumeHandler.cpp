@@ -1,6 +1,6 @@
 /* Copyright (c) 2015-2017, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
- * Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
+ * Responsible Author: Daniel Nachbaur <daniel.nachbaur@epfl.ch>
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -18,7 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "AmrHandler.h"
+#include "BrickedVolumeHandler.h"
 
 #include <brayns/common/log.h>
 
@@ -29,24 +29,43 @@
 
 namespace brayns
 {
-AmrHandler::AmrHandler(const VolumeParameters& volumeParameters)
+bool BrickedVolumeHandler::_pluginsLoaded{false};
+
+bool BrickedVolumeHandler::isVolumeSupported(const std::string& volumeFile)
+{
+    if (!_pluginsLoaded)
+    {
+        livre::DataSource::loadPlugins();
+        _pluginsLoaded = true;
+    }
+    return livre::DataSource::handles(servus::URI(volumeFile));
+}
+
+BrickedVolumeHandler::BrickedVolumeHandler(
+    const VolumeParameters& volumeParameters)
     : _volumeParameters(volumeParameters)
 {
-    livre::DataSource::loadPlugins();
+    if (!_pluginsLoaded)
+    {
+        livre::DataSource::loadPlugins();
+        _pluginsLoaded = true;
+    }
+
     _datasource.reset(
         new livre::DataSource{servus::URI(volumeParameters.getFilename())});
 }
 
-AmrHandler::~AmrHandler()
+BrickedVolumeHandler::~BrickedVolumeHandler()
 {
 }
 
-void AmrHandler::attachVolumeToFile(const std::string& volumeFile)
+void BrickedVolumeHandler::attachVolumeToFile(const std::string& volumeFile)
 {
     _file = volumeFile;
 }
 
-AmrHandler::DataPtr AmrHandler::getData(const livre::NodeId& nodeID) const
+BrickedVolumeHandler::DataPtr BrickedVolumeHandler::getData(
+    const livre::NodeId& nodeID) const
 {
     livre::ConstMemoryUnitPtr dataBlock = _datasource->getData(nodeID);
 
@@ -58,13 +77,13 @@ AmrHandler::DataPtr AmrHandler::getData(const livre::NodeId& nodeID) const
     return data1;
 }
 
-void* AmrHandler::getRawData(const livre::NodeId& nodeID) const
+void* BrickedVolumeHandler::getRawData(const livre::NodeId& nodeID) const
 {
     livre::ConstMemoryUnitPtr dataBlock = _datasource->getData(nodeID);
     return (void*)dataBlock->getData<void>();
 }
 
-livre::NodeIds AmrHandler::getVisibles(const size_t lod) const
+livre::NodeIds BrickedVolumeHandler::getVisibles(const size_t lod) const
 {
     const float near = 0.1f;
     const float far = 15.f;
@@ -84,26 +103,28 @@ livre::NodeIds AmrHandler::getVisibles(const size_t lod) const
     return visitor.getVisibles();
 }
 
-vmml::Vector3ui AmrHandler::getVoxelBox(const livre::NodeId& nodeID) const
+vmml::Vector3ui BrickedVolumeHandler::getVoxelBox(
+    const livre::NodeId& nodeID) const
 {
     const auto& volInfo = _datasource->getVolumeInfo();
     const auto& node = _datasource->getNode(nodeID);
     return node.getBlockSize() + 2u * volInfo.overlap;
 }
 
-vmml::Vector3ui AmrHandler::getPosition(const livre::NodeId& nodeID) const
+vmml::Vector3ui BrickedVolumeHandler::getPosition(
+    const livre::NodeId& nodeID) const
 {
     const auto& volInfo = _datasource->getVolumeInfo();
     return nodeID.getPosition() *
            (volInfo.maximumBlockSize - 2u * volInfo.overlap);
 }
 
-livre::DataType AmrHandler::getDataType() const
+livre::DataType BrickedVolumeHandler::getDataType() const
 {
     return _datasource->getVolumeInfo().dataType;
 }
 
-Vector3i AmrHandler::getDimension(const size_t lod) const
+Vector3i BrickedVolumeHandler::getDimension(const size_t lod) const
 {
     const auto& volInfo = _datasource->getVolumeInfo();
     const uint32_t maxDepth = volInfo.rootNode.getDepth();
@@ -112,7 +133,7 @@ Vector3i AmrHandler::getDimension(const size_t lod) const
                     (int)volInfo.voxels.z() >> (maxDepth - lod - 2)};
 }
 
-Vector3f AmrHandler::getGridSpacing(const size_t lod) const
+Vector3f BrickedVolumeHandler::getGridSpacing(const size_t lod) const
 {
     const auto& volInfo = _datasource->getVolumeInfo();
     const size_t maxDepth = volInfo.rootNode.getDepth();

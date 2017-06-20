@@ -125,7 +125,7 @@ struct Brayns::Impl
         _loadData();
 
         if (scene.empty() && !scene.getVolumeHandler() &&
-            !scene.getAmrHandler())
+            !scene.getBrickedVolumeHandler())
         {
             BRAYNS_INFO << "Building default scene" << std::endl;
             scene.buildDefault();

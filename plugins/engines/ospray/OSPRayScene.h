@@ -77,7 +77,7 @@ public:
 
     /** @copydoc Scene::isVolumeSupported */
     bool isVolumeSupported(const std::string& volumeFile) const final;
-    bool isAmrSupported(const std::string& volumeFile) const final;
+    bool isBrickedVolumeSupported(const std::string& volumeFile) const final;
 
     OSPModel* modelImpl(const size_t timestamp);
     OSPModel* simulationModelImpl() { return &_simulationModel; };
@@ -93,6 +93,8 @@ private:
 
     void _loadCacheFile();
     void _saveCacheFile();
+
+    void _commitBrickedVolumeData();
 
     std::map<size_t, OSPModel> _models;
     OSPModel _simulationModel;

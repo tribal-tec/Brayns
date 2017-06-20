@@ -222,7 +222,7 @@ public:
     */
     BRAYNS_API VolumeHandlerPtr getVolumeHandler();
 
-    BRAYNS_API AmrHandlerPtr getAmrHandler();
+    BRAYNS_API BrickedVolumeHandlerPtr getBrickedVolumeHandler();
 
     /**
         Sets the Calcium diffusion simulation handler
@@ -261,7 +261,7 @@ public:
      */
     BRAYNS_API virtual bool isVolumeSupported(
         const std::string& volumeFile) const = 0;
-    BRAYNS_API virtual bool isAmrSupported(
+    BRAYNS_API virtual bool isBrickedVolumeSupported(
         const std::string& volumeFile) const = 0;
 
     /**
@@ -323,7 +323,7 @@ protected:
 
     // Volume
     VolumeHandlerPtr _volumeHandler;
-    AmrHandlerPtr _amrHandler;
+    BrickedVolumeHandlerPtr _brickedVolumeHandler;
 
     // Simulation
     AbstractSimulationHandlerPtr _simulationHandler;

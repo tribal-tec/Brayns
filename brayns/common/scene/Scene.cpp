@@ -22,7 +22,7 @@
 
 #include <brayns/common/log.h>
 #include <brayns/common/material/Material.h>
-#include <brayns/common/volume/AmrHandler.h>
+#include <brayns/common/volume/BrickedVolumeHandler.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/io/NESTLoader.h>
 #include <brayns/io/TransferFunctionLoader.h>
@@ -605,28 +605,28 @@ VolumeHandlerPtr Scene::getVolumeHandler()
     return _volumeHandler;
 }
 
-AmrHandlerPtr Scene::getAmrHandler()
+BrickedVolumeHandlerPtr Scene::getBrickedVolumeHandler()
 {
     const auto& volumeFile =
         _parametersManager.getVolumeParameters().getFilename();
     if (volumeFile.empty())
         return nullptr;
 
-    if (_amrHandler)
-        return _amrHandler;
+    if (_brickedVolumeHandler)
+        return _brickedVolumeHandler;
 
     try
     {
-        _amrHandler.reset(
-            new AmrHandler(_parametersManager.getVolumeParameters()));
+        _brickedVolumeHandler.reset(
+            new BrickedVolumeHandler(_parametersManager.getVolumeParameters()));
         if (!volumeFile.empty())
         {
-            if (!isAmrSupported(volumeFile))
+            if (!isBrickedVolumeSupported(volumeFile))
             {
-                _amrHandler.reset();
+                _brickedVolumeHandler.reset();
                 return nullptr;
             }
-            _amrHandler->attachVolumeToFile(volumeFile);
+            _brickedVolumeHandler->attachVolumeToFile(volumeFile);
         }
     }
     catch (const std::runtime_error& e)
@@ -634,7 +634,7 @@ AmrHandlerPtr Scene::getAmrHandler()
         BRAYNS_ERROR << e.what() << std::endl;
     }
 
-    return _amrHandler;
+    return _brickedVolumeHandler;
 }
 
 bool Scene::empty() const

@@ -34,7 +34,6 @@ const std::string PARAM_MODULE = "module";
 const std::string PARAM_RENDERER = "renderer";
 const std::string PARAM_SPP = "samples-per-pixel";
 const std::string PARAM_AMBIENT_OCCLUSION = "ambient-occlusion";
-const std::string PARAM_AMBIENT_OCCLUSION_SAMPLES = "ambient-occlusion-samples";
 const std::string PARAM_SHADOWS = "shadows";
 const std::string PARAM_SOFT_SHADOWS = "soft-shadows";
 const std::string PARAM_SHADING = "shading";

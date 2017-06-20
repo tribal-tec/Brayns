@@ -1,6 +1,6 @@
 /* Copyright (c) 2015-2017, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
- * Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
+ * Responsible Author: Daniel Nachbaur <daniel.nachbaur@epfl.ch>
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -27,12 +27,12 @@
 
 namespace brayns
 {
-class AmrHandler
+class BrickedVolumeHandler
 {
 public:
-    AmrHandler(const VolumeParameters& volumeParameters);
+    BrickedVolumeHandler(const VolumeParameters& volumeParameters);
 
-    ~AmrHandler();
+    ~BrickedVolumeHandler();
 
     template <typename T>
     struct Deleter
@@ -72,10 +72,13 @@ public:
     Vector3ui getPosition(const livre::NodeId& nodeID) const;
     livre::DataType getDataType() const;
 
+    static bool isVolumeSupported(const std::string& volumeFile);
+
 private:
     const VolumeParameters _volumeParameters;
     Histogram _histogram;
     std::string _file;
     std::unique_ptr<livre::DataSource> _datasource;
+    static bool _pluginsLoaded;
 };
 }

@@ -6,8 +6,8 @@
 set(BRAYNSCOMMON_SOURCES
   engine/Engine.cpp
   input/KeyboardHandler.cpp
+  volume/BrickedVolumeHandler.cpp
   volume/VolumeHandler.cpp
-  volume/AmrHandler.cpp
   transferFunction/TransferFunction.cpp
   simulation/CADiffusionSimulationHandler.cpp
   simulation/AbstractSimulationHandler.cpp
@@ -63,8 +63,8 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   simulation/SpikeSimulationHandler.h
   transferFunction/TransferFunction.h
   types.h
+  volume/BrickedVolumeHandler.h
   volume/VolumeHandler.h
-  volume/AmrHandler.h
   utils/Utils.h
 )
 

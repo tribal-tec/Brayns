@@ -26,7 +26,7 @@
 #include <brayns/common/log.h>
 #include <brayns/common/material/Texture2D.h>
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
-#include <brayns/common/volume/AmrHandler.h>
+#include <brayns/common/volume/BrickedVolumeHandler.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/io/TextureLoader.h>
 #include <brayns/parameters/GeometryParameters.h>
@@ -34,16 +34,269 @@
 
 #include <boost/algorithm/string/predicate.hpp> // ends_with
 
-#include <livre/data/DFSTraversal.h>
-#include <livre/data/DataSource.h>
-#include <livre/data/SelectVisibles.h>
-#include <servus/uri.h>
-
 #include <ospcommon/box.h>
 
 namespace brayns
 {
 const size_t CACHE_VERSION = 7;
+
+std::vector<ospcommon::vec3f> magmaColorMap{
+    {ospcommon::vec3f(0.001462, 0.000466, 0.013866)},
+    {ospcommon::vec3f(0.002258, 0.001295, 0.018331)},
+    {ospcommon::vec3f(0.003279, 0.002305, 0.023708)},
+    {ospcommon::vec3f(0.004512, 0.003490, 0.029965)},
+    {ospcommon::vec3f(0.005950, 0.004843, 0.037130)},
+    {ospcommon::vec3f(0.007588, 0.006356, 0.044973)},
+    {ospcommon::vec3f(0.009426, 0.008022, 0.052844)},
+    {ospcommon::vec3f(0.011465, 0.009828, 0.060750)},
+    {ospcommon::vec3f(0.013708, 0.011771, 0.068667)},
+    {ospcommon::vec3f(0.016156, 0.013840, 0.076603)},
+    {ospcommon::vec3f(0.018815, 0.016026, 0.084584)},
+    {ospcommon::vec3f(0.021692, 0.018320, 0.092610)},
+    {ospcommon::vec3f(0.024792, 0.020715, 0.100676)},
+    {ospcommon::vec3f(0.028123, 0.023201, 0.108787)},
+    {ospcommon::vec3f(0.031696, 0.025765, 0.116965)},
+    {ospcommon::vec3f(0.035520, 0.028397, 0.125209)},
+    {ospcommon::vec3f(0.039608, 0.031090, 0.133515)},
+    {ospcommon::vec3f(0.043830, 0.033830, 0.141886)},
+    {ospcommon::vec3f(0.048062, 0.036607, 0.150327)},
+    {ospcommon::vec3f(0.052320, 0.039407, 0.158841)},
+    {ospcommon::vec3f(0.056615, 0.042160, 0.167446)},
+    {ospcommon::vec3f(0.060949, 0.044794, 0.176129)},
+    {ospcommon::vec3f(0.065330, 0.047318, 0.184892)},
+    {ospcommon::vec3f(0.069764, 0.049726, 0.193735)},
+    {ospcommon::vec3f(0.074257, 0.052017, 0.202660)},
+    {ospcommon::vec3f(0.078815, 0.054184, 0.211667)},
+    {ospcommon::vec3f(0.083446, 0.056225, 0.220755)},
+    {ospcommon::vec3f(0.088155, 0.058133, 0.229922)},
+    {ospcommon::vec3f(0.092949, 0.059904, 0.239164)},
+    {ospcommon::vec3f(0.097833, 0.061531, 0.248477)},
+    {ospcommon::vec3f(0.102815, 0.063010, 0.257854)},
+    {ospcommon::vec3f(0.107899, 0.064335, 0.267289)},
+    {ospcommon::vec3f(0.113094, 0.065492, 0.276784)},
+    {ospcommon::vec3f(0.118405, 0.066479, 0.286321)},
+    {ospcommon::vec3f(0.123833, 0.067295, 0.295879)},
+    {ospcommon::vec3f(0.129380, 0.067935, 0.305443)},
+    {ospcommon::vec3f(0.135053, 0.068391, 0.315000)},
+    {ospcommon::vec3f(0.140858, 0.068654, 0.324538)},
+    {ospcommon::vec3f(0.146785, 0.068738, 0.334011)},
+    {ospcommon::vec3f(0.152839, 0.068637, 0.343404)},
+    {ospcommon::vec3f(0.159018, 0.068354, 0.352688)},
+    {ospcommon::vec3f(0.165308, 0.067911, 0.361816)},
+    {ospcommon::vec3f(0.171713, 0.067305, 0.370771)},
+    {ospcommon::vec3f(0.178212, 0.066576, 0.379497)},
+    {ospcommon::vec3f(0.184801, 0.065732, 0.387973)},
+    {ospcommon::vec3f(0.191460, 0.064818, 0.396152)},
+    {ospcommon::vec3f(0.198177, 0.063862, 0.404009)},
+    {ospcommon::vec3f(0.204935, 0.062907, 0.411514)},
+    {ospcommon::vec3f(0.211718, 0.061992, 0.418647)},
+    {ospcommon::vec3f(0.218512, 0.061158, 0.425392)},
+    {ospcommon::vec3f(0.225302, 0.060445, 0.431742)},
+    {ospcommon::vec3f(0.232077, 0.059889, 0.437695)},
+    {ospcommon::vec3f(0.238826, 0.059517, 0.443256)},
+    {ospcommon::vec3f(0.245543, 0.059352, 0.448436)},
+    {ospcommon::vec3f(0.252220, 0.059415, 0.453248)},
+    {ospcommon::vec3f(0.258857, 0.059706, 0.457710)},
+    {ospcommon::vec3f(0.265447, 0.060237, 0.461840)},
+    {ospcommon::vec3f(0.271994, 0.060994, 0.465660)},
+    {ospcommon::vec3f(0.278493, 0.061978, 0.469190)},
+    {ospcommon::vec3f(0.284951, 0.063168, 0.472451)},
+    {ospcommon::vec3f(0.291366, 0.064553, 0.475462)},
+    {ospcommon::vec3f(0.297740, 0.066117, 0.478243)},
+    {ospcommon::vec3f(0.304081, 0.067835, 0.480812)},
+    {ospcommon::vec3f(0.310382, 0.069702, 0.483186)},
+    {ospcommon::vec3f(0.316654, 0.071690, 0.485380)},
+    {ospcommon::vec3f(0.322899, 0.073782, 0.487408)},
+    {ospcommon::vec3f(0.329114, 0.075972, 0.489287)},
+    {ospcommon::vec3f(0.335308, 0.078236, 0.491024)},
+    {ospcommon::vec3f(0.341482, 0.080564, 0.492631)},
+    {ospcommon::vec3f(0.347636, 0.082946, 0.494121)},
+    {ospcommon::vec3f(0.353773, 0.085373, 0.495501)},
+    {ospcommon::vec3f(0.359898, 0.087831, 0.496778)},
+    {ospcommon::vec3f(0.366012, 0.090314, 0.497960)},
+    {ospcommon::vec3f(0.372116, 0.092816, 0.499053)},
+    {ospcommon::vec3f(0.378211, 0.095332, 0.500067)},
+    {ospcommon::vec3f(0.384299, 0.097855, 0.501002)},
+    {ospcommon::vec3f(0.390384, 0.100379, 0.501864)},
+    {ospcommon::vec3f(0.396467, 0.102902, 0.502658)},
+    {ospcommon::vec3f(0.402548, 0.105420, 0.503386)},
+    {ospcommon::vec3f(0.408629, 0.107930, 0.504052)},
+    {ospcommon::vec3f(0.414709, 0.110431, 0.504662)},
+    {ospcommon::vec3f(0.420791, 0.112920, 0.505215)},
+    {ospcommon::vec3f(0.426877, 0.115395, 0.505714)},
+    {ospcommon::vec3f(0.432967, 0.117855, 0.506160)},
+    {ospcommon::vec3f(0.439062, 0.120298, 0.506555)},
+    {ospcommon::vec3f(0.445163, 0.122724, 0.506901)},
+    {ospcommon::vec3f(0.451271, 0.125132, 0.507198)},
+    {ospcommon::vec3f(0.457386, 0.127522, 0.507448)},
+    {ospcommon::vec3f(0.463508, 0.129893, 0.507652)},
+    {ospcommon::vec3f(0.469640, 0.132245, 0.507809)},
+    {ospcommon::vec3f(0.475780, 0.134577, 0.507921)},
+    {ospcommon::vec3f(0.481929, 0.136891, 0.507989)},
+    {ospcommon::vec3f(0.488088, 0.139186, 0.508011)},
+    {ospcommon::vec3f(0.494258, 0.141462, 0.507988)},
+    {ospcommon::vec3f(0.500438, 0.143719, 0.507920)},
+    {ospcommon::vec3f(0.506629, 0.145958, 0.507806)},
+    {ospcommon::vec3f(0.512831, 0.148179, 0.507648)},
+    {ospcommon::vec3f(0.519045, 0.150383, 0.507443)},
+    {ospcommon::vec3f(0.525270, 0.152569, 0.507192)},
+    {ospcommon::vec3f(0.531507, 0.154739, 0.506895)},
+    {ospcommon::vec3f(0.537755, 0.156894, 0.506551)},
+    {ospcommon::vec3f(0.544015, 0.159033, 0.506159)},
+    {ospcommon::vec3f(0.550287, 0.161158, 0.505719)},
+    {ospcommon::vec3f(0.556571, 0.163269, 0.505230)},
+    {ospcommon::vec3f(0.562866, 0.165368, 0.504692)},
+    {ospcommon::vec3f(0.569172, 0.167454, 0.504105)},
+    {ospcommon::vec3f(0.575490, 0.169530, 0.503466)},
+    {ospcommon::vec3f(0.581819, 0.171596, 0.502777)},
+    {ospcommon::vec3f(0.588158, 0.173652, 0.502035)},
+    {ospcommon::vec3f(0.594508, 0.175701, 0.501241)},
+    {ospcommon::vec3f(0.600868, 0.177743, 0.500394)},
+    {ospcommon::vec3f(0.607238, 0.179779, 0.499492)},
+    {ospcommon::vec3f(0.613617, 0.181811, 0.498536)},
+    {ospcommon::vec3f(0.620005, 0.183840, 0.497524)},
+    {ospcommon::vec3f(0.626401, 0.185867, 0.496456)},
+    {ospcommon::vec3f(0.632805, 0.187893, 0.495332)},
+    {ospcommon::vec3f(0.639216, 0.189921, 0.494150)},
+    {ospcommon::vec3f(0.645633, 0.191952, 0.492910)},
+    {ospcommon::vec3f(0.652056, 0.193986, 0.491611)},
+    {ospcommon::vec3f(0.658483, 0.196027, 0.490253)},
+    {ospcommon::vec3f(0.664915, 0.198075, 0.488836)},
+    {ospcommon::vec3f(0.671349, 0.200133, 0.487358)},
+    {ospcommon::vec3f(0.677786, 0.202203, 0.485819)},
+    {ospcommon::vec3f(0.684224, 0.204286, 0.484219)},
+    {ospcommon::vec3f(0.690661, 0.206384, 0.482558)},
+    {ospcommon::vec3f(0.697098, 0.208501, 0.480835)},
+    {ospcommon::vec3f(0.703532, 0.210638, 0.479049)},
+    {ospcommon::vec3f(0.709962, 0.212797, 0.477201)},
+    {ospcommon::vec3f(0.716387, 0.214982, 0.475290)},
+    {ospcommon::vec3f(0.722805, 0.217194, 0.473316)},
+    {ospcommon::vec3f(0.729216, 0.219437, 0.471279)},
+    {ospcommon::vec3f(0.735616, 0.221713, 0.469180)},
+    {ospcommon::vec3f(0.742004, 0.224025, 0.467018)},
+    {ospcommon::vec3f(0.748378, 0.226377, 0.464794)},
+    {ospcommon::vec3f(0.754737, 0.228772, 0.462509)},
+    {ospcommon::vec3f(0.761077, 0.231214, 0.460162)},
+    {ospcommon::vec3f(0.767398, 0.233705, 0.457755)},
+    {ospcommon::vec3f(0.773695, 0.236249, 0.455289)},
+    {ospcommon::vec3f(0.779968, 0.238851, 0.452765)},
+    {ospcommon::vec3f(0.786212, 0.241514, 0.450184)},
+    {ospcommon::vec3f(0.792427, 0.244242, 0.447543)},
+    {ospcommon::vec3f(0.798608, 0.247040, 0.444848)},
+    {ospcommon::vec3f(0.804752, 0.249911, 0.442102)},
+    {ospcommon::vec3f(0.810855, 0.252861, 0.439305)},
+    {ospcommon::vec3f(0.816914, 0.255895, 0.436461)},
+    {ospcommon::vec3f(0.822926, 0.259016, 0.433573)},
+    {ospcommon::vec3f(0.828886, 0.262229, 0.430644)},
+    {ospcommon::vec3f(0.834791, 0.265540, 0.427671)},
+    {ospcommon::vec3f(0.840636, 0.268953, 0.424666)},
+    {ospcommon::vec3f(0.846416, 0.272473, 0.421631)},
+    {ospcommon::vec3f(0.852126, 0.276106, 0.418573)},
+    {ospcommon::vec3f(0.857763, 0.279857, 0.415496)},
+    {ospcommon::vec3f(0.863320, 0.283729, 0.412403)},
+    {ospcommon::vec3f(0.868793, 0.287728, 0.409303)},
+    {ospcommon::vec3f(0.874176, 0.291859, 0.406205)},
+    {ospcommon::vec3f(0.879464, 0.296125, 0.403118)},
+    {ospcommon::vec3f(0.884651, 0.300530, 0.400047)},
+    {ospcommon::vec3f(0.889731, 0.305079, 0.397002)},
+    {ospcommon::vec3f(0.894700, 0.309773, 0.393995)},
+    {ospcommon::vec3f(0.899552, 0.314616, 0.391037)},
+    {ospcommon::vec3f(0.904281, 0.319610, 0.388137)},
+    {ospcommon::vec3f(0.908884, 0.324755, 0.385308)},
+    {ospcommon::vec3f(0.913354, 0.330052, 0.382563)},
+    {ospcommon::vec3f(0.917689, 0.335500, 0.379915)},
+    {ospcommon::vec3f(0.921884, 0.341098, 0.377376)},
+    {ospcommon::vec3f(0.925937, 0.346844, 0.374959)},
+    {ospcommon::vec3f(0.929845, 0.352734, 0.372677)},
+    {ospcommon::vec3f(0.933606, 0.358764, 0.370541)},
+    {ospcommon::vec3f(0.937221, 0.364929, 0.368567)},
+    {ospcommon::vec3f(0.940687, 0.371224, 0.366762)},
+    {ospcommon::vec3f(0.944006, 0.377643, 0.365136)},
+    {ospcommon::vec3f(0.947180, 0.384178, 0.363701)},
+    {ospcommon::vec3f(0.950210, 0.390820, 0.362468)},
+    {ospcommon::vec3f(0.953099, 0.397563, 0.361438)},
+    {ospcommon::vec3f(0.955849, 0.404400, 0.360619)},
+    {ospcommon::vec3f(0.958464, 0.411324, 0.360014)},
+    {ospcommon::vec3f(0.960949, 0.418323, 0.359630)},
+    {ospcommon::vec3f(0.963310, 0.425390, 0.359469)},
+    {ospcommon::vec3f(0.965549, 0.432519, 0.359529)},
+    {ospcommon::vec3f(0.967671, 0.439703, 0.359810)},
+    {ospcommon::vec3f(0.969680, 0.446936, 0.360311)},
+    {ospcommon::vec3f(0.971582, 0.454210, 0.361030)},
+    {ospcommon::vec3f(0.973381, 0.461520, 0.361965)},
+    {ospcommon::vec3f(0.975082, 0.468861, 0.363111)},
+    {ospcommon::vec3f(0.976690, 0.476226, 0.364466)},
+    {ospcommon::vec3f(0.978210, 0.483612, 0.366025)},
+    {ospcommon::vec3f(0.979645, 0.491014, 0.367783)},
+    {ospcommon::vec3f(0.981000, 0.498428, 0.369734)},
+    {ospcommon::vec3f(0.982279, 0.505851, 0.371874)},
+    {ospcommon::vec3f(0.983485, 0.513280, 0.374198)},
+    {ospcommon::vec3f(0.984622, 0.520713, 0.376698)},
+    {ospcommon::vec3f(0.985693, 0.528148, 0.379371)},
+    {ospcommon::vec3f(0.986700, 0.535582, 0.382210)},
+    {ospcommon::vec3f(0.987646, 0.543015, 0.385210)},
+    {ospcommon::vec3f(0.988533, 0.550446, 0.388365)},
+    {ospcommon::vec3f(0.989363, 0.557873, 0.391671)},
+    {ospcommon::vec3f(0.990138, 0.565296, 0.395122)},
+    {ospcommon::vec3f(0.990871, 0.572706, 0.398714)},
+    {ospcommon::vec3f(0.991558, 0.580107, 0.402441)},
+    {ospcommon::vec3f(0.992196, 0.587502, 0.406299)},
+    {ospcommon::vec3f(0.992785, 0.594891, 0.410283)},
+    {ospcommon::vec3f(0.993326, 0.602275, 0.414390)},
+    {ospcommon::vec3f(0.993834, 0.609644, 0.418613)},
+    {ospcommon::vec3f(0.994309, 0.616999, 0.422950)},
+    {ospcommon::vec3f(0.994738, 0.624350, 0.427397)},
+    {ospcommon::vec3f(0.995122, 0.631696, 0.431951)},
+    {ospcommon::vec3f(0.995480, 0.639027, 0.436607)},
+    {ospcommon::vec3f(0.995810, 0.646344, 0.441361)},
+    {ospcommon::vec3f(0.996096, 0.653659, 0.446213)},
+    {ospcommon::vec3f(0.996341, 0.660969, 0.451160)},
+    {ospcommon::vec3f(0.996580, 0.668256, 0.456192)},
+    {ospcommon::vec3f(0.996775, 0.675541, 0.461314)},
+    {ospcommon::vec3f(0.996925, 0.682828, 0.466526)},
+    {ospcommon::vec3f(0.997077, 0.690088, 0.471811)},
+    {ospcommon::vec3f(0.997186, 0.697349, 0.477182)},
+    {ospcommon::vec3f(0.997254, 0.704611, 0.482635)},
+    {ospcommon::vec3f(0.997325, 0.711848, 0.488154)},
+    {ospcommon::vec3f(0.997351, 0.719089, 0.493755)},
+    {ospcommon::vec3f(0.997351, 0.726324, 0.499428)},
+    {ospcommon::vec3f(0.997341, 0.733545, 0.505167)},
+    {ospcommon::vec3f(0.997285, 0.740772, 0.510983)},
+    {ospcommon::vec3f(0.997228, 0.747981, 0.516859)},
+    {ospcommon::vec3f(0.997138, 0.755190, 0.522806)},
+    {ospcommon::vec3f(0.997019, 0.762398, 0.528821)},
+    {ospcommon::vec3f(0.996898, 0.769591, 0.534892)},
+    {ospcommon::vec3f(0.996727, 0.776795, 0.541039)},
+    {ospcommon::vec3f(0.996571, 0.783977, 0.547233)},
+    {ospcommon::vec3f(0.996369, 0.791167, 0.553499)},
+    {ospcommon::vec3f(0.996162, 0.798348, 0.559820)},
+    {ospcommon::vec3f(0.995932, 0.805527, 0.566202)},
+    {ospcommon::vec3f(0.995680, 0.812706, 0.572645)},
+    {ospcommon::vec3f(0.995424, 0.819875, 0.579140)},
+    {ospcommon::vec3f(0.995131, 0.827052, 0.585701)},
+    {ospcommon::vec3f(0.994851, 0.834213, 0.592307)},
+    {ospcommon::vec3f(0.994524, 0.841387, 0.598983)},
+    {ospcommon::vec3f(0.994222, 0.848540, 0.605696)},
+    {ospcommon::vec3f(0.993866, 0.855711, 0.612482)},
+    {ospcommon::vec3f(0.993545, 0.862859, 0.619299)},
+    {ospcommon::vec3f(0.993170, 0.870024, 0.626189)},
+    {ospcommon::vec3f(0.992831, 0.877168, 0.633109)},
+    {ospcommon::vec3f(0.992440, 0.884330, 0.640099)},
+    {ospcommon::vec3f(0.992089, 0.891470, 0.647116)},
+    {ospcommon::vec3f(0.991688, 0.898627, 0.654202)},
+    {ospcommon::vec3f(0.991332, 0.905763, 0.661309)},
+    {ospcommon::vec3f(0.990930, 0.912915, 0.668481)},
+    {ospcommon::vec3f(0.990570, 0.920049, 0.675675)},
+    {ospcommon::vec3f(0.990175, 0.927196, 0.682926)},
+    {ospcommon::vec3f(0.989815, 0.934329, 0.690198)},
+    {ospcommon::vec3f(0.989434, 0.941470, 0.697519)},
+    {ospcommon::vec3f(0.989077, 0.948604, 0.704863)},
+    {ospcommon::vec3f(0.988717, 0.955742, 0.712242)},
+    {ospcommon::vec3f(0.988367, 0.962878, 0.719649)},
+    {ospcommon::vec3f(0.988033, 0.970012, 0.727077)},
+    {ospcommon::vec3f(0.987691, 0.977154, 0.734536)},
+    {ospcommon::vec3f(0.987387, 0.984288, 0.742002)},
+    {ospcommon::vec3f(0.987053, 0.991438, 0.749504)}};
 
 struct TextureTypeMaterialAttribute
 {
@@ -317,6 +570,181 @@ void OSPRayScene::_saveCacheFile()
     BRAYNS_INFO << _bounds << std::endl;
     file.close();
     BRAYNS_INFO << "Scene successfully saved" << std::endl;
+}
+
+void OSPRayScene::_commitBrickedVolumeData()
+{
+    BrickedVolumeHandlerPtr brickedVolumeHandler = getBrickedVolumeHandler();
+    if (!brickedVolumeHandler)
+        return;
+
+    const bool useAMR = false;
+    if (_ospVolume)
+    {
+        const auto& vol = _scene.getVolume();
+        ospSet1i(_ospVolume, "singleShade", vol.getSingleShade());
+        ospSet1i(_ospVolume, "gradientShadingEnabled",
+                 vol.getGradientShading());
+        ospSet1f(_ospVolume, "adaptiveScalar", vol.getAdaptiveScalar());
+        ospSet1f(_ospVolume, "adaptiveMaxSamplingRate",
+                 vol.getAdaptiveMaxSamplingRate());
+        ospSet1f(_ospVolume, "adaptiveBacktrack", vol.getAdaptiveBacktrack());
+        ospSet1i(_ospVolume, "adaptiveSampling", vol.getAdaptiveSampling());
+        ospSet1f(_ospVolume, "samplingRate", vol.getSamplingRate());
+        osp::vec3f specular = osp::vec3f{0.135f, 0.135f, 0.135f};
+        ospSet3fv(_ospVolume, "specular", &specular.x);
+        ospCommit(_ospVolume);
+        return;
+    }
+
+    commitLights();
+
+    ospcommon::vec2f valueRange{0, 255};
+
+    Boxf& worldBounds = getWorldBounds();
+    worldBounds.reset();
+
+    const int lod = 1;
+    auto visibles = brickedVolumeHandler->getVisibles(lod);
+    std::cout << visibles.size() << std::endl;
+
+    if (useAMR)
+    {
+        ospLoadModule("amr");
+
+        struct BrickInfo
+        {
+            ospcommon::box3i box;
+            int level = 0;
+            float dt = 1.0;
+
+            ospcommon::vec3i size() const
+            {
+                return box.size() + ospcommon::vec3i(1);
+            }
+        };
+
+        std::vector<BrickInfo> brickInfo;
+        std::vector<OSPData> brickData;
+
+        brickInfo.reserve(visibles.size());
+        brickData.reserve(visibles.size());
+        for (const auto& nodeID : visibles)
+        {
+            BrickInfo brick;
+            const auto position = brickedVolumeHandler->getPosition(nodeID);
+            const auto voxelBox = brickedVolumeHandler->getVoxelBox(nodeID);
+            auto lower = ospcommon::vec3i{int(position.x()), int(position.y()),
+                                          int(position.z())};
+            auto upper = lower + ospcommon::vec3i{int(voxelBox.x()) - 1,
+                                                  int(voxelBox.y()) - 1,
+                                                  int(voxelBox.z()) - 1};
+
+            brick.box = {lower, upper};
+            brickInfo.push_back(brick);
+
+            worldBounds.merge(position);
+            worldBounds.merge(voxelBox);
+
+            OSPData data =
+                ospNewData(brickedVolumeHandler->getVoxelBox(nodeID).product(),
+                           OSP_FLOAT,
+                           brickedVolumeHandler->getData(nodeID).get(), 0);
+            brickData.push_back(data);
+        }
+
+        _ospVolume = ospNewVolume("chombo_volume");
+
+        _brickDataData =
+            ospNewData(brickData.size(), OSP_OBJECT, &brickData[0], 0);
+        ospSetData(_ospVolume, "brickData", _brickDataData);
+        _brickInfoData = ospNewData(brickInfo.size() * sizeof(brickInfo[0]),
+                                    OSP_RAW, &brickInfo[0], 0);
+        ospSetData(_ospVolume, "brickInfo", _brickInfoData);
+    }
+    else
+    {
+        _ospVolume = ospNewVolume("block_bricked_volume");
+
+        const auto dim = brickedVolumeHandler->getDimension(lod);
+        const ospcommon::vec3i dimension = {dim.x(), dim.y(), dim.z()};
+        ospSetVec3i(_ospVolume, "dimensions", (osp::vec3i&)dimension);
+
+        const auto gs = brickedVolumeHandler->getGridSpacing(lod);
+        ospcommon::vec3f gridSpacing = {gs.x(), gs.y(), gs.z()};
+        ospSetVec3f(_ospVolume, "gridSpacing", (osp::vec3f&)gridSpacing);
+
+        worldBounds.merge(-(dim * gs) / 2);
+        worldBounds.merge(dim * gs);
+
+        switch (brickedVolumeHandler->getDataType())
+        {
+        case livre::DT_FLOAT:
+            ospSetString(_ospVolume, "voxelType", "float");
+            break;
+        case livre::DT_UINT16:
+            ospSetString(_ospVolume, "voxelType", "ushort");
+            valueRange = {12500, 40000}; // beechnut
+            break;
+        case livre::DT_UINT32:
+            ospSetString(_ospVolume, "voxelType", "uint");
+            break;
+        case livre::DT_INT8:
+            ospSetString(_ospVolume, "voxelType", "char");
+            break;
+        case livre::DT_INT16:
+            ospSetString(_ospVolume, "voxelType", "short");
+            break;
+        case livre::DT_INT32:
+            ospSetString(_ospVolume, "voxelType", "int");
+            break;
+        case livre::DT_UINT8:
+        default:
+            ospSetString(_ospVolume, "voxelType", "uchar");
+            break;
+        }
+
+        visibles.push_back({1, {0, 0, 0}});
+        for (const auto& nodeID : visibles)
+        {
+            const auto position = brickedVolumeHandler->getPosition(nodeID);
+            const auto voxelBox = brickedVolumeHandler->getVoxelBox(nodeID);
+
+            ospSetRegion(_ospVolume, brickedVolumeHandler->getRawData(nodeID),
+                         osp::vec3i{int(position.x()), int(position.y()),
+                                    int(position.z())},
+                         osp::vec3i{int(voxelBox.x()), int(voxelBox.y()),
+                                    int(voxelBox.z())});
+        }
+    }
+
+    ospSet1i(_ospVolume, "singleShade", 1);
+    ospSet1i(_ospVolume, "preIntegration", 1);
+    ospSet1i(_ospVolume, "gradientShadingEnabled", 0);
+    ospSet1i(_ospVolume, "adaptiveSampling", 0);
+    ospSet2f(_ospVolume, "voxelRange", valueRange.x, valueRange.y);
+
+    _ospTransferFunction = ospNewTransferFunction("piecewise_linear");
+    std::vector<float> opacityValues(256, 0.01f);
+    for (size_t i = 0; i < 100; ++i)
+        opacityValues[i] = 0.f;
+    OSPData opacityValuesData =
+        ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
+    ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
+    ospSet2f(_ospTransferFunction, "valueRange", valueRange.x, valueRange.y);
+
+    OSPData colorsData =
+        ospNewData(magmaColorMap.size(), OSP_FLOAT3, magmaColorMap.data());
+    ospSetData(_ospTransferFunction, "colors", colorsData);
+    ospCommit(_ospTransferFunction);
+    ospSetObject(_ospVolume, "transferFunction", _ospTransferFunction);
+
+    ospCommit(_ospVolume);
+
+    if (_models.empty())
+        _models[0] = ospNewModel();
+
+    ospAddVolume(_models[0], _ospVolume);
 }
 
 void OSPRayScene::_loadCacheFile()
@@ -1154,483 +1582,56 @@ void OSPRayScene::commitTransferFunctionData()
 
 void OSPRayScene::commitVolumeData()
 {
-    AmrHandlerPtr amrHandler = getAmrHandler();
-    if (amrHandler)
+    VolumeHandlerPtr volumeHandler = getVolumeHandler();
+    if (_parametersManager.getRenderingParameters().getRenderer() ==
+            RendererType::scivis ||
+        !volumeHandler)
     {
-        const bool useAMR = false;
-        if (_ospVolume)
-        {
-            const auto& vol = _scene.getVolume();
-            ospSet1i(_ospVolume, "singleShade", vol.getSingleShade());
-            ospSet1i(_ospVolume, "gradientShadingEnabled",
-                     vol.getGradientShading());
-            ospSet1f(_ospVolume, "adaptiveScalar", vol.getAdaptiveScalar());
-            ospSet1f(_ospVolume, "adaptiveMaxSamplingRate",
-                     vol.getAdaptiveMaxSamplingRate());
-            ospSet1f(_ospVolume, "adaptiveBacktrack",
-                     vol.getAdaptiveBacktrack());
-            ospSet1i(_ospVolume, "adaptiveSampling", vol.getAdaptiveSampling());
-            ospSet1f(_ospVolume, "samplingRate", vol.getSamplingRate());
-            osp::vec3f specular = osp::vec3f{0.135f, 0.135f, 0.135f};
-            ospSet3fv(_ospVolume, "specular", &specular.x);
-            ospCommit(_ospVolume);
-            return;
-        }
-
-        commitLights();
-
-        ospcommon::vec2f valueRange{0, 255};
-
-        Boxf& worldBounds = getWorldBounds();
-        worldBounds.reset();
-
-        const int lod = 1;
-        auto visibles = amrHandler->getVisibles(lod);
-        std::cout << visibles.size() << std::endl;
-
-        if (useAMR)
-        {
-            ospLoadModule("amr");
-
-            struct BrickInfo
-            {
-                ospcommon::box3i box;
-                int level = 0;
-                float dt = 1.0;
-
-                ospcommon::vec3i size() const
-                {
-                    return box.size() + ospcommon::vec3i(1);
-                }
-            };
-
-            std::vector<BrickInfo> brickInfo;
-            std::vector<OSPData> brickData;
-
-            brickInfo.reserve(visibles.size());
-            brickData.reserve(visibles.size());
-            for (const auto& nodeID : visibles)
-            {
-                BrickInfo brick;
-                const auto position = amrHandler->getPosition(nodeID);
-                const auto voxelBox = amrHandler->getVoxelBox(nodeID);
-                auto lower =
-                    ospcommon::vec3i{int(position.x()), int(position.y()),
-                                     int(position.z())};
-                auto upper = lower + ospcommon::vec3i{int(voxelBox.x()) - 1,
-                                                      int(voxelBox.y()) - 1,
-                                                      int(voxelBox.z()) - 1};
-
-                brick.box = {lower, upper};
-                brickInfo.push_back(brick);
-
-                worldBounds.merge(position);
-                worldBounds.merge(voxelBox);
-
-                OSPData data =
-                    ospNewData(amrHandler->getVoxelBox(nodeID).product(),
-                               OSP_FLOAT, amrHandler->getData(nodeID).get(), 0);
-                brickData.push_back(data);
-            }
-
-            _ospVolume = ospNewVolume("chombo_volume");
-
-            _brickDataData =
-                ospNewData(brickData.size(), OSP_OBJECT, &brickData[0], 0);
-            ospSetData(_ospVolume, "brickData", _brickDataData);
-            _brickInfoData = ospNewData(brickInfo.size() * sizeof(brickInfo[0]),
-                                        OSP_RAW, &brickInfo[0], 0);
-            ospSetData(_ospVolume, "brickInfo", _brickInfoData);
-        }
-        else
-        {
-            _ospVolume = ospNewVolume("block_bricked_volume");
-
-            const auto dim = amrHandler->getDimension(lod);
-            const ospcommon::vec3i dimension = {dim.x(), dim.y(), dim.z()};
-            ospSetVec3i(_ospVolume, "dimensions", (osp::vec3i&)dimension);
-
-            const auto gs = amrHandler->getGridSpacing(lod);
-            ospcommon::vec3f gridSpacing = {gs.x(), gs.y(), gs.z()};
-            ospSetVec3f(_ospVolume, "gridSpacing", (osp::vec3f&)gridSpacing);
-
-            worldBounds.merge(-(dim * gs) / 2);
-            worldBounds.merge(dim * gs);
-
-            switch (amrHandler->getDataType())
-            {
-            case livre::DT_FLOAT:
-                ospSetString(_ospVolume, "voxelType", "float");
-                break;
-            case livre::DT_UINT16:
-                ospSetString(_ospVolume, "voxelType", "ushort");
-                valueRange = {12500, 40000}; // beechnut
-                break;
-            case livre::DT_UINT32:
-                ospSetString(_ospVolume, "voxelType", "uint");
-                break;
-            case livre::DT_INT8:
-                ospSetString(_ospVolume, "voxelType", "char");
-                break;
-            case livre::DT_INT16:
-                ospSetString(_ospVolume, "voxelType", "short");
-                break;
-            case livre::DT_INT32:
-                ospSetString(_ospVolume, "voxelType", "int");
-                break;
-            case livre::DT_UINT8:
-            default:
-                ospSetString(_ospVolume, "voxelType", "uchar");
-                break;
-            }
-
-            visibles.push_back({1, {0, 0, 0}});
-            for (const auto& nodeID : visibles)
-            {
-                const auto position = amrHandler->getPosition(nodeID);
-                const auto voxelBox = amrHandler->getVoxelBox(nodeID);
-
-                ospSetRegion(_ospVolume, amrHandler->getRawData(nodeID),
-                             osp::vec3i{int(position.x()), int(position.y()),
-                                        int(position.z())},
-                             osp::vec3i{int(voxelBox.x()), int(voxelBox.y()),
-                                        int(voxelBox.z())});
-            }
-        }
-
-        ospSet1i(_ospVolume, "singleShade", 1);
-        ospSet1i(_ospVolume, "preIntegration", 1);
-        ospSet1i(_ospVolume, "gradientShadingEnabled", 0);
-        ospSet1i(_ospVolume, "adaptiveSampling", 0);
-        ospSet2f(_ospVolume, "voxelRange", valueRange.x, valueRange.y);
-
-        _ospTransferFunction = ospNewTransferFunction("piecewise_linear");
-        std::vector<float> opacityValues(256, 0.01f);
-        for (size_t i = 0; i < 100; ++i)
-            opacityValues[i] = 0.f;
-        OSPData opacityValuesData =
-            ospNewData(opacityValues.size(), OSP_FLOAT, opacityValues.data());
-        ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
-        ospSet2f(_ospTransferFunction, "valueRange", valueRange.x,
-                 valueRange.y);
-        std::vector<ospcommon::vec3f> colors;
-        colors.push_back(ospcommon::vec3f(0.001462, 0.000466, 0.013866));
-        colors.push_back(ospcommon::vec3f(0.002258, 0.001295, 0.018331));
-        colors.push_back(ospcommon::vec3f(0.003279, 0.002305, 0.023708));
-        colors.push_back(ospcommon::vec3f(0.004512, 0.003490, 0.029965));
-        colors.push_back(ospcommon::vec3f(0.005950, 0.004843, 0.037130));
-        colors.push_back(ospcommon::vec3f(0.007588, 0.006356, 0.044973));
-        colors.push_back(ospcommon::vec3f(0.009426, 0.008022, 0.052844));
-        colors.push_back(ospcommon::vec3f(0.011465, 0.009828, 0.060750));
-        colors.push_back(ospcommon::vec3f(0.013708, 0.011771, 0.068667));
-        colors.push_back(ospcommon::vec3f(0.016156, 0.013840, 0.076603));
-        colors.push_back(ospcommon::vec3f(0.018815, 0.016026, 0.084584));
-        colors.push_back(ospcommon::vec3f(0.021692, 0.018320, 0.092610));
-        colors.push_back(ospcommon::vec3f(0.024792, 0.020715, 0.100676));
-        colors.push_back(ospcommon::vec3f(0.028123, 0.023201, 0.108787));
-        colors.push_back(ospcommon::vec3f(0.031696, 0.025765, 0.116965));
-        colors.push_back(ospcommon::vec3f(0.035520, 0.028397, 0.125209));
-        colors.push_back(ospcommon::vec3f(0.039608, 0.031090, 0.133515));
-        colors.push_back(ospcommon::vec3f(0.043830, 0.033830, 0.141886));
-        colors.push_back(ospcommon::vec3f(0.048062, 0.036607, 0.150327));
-        colors.push_back(ospcommon::vec3f(0.052320, 0.039407, 0.158841));
-        colors.push_back(ospcommon::vec3f(0.056615, 0.042160, 0.167446));
-        colors.push_back(ospcommon::vec3f(0.060949, 0.044794, 0.176129));
-        colors.push_back(ospcommon::vec3f(0.065330, 0.047318, 0.184892));
-        colors.push_back(ospcommon::vec3f(0.069764, 0.049726, 0.193735));
-        colors.push_back(ospcommon::vec3f(0.074257, 0.052017, 0.202660));
-        colors.push_back(ospcommon::vec3f(0.078815, 0.054184, 0.211667));
-        colors.push_back(ospcommon::vec3f(0.083446, 0.056225, 0.220755));
-        colors.push_back(ospcommon::vec3f(0.088155, 0.058133, 0.229922));
-        colors.push_back(ospcommon::vec3f(0.092949, 0.059904, 0.239164));
-        colors.push_back(ospcommon::vec3f(0.097833, 0.061531, 0.248477));
-        colors.push_back(ospcommon::vec3f(0.102815, 0.063010, 0.257854));
-        colors.push_back(ospcommon::vec3f(0.107899, 0.064335, 0.267289));
-        colors.push_back(ospcommon::vec3f(0.113094, 0.065492, 0.276784));
-        colors.push_back(ospcommon::vec3f(0.118405, 0.066479, 0.286321));
-        colors.push_back(ospcommon::vec3f(0.123833, 0.067295, 0.295879));
-        colors.push_back(ospcommon::vec3f(0.129380, 0.067935, 0.305443));
-        colors.push_back(ospcommon::vec3f(0.135053, 0.068391, 0.315000));
-        colors.push_back(ospcommon::vec3f(0.140858, 0.068654, 0.324538));
-        colors.push_back(ospcommon::vec3f(0.146785, 0.068738, 0.334011));
-        colors.push_back(ospcommon::vec3f(0.152839, 0.068637, 0.343404));
-        colors.push_back(ospcommon::vec3f(0.159018, 0.068354, 0.352688));
-        colors.push_back(ospcommon::vec3f(0.165308, 0.067911, 0.361816));
-        colors.push_back(ospcommon::vec3f(0.171713, 0.067305, 0.370771));
-        colors.push_back(ospcommon::vec3f(0.178212, 0.066576, 0.379497));
-        colors.push_back(ospcommon::vec3f(0.184801, 0.065732, 0.387973));
-        colors.push_back(ospcommon::vec3f(0.191460, 0.064818, 0.396152));
-        colors.push_back(ospcommon::vec3f(0.198177, 0.063862, 0.404009));
-        colors.push_back(ospcommon::vec3f(0.204935, 0.062907, 0.411514));
-        colors.push_back(ospcommon::vec3f(0.211718, 0.061992, 0.418647));
-        colors.push_back(ospcommon::vec3f(0.218512, 0.061158, 0.425392));
-        colors.push_back(ospcommon::vec3f(0.225302, 0.060445, 0.431742));
-        colors.push_back(ospcommon::vec3f(0.232077, 0.059889, 0.437695));
-        colors.push_back(ospcommon::vec3f(0.238826, 0.059517, 0.443256));
-        colors.push_back(ospcommon::vec3f(0.245543, 0.059352, 0.448436));
-        colors.push_back(ospcommon::vec3f(0.252220, 0.059415, 0.453248));
-        colors.push_back(ospcommon::vec3f(0.258857, 0.059706, 0.457710));
-        colors.push_back(ospcommon::vec3f(0.265447, 0.060237, 0.461840));
-        colors.push_back(ospcommon::vec3f(0.271994, 0.060994, 0.465660));
-        colors.push_back(ospcommon::vec3f(0.278493, 0.061978, 0.469190));
-        colors.push_back(ospcommon::vec3f(0.284951, 0.063168, 0.472451));
-        colors.push_back(ospcommon::vec3f(0.291366, 0.064553, 0.475462));
-        colors.push_back(ospcommon::vec3f(0.297740, 0.066117, 0.478243));
-        colors.push_back(ospcommon::vec3f(0.304081, 0.067835, 0.480812));
-        colors.push_back(ospcommon::vec3f(0.310382, 0.069702, 0.483186));
-        colors.push_back(ospcommon::vec3f(0.316654, 0.071690, 0.485380));
-        colors.push_back(ospcommon::vec3f(0.322899, 0.073782, 0.487408));
-        colors.push_back(ospcommon::vec3f(0.329114, 0.075972, 0.489287));
-        colors.push_back(ospcommon::vec3f(0.335308, 0.078236, 0.491024));
-        colors.push_back(ospcommon::vec3f(0.341482, 0.080564, 0.492631));
-        colors.push_back(ospcommon::vec3f(0.347636, 0.082946, 0.494121));
-        colors.push_back(ospcommon::vec3f(0.353773, 0.085373, 0.495501));
-        colors.push_back(ospcommon::vec3f(0.359898, 0.087831, 0.496778));
-        colors.push_back(ospcommon::vec3f(0.366012, 0.090314, 0.497960));
-        colors.push_back(ospcommon::vec3f(0.372116, 0.092816, 0.499053));
-        colors.push_back(ospcommon::vec3f(0.378211, 0.095332, 0.500067));
-        colors.push_back(ospcommon::vec3f(0.384299, 0.097855, 0.501002));
-        colors.push_back(ospcommon::vec3f(0.390384, 0.100379, 0.501864));
-        colors.push_back(ospcommon::vec3f(0.396467, 0.102902, 0.502658));
-        colors.push_back(ospcommon::vec3f(0.402548, 0.105420, 0.503386));
-        colors.push_back(ospcommon::vec3f(0.408629, 0.107930, 0.504052));
-        colors.push_back(ospcommon::vec3f(0.414709, 0.110431, 0.504662));
-        colors.push_back(ospcommon::vec3f(0.420791, 0.112920, 0.505215));
-        colors.push_back(ospcommon::vec3f(0.426877, 0.115395, 0.505714));
-        colors.push_back(ospcommon::vec3f(0.432967, 0.117855, 0.506160));
-        colors.push_back(ospcommon::vec3f(0.439062, 0.120298, 0.506555));
-        colors.push_back(ospcommon::vec3f(0.445163, 0.122724, 0.506901));
-        colors.push_back(ospcommon::vec3f(0.451271, 0.125132, 0.507198));
-        colors.push_back(ospcommon::vec3f(0.457386, 0.127522, 0.507448));
-        colors.push_back(ospcommon::vec3f(0.463508, 0.129893, 0.507652));
-        colors.push_back(ospcommon::vec3f(0.469640, 0.132245, 0.507809));
-        colors.push_back(ospcommon::vec3f(0.475780, 0.134577, 0.507921));
-        colors.push_back(ospcommon::vec3f(0.481929, 0.136891, 0.507989));
-        colors.push_back(ospcommon::vec3f(0.488088, 0.139186, 0.508011));
-        colors.push_back(ospcommon::vec3f(0.494258, 0.141462, 0.507988));
-        colors.push_back(ospcommon::vec3f(0.500438, 0.143719, 0.507920));
-        colors.push_back(ospcommon::vec3f(0.506629, 0.145958, 0.507806));
-        colors.push_back(ospcommon::vec3f(0.512831, 0.148179, 0.507648));
-        colors.push_back(ospcommon::vec3f(0.519045, 0.150383, 0.507443));
-        colors.push_back(ospcommon::vec3f(0.525270, 0.152569, 0.507192));
-        colors.push_back(ospcommon::vec3f(0.531507, 0.154739, 0.506895));
-        colors.push_back(ospcommon::vec3f(0.537755, 0.156894, 0.506551));
-        colors.push_back(ospcommon::vec3f(0.544015, 0.159033, 0.506159));
-        colors.push_back(ospcommon::vec3f(0.550287, 0.161158, 0.505719));
-        colors.push_back(ospcommon::vec3f(0.556571, 0.163269, 0.505230));
-        colors.push_back(ospcommon::vec3f(0.562866, 0.165368, 0.504692));
-        colors.push_back(ospcommon::vec3f(0.569172, 0.167454, 0.504105));
-        colors.push_back(ospcommon::vec3f(0.575490, 0.169530, 0.503466));
-        colors.push_back(ospcommon::vec3f(0.581819, 0.171596, 0.502777));
-        colors.push_back(ospcommon::vec3f(0.588158, 0.173652, 0.502035));
-        colors.push_back(ospcommon::vec3f(0.594508, 0.175701, 0.501241));
-        colors.push_back(ospcommon::vec3f(0.600868, 0.177743, 0.500394));
-        colors.push_back(ospcommon::vec3f(0.607238, 0.179779, 0.499492));
-        colors.push_back(ospcommon::vec3f(0.613617, 0.181811, 0.498536));
-        colors.push_back(ospcommon::vec3f(0.620005, 0.183840, 0.497524));
-        colors.push_back(ospcommon::vec3f(0.626401, 0.185867, 0.496456));
-        colors.push_back(ospcommon::vec3f(0.632805, 0.187893, 0.495332));
-        colors.push_back(ospcommon::vec3f(0.639216, 0.189921, 0.494150));
-        colors.push_back(ospcommon::vec3f(0.645633, 0.191952, 0.492910));
-        colors.push_back(ospcommon::vec3f(0.652056, 0.193986, 0.491611));
-        colors.push_back(ospcommon::vec3f(0.658483, 0.196027, 0.490253));
-        colors.push_back(ospcommon::vec3f(0.664915, 0.198075, 0.488836));
-        colors.push_back(ospcommon::vec3f(0.671349, 0.200133, 0.487358));
-        colors.push_back(ospcommon::vec3f(0.677786, 0.202203, 0.485819));
-        colors.push_back(ospcommon::vec3f(0.684224, 0.204286, 0.484219));
-        colors.push_back(ospcommon::vec3f(0.690661, 0.206384, 0.482558));
-        colors.push_back(ospcommon::vec3f(0.697098, 0.208501, 0.480835));
-        colors.push_back(ospcommon::vec3f(0.703532, 0.210638, 0.479049));
-        colors.push_back(ospcommon::vec3f(0.709962, 0.212797, 0.477201));
-        colors.push_back(ospcommon::vec3f(0.716387, 0.214982, 0.475290));
-        colors.push_back(ospcommon::vec3f(0.722805, 0.217194, 0.473316));
-        colors.push_back(ospcommon::vec3f(0.729216, 0.219437, 0.471279));
-        colors.push_back(ospcommon::vec3f(0.735616, 0.221713, 0.469180));
-        colors.push_back(ospcommon::vec3f(0.742004, 0.224025, 0.467018));
-        colors.push_back(ospcommon::vec3f(0.748378, 0.226377, 0.464794));
-        colors.push_back(ospcommon::vec3f(0.754737, 0.228772, 0.462509));
-        colors.push_back(ospcommon::vec3f(0.761077, 0.231214, 0.460162));
-        colors.push_back(ospcommon::vec3f(0.767398, 0.233705, 0.457755));
-        colors.push_back(ospcommon::vec3f(0.773695, 0.236249, 0.455289));
-        colors.push_back(ospcommon::vec3f(0.779968, 0.238851, 0.452765));
-        colors.push_back(ospcommon::vec3f(0.786212, 0.241514, 0.450184));
-        colors.push_back(ospcommon::vec3f(0.792427, 0.244242, 0.447543));
-        colors.push_back(ospcommon::vec3f(0.798608, 0.247040, 0.444848));
-        colors.push_back(ospcommon::vec3f(0.804752, 0.249911, 0.442102));
-        colors.push_back(ospcommon::vec3f(0.810855, 0.252861, 0.439305));
-        colors.push_back(ospcommon::vec3f(0.816914, 0.255895, 0.436461));
-        colors.push_back(ospcommon::vec3f(0.822926, 0.259016, 0.433573));
-        colors.push_back(ospcommon::vec3f(0.828886, 0.262229, 0.430644));
-        colors.push_back(ospcommon::vec3f(0.834791, 0.265540, 0.427671));
-        colors.push_back(ospcommon::vec3f(0.840636, 0.268953, 0.424666));
-        colors.push_back(ospcommon::vec3f(0.846416, 0.272473, 0.421631));
-        colors.push_back(ospcommon::vec3f(0.852126, 0.276106, 0.418573));
-        colors.push_back(ospcommon::vec3f(0.857763, 0.279857, 0.415496));
-        colors.push_back(ospcommon::vec3f(0.863320, 0.283729, 0.412403));
-        colors.push_back(ospcommon::vec3f(0.868793, 0.287728, 0.409303));
-        colors.push_back(ospcommon::vec3f(0.874176, 0.291859, 0.406205));
-        colors.push_back(ospcommon::vec3f(0.879464, 0.296125, 0.403118));
-        colors.push_back(ospcommon::vec3f(0.884651, 0.300530, 0.400047));
-        colors.push_back(ospcommon::vec3f(0.889731, 0.305079, 0.397002));
-        colors.push_back(ospcommon::vec3f(0.894700, 0.309773, 0.393995));
-        colors.push_back(ospcommon::vec3f(0.899552, 0.314616, 0.391037));
-        colors.push_back(ospcommon::vec3f(0.904281, 0.319610, 0.388137));
-        colors.push_back(ospcommon::vec3f(0.908884, 0.324755, 0.385308));
-        colors.push_back(ospcommon::vec3f(0.913354, 0.330052, 0.382563));
-        colors.push_back(ospcommon::vec3f(0.917689, 0.335500, 0.379915));
-        colors.push_back(ospcommon::vec3f(0.921884, 0.341098, 0.377376));
-        colors.push_back(ospcommon::vec3f(0.925937, 0.346844, 0.374959));
-        colors.push_back(ospcommon::vec3f(0.929845, 0.352734, 0.372677));
-        colors.push_back(ospcommon::vec3f(0.933606, 0.358764, 0.370541));
-        colors.push_back(ospcommon::vec3f(0.937221, 0.364929, 0.368567));
-        colors.push_back(ospcommon::vec3f(0.940687, 0.371224, 0.366762));
-        colors.push_back(ospcommon::vec3f(0.944006, 0.377643, 0.365136));
-        colors.push_back(ospcommon::vec3f(0.947180, 0.384178, 0.363701));
-        colors.push_back(ospcommon::vec3f(0.950210, 0.390820, 0.362468));
-        colors.push_back(ospcommon::vec3f(0.953099, 0.397563, 0.361438));
-        colors.push_back(ospcommon::vec3f(0.955849, 0.404400, 0.360619));
-        colors.push_back(ospcommon::vec3f(0.958464, 0.411324, 0.360014));
-        colors.push_back(ospcommon::vec3f(0.960949, 0.418323, 0.359630));
-        colors.push_back(ospcommon::vec3f(0.963310, 0.425390, 0.359469));
-        colors.push_back(ospcommon::vec3f(0.965549, 0.432519, 0.359529));
-        colors.push_back(ospcommon::vec3f(0.967671, 0.439703, 0.359810));
-        colors.push_back(ospcommon::vec3f(0.969680, 0.446936, 0.360311));
-        colors.push_back(ospcommon::vec3f(0.971582, 0.454210, 0.361030));
-        colors.push_back(ospcommon::vec3f(0.973381, 0.461520, 0.361965));
-        colors.push_back(ospcommon::vec3f(0.975082, 0.468861, 0.363111));
-        colors.push_back(ospcommon::vec3f(0.976690, 0.476226, 0.364466));
-        colors.push_back(ospcommon::vec3f(0.978210, 0.483612, 0.366025));
-        colors.push_back(ospcommon::vec3f(0.979645, 0.491014, 0.367783));
-        colors.push_back(ospcommon::vec3f(0.981000, 0.498428, 0.369734));
-        colors.push_back(ospcommon::vec3f(0.982279, 0.505851, 0.371874));
-        colors.push_back(ospcommon::vec3f(0.983485, 0.513280, 0.374198));
-        colors.push_back(ospcommon::vec3f(0.984622, 0.520713, 0.376698));
-        colors.push_back(ospcommon::vec3f(0.985693, 0.528148, 0.379371));
-        colors.push_back(ospcommon::vec3f(0.986700, 0.535582, 0.382210));
-        colors.push_back(ospcommon::vec3f(0.987646, 0.543015, 0.385210));
-        colors.push_back(ospcommon::vec3f(0.988533, 0.550446, 0.388365));
-        colors.push_back(ospcommon::vec3f(0.989363, 0.557873, 0.391671));
-        colors.push_back(ospcommon::vec3f(0.990138, 0.565296, 0.395122));
-        colors.push_back(ospcommon::vec3f(0.990871, 0.572706, 0.398714));
-        colors.push_back(ospcommon::vec3f(0.991558, 0.580107, 0.402441));
-        colors.push_back(ospcommon::vec3f(0.992196, 0.587502, 0.406299));
-        colors.push_back(ospcommon::vec3f(0.992785, 0.594891, 0.410283));
-        colors.push_back(ospcommon::vec3f(0.993326, 0.602275, 0.414390));
-        colors.push_back(ospcommon::vec3f(0.993834, 0.609644, 0.418613));
-        colors.push_back(ospcommon::vec3f(0.994309, 0.616999, 0.422950));
-        colors.push_back(ospcommon::vec3f(0.994738, 0.624350, 0.427397));
-        colors.push_back(ospcommon::vec3f(0.995122, 0.631696, 0.431951));
-        colors.push_back(ospcommon::vec3f(0.995480, 0.639027, 0.436607));
-        colors.push_back(ospcommon::vec3f(0.995810, 0.646344, 0.441361));
-        colors.push_back(ospcommon::vec3f(0.996096, 0.653659, 0.446213));
-        colors.push_back(ospcommon::vec3f(0.996341, 0.660969, 0.451160));
-        colors.push_back(ospcommon::vec3f(0.996580, 0.668256, 0.456192));
-        colors.push_back(ospcommon::vec3f(0.996775, 0.675541, 0.461314));
-        colors.push_back(ospcommon::vec3f(0.996925, 0.682828, 0.466526));
-        colors.push_back(ospcommon::vec3f(0.997077, 0.690088, 0.471811));
-        colors.push_back(ospcommon::vec3f(0.997186, 0.697349, 0.477182));
-        colors.push_back(ospcommon::vec3f(0.997254, 0.704611, 0.482635));
-        colors.push_back(ospcommon::vec3f(0.997325, 0.711848, 0.488154));
-        colors.push_back(ospcommon::vec3f(0.997351, 0.719089, 0.493755));
-        colors.push_back(ospcommon::vec3f(0.997351, 0.726324, 0.499428));
-        colors.push_back(ospcommon::vec3f(0.997341, 0.733545, 0.505167));
-        colors.push_back(ospcommon::vec3f(0.997285, 0.740772, 0.510983));
-        colors.push_back(ospcommon::vec3f(0.997228, 0.747981, 0.516859));
-        colors.push_back(ospcommon::vec3f(0.997138, 0.755190, 0.522806));
-        colors.push_back(ospcommon::vec3f(0.997019, 0.762398, 0.528821));
-        colors.push_back(ospcommon::vec3f(0.996898, 0.769591, 0.534892));
-        colors.push_back(ospcommon::vec3f(0.996727, 0.776795, 0.541039));
-        colors.push_back(ospcommon::vec3f(0.996571, 0.783977, 0.547233));
-        colors.push_back(ospcommon::vec3f(0.996369, 0.791167, 0.553499));
-        colors.push_back(ospcommon::vec3f(0.996162, 0.798348, 0.559820));
-        colors.push_back(ospcommon::vec3f(0.995932, 0.805527, 0.566202));
-        colors.push_back(ospcommon::vec3f(0.995680, 0.812706, 0.572645));
-        colors.push_back(ospcommon::vec3f(0.995424, 0.819875, 0.579140));
-        colors.push_back(ospcommon::vec3f(0.995131, 0.827052, 0.585701));
-        colors.push_back(ospcommon::vec3f(0.994851, 0.834213, 0.592307));
-        colors.push_back(ospcommon::vec3f(0.994524, 0.841387, 0.598983));
-        colors.push_back(ospcommon::vec3f(0.994222, 0.848540, 0.605696));
-        colors.push_back(ospcommon::vec3f(0.993866, 0.855711, 0.612482));
-        colors.push_back(ospcommon::vec3f(0.993545, 0.862859, 0.619299));
-        colors.push_back(ospcommon::vec3f(0.993170, 0.870024, 0.626189));
-        colors.push_back(ospcommon::vec3f(0.992831, 0.877168, 0.633109));
-        colors.push_back(ospcommon::vec3f(0.992440, 0.884330, 0.640099));
-        colors.push_back(ospcommon::vec3f(0.992089, 0.891470, 0.647116));
-        colors.push_back(ospcommon::vec3f(0.991688, 0.898627, 0.654202));
-        colors.push_back(ospcommon::vec3f(0.991332, 0.905763, 0.661309));
-        colors.push_back(ospcommon::vec3f(0.990930, 0.912915, 0.668481));
-        colors.push_back(ospcommon::vec3f(0.990570, 0.920049, 0.675675));
-        colors.push_back(ospcommon::vec3f(0.990175, 0.927196, 0.682926));
-        colors.push_back(ospcommon::vec3f(0.989815, 0.934329, 0.690198));
-        colors.push_back(ospcommon::vec3f(0.989434, 0.941470, 0.697519));
-        colors.push_back(ospcommon::vec3f(0.989077, 0.948604, 0.704863));
-        colors.push_back(ospcommon::vec3f(0.988717, 0.955742, 0.712242));
-        colors.push_back(ospcommon::vec3f(0.988367, 0.962878, 0.719649));
-        colors.push_back(ospcommon::vec3f(0.988033, 0.970012, 0.727077));
-        colors.push_back(ospcommon::vec3f(0.987691, 0.977154, 0.734536));
-        colors.push_back(ospcommon::vec3f(0.987387, 0.984288, 0.742002));
-        colors.push_back(ospcommon::vec3f(0.987053, 0.991438, 0.749504));
-        OSPData colorsData =
-            ospNewData(colors.size(), OSP_FLOAT3, colors.data());
-        ospSetData(_ospTransferFunction, "colors", colorsData);
-        ospCommit(_ospTransferFunction);
-        ospSetObject(_ospVolume, "transferFunction", _ospTransferFunction);
-
-        ospCommit(_ospVolume);
-
-        if (_models.empty())
-            _models[0] = ospNewModel();
-
-        ospAddVolume(_models[0], _ospVolume);
-
+        _commitBrickedVolumeData();
         return;
     }
 
-    VolumeHandlerPtr volumeHandler = getVolumeHandler();
-    if (volumeHandler)
-    {
-        const float timestamp =
-            _parametersManager.getSceneParameters().getTimestamp();
-        volumeHandler->setTimestamp(timestamp);
-        void* data = volumeHandler->getData();
-        if (data)
-        {
-            for (const auto& renderer : _renderers)
-            {
-                OSPRayRenderer* osprayRenderer =
-                    dynamic_cast<OSPRayRenderer*>(renderer.get());
-
-                const size_t size = volumeHandler->getSize();
-
-                _ospVolumeData =
-                    ospNewData(size, OSP_UCHAR, data, _getOSPDataFlags());
-                ospCommit(_ospVolumeData);
-                ospSetData(osprayRenderer->impl(), "volumeData",
-                           _ospVolumeData);
-
-                const Vector3ui& dimensions = volumeHandler->getDimensions();
-                ospSet3i(osprayRenderer->impl(), "volumeDimensions",
-                         dimensions.x(), dimensions.y(), dimensions.z());
-
-                const Vector3f& elementSpacing =
-                    _parametersManager.getVolumeParameters()
-                        .getElementSpacing();
-                ospSet3f(osprayRenderer->impl(), "volumeElementSpacing",
-                         elementSpacing.x(), elementSpacing.y(),
-                         elementSpacing.z());
-
-                const Vector3f& offset =
-                    _parametersManager.getVolumeParameters().getOffset();
-                ospSet3f(osprayRenderer->impl(), "volumeOffset", offset.x(),
-                         offset.y(), offset.z());
-
-                const float epsilon = volumeHandler->getEpsilon(
-                    elementSpacing, _parametersManager.getVolumeParameters()
-                                        .getSamplesPerRay());
-                ospSet1f(osprayRenderer->impl(), "volumeEpsilon", epsilon);
-            }
-        }
+    if (!volumeHandler)
         return;
+
+    const float timestamp =
+        _parametersManager.getSceneParameters().getTimestamp();
+    volumeHandler->setTimestamp(timestamp);
+    void* data = volumeHandler->getData();
+    if (data)
+    {
+        for (const auto& renderer : _renderers)
+        {
+            OSPRayRenderer* osprayRenderer =
+                dynamic_cast<OSPRayRenderer*>(renderer.get());
+
+            const size_t size = volumeHandler->getSize();
+
+            _ospVolumeData =
+                ospNewData(size, OSP_UCHAR, data, _getOSPDataFlags());
+            ospCommit(_ospVolumeData);
+            ospSetData(osprayRenderer->impl(), "volumeData", _ospVolumeData);
+
+            const Vector3ui& dimensions = volumeHandler->getDimensions();
+            ospSet3i(osprayRenderer->impl(), "volumeDimensions", dimensions.x(),
+                     dimensions.y(), dimensions.z());
+
+            const Vector3f& elementSpacing =
+                _parametersManager.getVolumeParameters().getElementSpacing();
+            ospSet3f(osprayRenderer->impl(), "volumeElementSpacing",
+                     elementSpacing.x(), elementSpacing.y(),
+                     elementSpacing.z());
+
+            const Vector3f& offset =
+                _parametersManager.getVolumeParameters().getOffset();
+            ospSet3f(osprayRenderer->impl(), "volumeOffset", offset.x(),
+                     offset.y(), offset.z());
+
+            const float epsilon = volumeHandler->getEpsilon(
+                elementSpacing,
+                _parametersManager.getVolumeParameters().getSamplesPerRay());
+            ospSet1f(osprayRenderer->impl(), "volumeEpsilon", epsilon);
+        }
     }
 }
 
@@ -1723,15 +1724,9 @@ bool OSPRayScene::isVolumeSupported(const std::string& volumeFile) const
     return boost::algorithm::ends_with(volumeFile, ".raw");
 }
 
-bool OSPRayScene::isAmrSupported(const std::string& volumeFile) const
+bool OSPRayScene::isBrickedVolumeSupported(const std::string& volumeFile) const
 {
-    static bool done = false;
-    if (!done)
-    {
-        livre::DataSource::loadPlugins();
-        done = true;
-    }
-    return livre::DataSource::handles(servus::URI(volumeFile));
+    return BrickedVolumeHandler::isVolumeSupported(volumeFile);
 }
 
 uint32_t OSPRayScene::_getOSPDataFlags()

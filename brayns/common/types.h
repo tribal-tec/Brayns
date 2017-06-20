@@ -157,8 +157,8 @@ typedef std::shared_ptr<CADiffusionSimulationHandler>
 class VolumeHandler;
 typedef std::shared_ptr<VolumeHandler> VolumeHandlerPtr;
 
-class AmrHandler;
-typedef std::shared_ptr<AmrHandler> AmrHandlerPtr;
+class BrickedVolumeHandler;
+typedef std::shared_ptr<BrickedVolumeHandler> BrickedVolumeHandlerPtr;
 
 typedef std::vector<std::string> strings;
 typedef std::vector<float> floats;

@@ -715,10 +715,6 @@ void OSPRayScene::_commitBrickedVolumeData()
         }
     }
 
-    ospSet1i(_ospVolume, "singleShade", 1);
-    ospSet1i(_ospVolume, "preIntegration", 1);
-    ospSet1i(_ospVolume, "gradientShadingEnabled", 0);
-    ospSet1i(_ospVolume, "adaptiveSampling", 0);
     ospSet2f(_ospVolume, "voxelRange", valueRange.x, valueRange.y);
 
     _ospTransferFunction = ospNewTransferFunction("piecewise_linear");
@@ -1417,13 +1413,6 @@ void OSPRayScene::commitLights()
 
         if (_ospLightData == 0)
         {
-            //            auto ambientLight =
-            //                ospNewLight(osprayRenderer->impl(),
-            //                "AmbientLight");
-            //            ospSet3f(ambientLight, "color", 1.f, 1.f, 1.f);
-            //            ospCommit(ambientLight);
-            //            _ospLights.push_back(ambientLight);
-
             _ospLightData = ospNewData(_ospLights.size(), OSP_OBJECT,
                                        &_ospLights[0], _getOSPDataFlags());
             ospCommit(_ospLightData);

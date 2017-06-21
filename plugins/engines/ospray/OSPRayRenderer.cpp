@@ -69,6 +69,7 @@ void OSPRayRenderer::commit()
     ospSet1i(_renderer, "shadowsEnabled", rp.getShadows() > 0.1f); // scivis
     ospSet1f(_renderer, "aoWeight", rp.getAmbientOcclusionStrength());
     ospSet1i(_renderer, "aoSamples", rp.getAmbientOcclusionSamples());
+    ospSet1i(_renderer, "aoTransparencyEnabled", 1);
 
     Vector3f color = rp.getBackgroundColor();
     ospSet3f(_renderer, "bgColor", color.x(), color.y(), color.z());

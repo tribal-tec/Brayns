@@ -33,12 +33,12 @@ table Material {
 
 table Volume {
     single_shade: bool = true;
-    preintegration: bool = true;
-    gradient_shading: bool = true;
+    preintegration: bool = false;
+    gradient_shading: bool = false;
     adaptive_scalar: float = 15;
     adaptive_max_sampling_rate: float = 2;
     adaptive_backtrack: float = 0.02;
-    adaptive_sampling: float = 1;
+    adaptive_sampling: bool = true;
     sampling_rate: float = 0.125;
 }
 

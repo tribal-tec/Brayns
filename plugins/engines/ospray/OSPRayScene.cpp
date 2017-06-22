@@ -596,8 +596,6 @@ void OSPRayScene::_commitBrickedVolumeData()
         return;
     }
 
-    commitLights();
-
     ospcommon::vec2f valueRange{0, 255};
 
     Boxf& worldBounds = getWorldBounds();
@@ -605,7 +603,6 @@ void OSPRayScene::_commitBrickedVolumeData()
 
     const int lod = 1;
     auto visibles = brickedVolumeHandler->getVisibles(lod);
-    std::cout << visibles.size() << std::endl;
 
     if (_parametersManager.getRenderingParameters().getModule() == "amr")
     {

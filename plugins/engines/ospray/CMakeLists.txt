@@ -357,7 +357,7 @@ list(APPEND BRAYNSOSPRAYENGINEPLUGIN_SOURCES ${ISPC_OBJECTS})
 
 if(BRAYNS_DEFLECT_ENABLED)
   add_subdirectory(modules/DeflectStreamer)
-  list(APPEND BRAYNSOSPRAYENGINEPLUGIN_LINK_LIBRARIES PUBLIC DeflectStreamer)
+  list(APPEND BRAYNSOSPRAYENGINEPLUGIN_LINK_LIBRARIES PUBLIC ospray_module_deflect)
 endif()
 
 common_library(braynsOSPRayEnginePlugin)

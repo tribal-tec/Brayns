@@ -1,7 +1,10 @@
+//#include "ospray/common/Model.h"
 
-#include <brayns/api.h>
-
-extern "C" BRAYNS_DLLEXPORT void ospray_init_module_deflect_streamer()
+#include <iostream>
+namespace ospray
 {
-
+extern "C" void ospray_init_module_deflect()
+{
+    std::cout << "#deflect: initializing ospray deflect plugin" << std::endl;
+}
 }

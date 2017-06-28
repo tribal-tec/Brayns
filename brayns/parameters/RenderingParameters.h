@@ -72,8 +72,8 @@ public:
     const std::string& getShadingAsString(const ShadingType value) const;
     void setShading(const ShadingType value) { _shading = value; }
     /** Number of samples per pixel */
-    size_t getSamplesPerPixel() const { return _spp; }
-    void setSamplesPerPixel(const size_t value) { _spp = value; }
+    int getSamplesPerPixel() const { return _spp; }
+    void setSamplesPerPixel(const int value) { _spp = value; }
     /** Enables photon emission according to the radiance value of the
      * material */
     bool getLightEmittingMaterials() const { return _lightEmittingMaterials; }
@@ -158,7 +158,7 @@ protected:
     float _ambientOcclusionStrength;
     ShadingType _shading;
     bool _lightEmittingMaterials;
-    size_t _spp;
+    int _spp;
     float _shadows;
     float _softShadows;
     Vector3f _backgroundColor;

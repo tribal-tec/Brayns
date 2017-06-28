@@ -2,7 +2,6 @@
 #define OSPRAYPIXELOPERATIONS_H
 
 #include <deflect/Stream.h>
-#include <ospray.h>
 #include <ospray/SDK/fb/FrameBuffer.h>
 #include <ospray/SDK/fb/PixelOp.h>
 
@@ -33,21 +32,22 @@ public:
 
         void beginFrame() final
         {
-            ++_frameID;
+            for (auto& future : _futures)
+                future.get();
+
             const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
-            if (_buffers.size() < numTiles)
-            {
-                _buffers.resize(numTiles);
-                _futures.resize(numTiles);
-            }
+
+            if (_futures.size() < numTiles + 1)
+                _futures.resize(numTiles + 1);
+            if (_rgbBuffers.size() < numTiles)
+                _rgbBuffers.resize(numTiles);
+            if (_rgbaBuffers.size() < numTiles)
+                _rgbaBuffers.resize(numTiles);
         }
 
         void endFrame() final
         {
-            for (auto& future : _futures)
-                future.get();
-
-            _deflectStream.finishFrame().get();
+            _futures[_futures.size() - 1] = _deflectStream.finishFrame();
         }
 
         void postAccum(ospray::Tile& tile) final
@@ -56,61 +56,67 @@ public:
                 tile.region.lower.y / TILE_SIZE * fb->getNumTiles().x +
                 tile.region.lower.x / TILE_SIZE;
 
-            auto& rgb = _buffers[tileID];
-            for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++)
+            const void* pixelData;
+            if (_settings.compression)
             {
-                int r = std::min(255, int(255.f * tile.r[i]));
-                int g = std::min(255, int(255.f * tile.g[i]));
-                int b = std::min(255, int(255.f * tile.b[i]));
-
-                rgb[i * 3 + 0] = r;
-                rgb[i * 3 + 1] = g;
-                rgb[i * 3 + 2] = b;
+                auto& pixels = _rgbBuffers[tileID];
+                for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
+                {
+                    pixels[i * 3 + 0] = std::min(255, int(255.f * tile.r[i]));
+                    pixels[i * 3 + 1] = std::min(255, int(255.f * tile.g[i]));
+                    pixels[i * 3 + 2] = std::min(255, int(255.f * tile.b[i]));
+                }
+                pixelData = pixels.data();
+            }
+            else
+            {
+                auto& pixels = _rgbaBuffers[tileID];
+                for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
+                {
+                    pixels[i * 4 + 0] = std::min(255, int(255.f * tile.r[i]));
+                    pixels[i * 4 + 1] = std::min(255, int(255.f * tile.g[i]));
+                    pixels[i * 4 + 2] = std::min(255, int(255.f * tile.b[i]));
+                    pixels[i * 4 + 3] = std::min(255, int(255.f * tile.a[i]));
+                }
+                pixelData = pixels.data();
             }
 
-            deflect::ImageWrapper image(rgb.data(), TILE_SIZE, TILE_SIZE,
-                                        deflect::RGB, tile.region.lower.x,
+            deflect::ImageWrapper image(pixelData, TILE_SIZE, TILE_SIZE,
+                                        _settings.compression ? deflect::RGB
+                                                              : deflect::RGBA,
+                                        tile.region.lower.x,
                                         tile.region.lower.y);
             image.compressionPolicy = _settings.compression
                                           ? deflect::COMPRESSION_ON
                                           : deflect::COMPRESSION_OFF;
             image.compressionQuality = _settings.quality;
-            // std::lock_guard<std::mutex> guard(_mutex);
+            image.subsampling = deflect::ChromaSubsampling::YUV420;
             _futures[tileID] = _deflectStream.send(image);
         }
 
         std::string toString() const final { return "DeflectPixelOp"; }
         deflect::Stream& _deflectStream;
-        size_t _frameID{0};
         std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 3>>
-            _buffers;
+            _rgbBuffers;
+        std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 4>>
+            _rgbaBuffers;
         std::vector<deflect::Stream::Future> _futures;
         Settings& _settings;
-        std::mutex _mutex;
     };
-
-    void _initializeDeflect(const std::string& id, const std::string& host,
-                            const size_t port)
-    {
-        try
-        {
-            _deflectStream.reset(new deflect::Stream(id, host, port));
-        }
-        catch (const std::runtime_error& ex)
-        {
-            std::cout << "Deflect failed to initialize. " << ex.what()
-                      << std::endl;
-        }
-    }
 
     void commit() final
     {
         if (!_deflectStream || !_deflectStream->isConnected())
         {
-            std::string id = getParamString("id", "");
-            std::string hostname = getParamString("hostname", "");
-            size_t port = getParam1i("port", 1701);
-            _initializeDeflect(id, hostname, port);
+            try
+            {
+                _deflectStream.reset(new deflect::Stream);
+            }
+            catch (const std::runtime_error& ex)
+            {
+                std::cout << "Deflect failed to initialize. " << ex.what()
+                          << std::endl;
+            }
         }
         _settings.compression = getParam1i("compression", 1);
         _settings.quality = getParam1i("quality", 80);

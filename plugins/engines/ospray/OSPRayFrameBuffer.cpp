@@ -73,9 +73,6 @@ void OSPRayFrameBuffer::resize(const Vector2ui& frameSize)
 
     _frameBuffer = ospNewFrameBuffer(size, format, attributes);
     _pixelOp = ospNewPixelOp("DeflectPixelOp");
-    ospSetString(_pixelOp, "id", "mama");
-    // ospSetString(_pixelOp, "hostname", "bbpav05.bbp.epfl.ch");
-    ospSet1i(_pixelOp, "port", 1701);
     ospCommit(_pixelOp);
     ospSetPixelOp(_frameBuffer, _pixelOp);
     ospCommit(_frameBuffer);

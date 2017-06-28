@@ -72,14 +72,22 @@ void OSPRayFrameBuffer::resize(const Vector2ui& frameSize)
         attributes |= OSP_FB_ACCUM;
 
     _frameBuffer = ospNewFrameBuffer(size, format, attributes);
-    OSPPixelOp pixelOp = ospNewPixelOp("DeflectPixelOp");
-    ospSetString(pixelOp, "id", "mama");
-    ospSetString(pixelOp, "hostname", "localhost");
-    ospSet1i(pixelOp, "port", 1701);
-    ospCommit(pixelOp);
-    ospSetPixelOp(_frameBuffer, pixelOp);
+    _pixelOp = ospNewPixelOp("DeflectPixelOp");
+    ospSetString(_pixelOp, "id", "mama");
+    // ospSetString(_pixelOp, "hostname", "bbpav05.bbp.epfl.ch");
+    ospSet1i(_pixelOp, "port", 1701);
+    ospCommit(_pixelOp);
+    ospSetPixelOp(_frameBuffer, _pixelOp);
     ospCommit(_frameBuffer);
     clear();
+}
+
+void OSPRayFrameBuffer::setStreamingParams(const bool compression,
+                                           const unsigned int quality)
+{
+    ospSet1i(_pixelOp, "compression", compression);
+    ospSet1i(_pixelOp, "quality", quality);
+    ospCommit(_pixelOp);
 }
 
 void OSPRayFrameBuffer::clear()

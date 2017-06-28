@@ -149,6 +149,7 @@ public:
      * @return the last normalized progress value (0..1) emitted by the engine
      */
     float getLastProgress() const { return _lastProgress; }
+    ParametersManager& getParametersManager() { return _parametersManager; }
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();

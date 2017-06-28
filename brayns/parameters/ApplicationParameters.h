@@ -68,6 +68,9 @@ public:
         _frameExportFolder = folder;
     }
     std::string getFrameExportFolder() const { return _frameExportFolder; }
+    bool streamCompression{false};
+    unsigned int streamQuality{80};
+
 protected:
     bool _parse(const po::variables_map& vm) final;
 

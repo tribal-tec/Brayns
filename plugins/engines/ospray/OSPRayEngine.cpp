@@ -111,6 +111,12 @@ void OSPRayEngine::render()
 
 void OSPRayEngine::preRender()
 {
+    auto osprayFrameBuffer =
+        std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer);
+    osprayFrameBuffer->setStreamingParams(
+        getParametersManager().getApplicationParameters().streamCompression,
+        getParametersManager().getApplicationParameters().streamQuality);
+
     _frameBuffer->map();
 }
 

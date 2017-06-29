@@ -59,9 +59,8 @@ public:
         std::vector<Pixels> _rgbBuffers;
         std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 4>>
             _rgbaBuffers;
-        std::array<std::vector<deflect::Stream::Future>, 100> _futures;
+        std::vector<deflect::Stream::Future> _futures;
         Settings& _settings;
-        size_t _frameID{0};
     };
 
     void commit() final;

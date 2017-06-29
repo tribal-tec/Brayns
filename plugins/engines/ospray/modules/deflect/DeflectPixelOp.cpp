@@ -33,18 +33,27 @@ DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
     fb = fb_;
 }
 
+template <typename T>
+std::future<T> make_ready_future(const T value)
+{
+    std::promise<T> promise;
+    promise.set_value(value);
+    return promise.get_future();
+}
+
 void DeflectPixelOp::Instance::beginFrame()
 {
-    //    if( _frameID > 9 )
-    //    {
-    //        for (auto& future : _futures[(_frameID-9)%10])
-    //            future.get();
-    //    }
+    //    for (auto& future : _futures)
+    //        future.get();
 
     const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
 
-    if (_futures[_frameID % 100].size() < numTiles + 1)
-        _futures[_frameID % 100].resize(numTiles + 1);
+    if (_futures.size() < numTiles + 1)
+    {
+        _futures.reserve(numTiles + 1);
+        for (size_t i = 0; i < numTiles + 1; ++i)
+            _futures.emplace_back(make_ready_future(true));
+    }
     if (_rgbBuffers.size() < numTiles)
     {
         _rgbBuffers.resize(numTiles);
@@ -70,9 +79,7 @@ void DeflectPixelOp::Instance::beginFrame()
 
 void DeflectPixelOp::Instance::endFrame()
 {
-    _futures[_frameID % 100][_futures.size() - 1] =
-        _deflectStream.finishFrame();
-    ++_frameID;
+    _futures[_futures.size() - 1] = _deflectStream.finishFrame();
 }
 
 inline unsigned char cvt_uint32(const float f)
@@ -121,7 +128,9 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
-    _futures[_frameID % 100][tileID] = _deflectStream.send(image);
+    _futures[_futures.size() - 1].wait();
+    //_futures[tileID].get();
+    _futures[tileID] = _deflectStream.send(image);
 }
 
 void DeflectPixelOp::commit()

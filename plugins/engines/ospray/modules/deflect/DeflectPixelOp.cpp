@@ -35,13 +35,16 @@ DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
 
 void DeflectPixelOp::Instance::beginFrame()
 {
-    for (auto& future : _futures)
-        future.get();
+    //    if( _frameID > 9 )
+    //    {
+    //        for (auto& future : _futures[(_frameID-9)%10])
+    //            future.get();
+    //    }
 
     const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
 
-    if (_futures.size() < numTiles + 1)
-        _futures.resize(numTiles + 1);
+    if (_futures[_frameID % 100].size() < numTiles + 1)
+        _futures[_frameID % 100].resize(numTiles + 1);
     if (_rgbBuffers.size() < numTiles)
     {
         _rgbBuffers.resize(numTiles);
@@ -67,7 +70,9 @@ void DeflectPixelOp::Instance::beginFrame()
 
 void DeflectPixelOp::Instance::endFrame()
 {
-    _futures[_futures.size() - 1] = _deflectStream.finishFrame();
+    _futures[_frameID % 100][_futures.size() - 1] =
+        _deflectStream.finishFrame();
+    ++_frameID;
 }
 
 inline unsigned char cvt_uint32(const float f)
@@ -86,6 +91,7 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     {
         auto& pixels = _rgbBuffers[tileID];
 #pragma vector aligned
+#pragma ivdep
         for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
         {
             pixels.get()[i * 3 + 0] = cvt_uint32(tile.r[i]);
@@ -115,7 +121,7 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
-    _futures[tileID] = _deflectStream.send(image);
+    _futures[_frameID % 100][tileID] = _deflectStream.send(image);
 }
 
 void DeflectPixelOp::commit()

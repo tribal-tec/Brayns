@@ -86,40 +86,43 @@ bool DeflectPlugin::run(Engine& engine)
     engine.getParametersManager().getApplicationParameters().streamQuality =
         _params.getQuality();
 
-    //    if (_stream)
-    //    {
-    //        const bool changed = _stream->getId() != _params.getIdString() ||
-    //                             _stream->getHost() !=
-    //                             _params.getHostString();
-    //        if (changed)
-    //            _stream.reset();
-    //    }
+    if (engine.getParametersManager().getRenderingParameters().getModule() ==
+        "deflect")
+        return true;
 
-    //    if (_previousHost != _params.getHostString())
-    //    {
-    //        _params.setEnabled(true);
-    //        _previousHost = _params.getHostString();
-    //    }
+    if (_stream)
+    {
+        const bool changed = _stream->getId() != _params.getIdString() ||
+                             _stream->getHost() != _params.getHostString();
+        if (changed)
+            _stream.reset();
+    }
 
-    //    const bool deflectEnabled = _params.getEnabled();
-    //    if (_stream && _stream->isConnected() && !deflectEnabled)
-    //    {
-    //        BRAYNS_INFO << "Closing Deflect stream" << std::endl;
-    //        _stream.reset();
-    //    }
+    if (_previousHost != _params.getHostString())
+    {
+        _params.setEnabled(true);
+        _previousHost = _params.getHostString();
+    }
 
-    //    if (deflectEnabled && !_stream)
-    //        _initializeDeflect();
+    const bool deflectEnabled = _params.getEnabled();
+    if (_stream && _stream->isConnected() && !deflectEnabled)
+    {
+        BRAYNS_INFO << "Closing Deflect stream" << std::endl;
+        _stream.reset();
+    }
 
-    //    if (deflectEnabled && _stream && _stream->isConnected())
-    //    {
-    //        _sendDeflectFrame(engine);
-    //        if (_handleDeflectEvents(engine))
-    //        {
-    //            engine.getFrameBuffer().clear();
-    //            engine.getRenderer().commit();
-    //        }
-    //    }
+    if (deflectEnabled && !_stream)
+        _initializeDeflect();
+
+    if (deflectEnabled && _stream && _stream->isConnected())
+    {
+        _sendDeflectFrame(engine);
+        if (_handleDeflectEvents(engine))
+        {
+            engine.getFrameBuffer().clear();
+            engine.getRenderer().commit();
+        }
+    }
 
     return true;
 }

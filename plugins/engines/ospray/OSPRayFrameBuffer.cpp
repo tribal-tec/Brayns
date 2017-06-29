@@ -72,9 +72,13 @@ void OSPRayFrameBuffer::resize(const Vector2ui& frameSize)
         attributes |= OSP_FB_ACCUM;
 
     _frameBuffer = ospNewFrameBuffer(size, format, attributes);
+    ospRelease(_pixelOp);
     _pixelOp = ospNewPixelOp("DeflectPixelOp");
-    ospCommit(_pixelOp);
-    ospSetPixelOp(_frameBuffer, _pixelOp);
+    if (_pixelOp)
+    {
+        ospCommit(_pixelOp);
+        ospSetPixelOp(_frameBuffer, _pixelOp);
+    }
     ospCommit(_frameBuffer);
     clear();
 }
@@ -82,9 +86,12 @@ void OSPRayFrameBuffer::resize(const Vector2ui& frameSize)
 void OSPRayFrameBuffer::setStreamingParams(const bool compression,
                                            const unsigned int quality)
 {
-    ospSet1i(_pixelOp, "compression", compression);
-    ospSet1i(_pixelOp, "quality", quality);
-    ospCommit(_pixelOp);
+    if (_pixelOp)
+    {
+        ospSet1i(_pixelOp, "compression", compression);
+        ospSet1i(_pixelOp, "quality", quality);
+        ospCommit(_pixelOp);
+    }
 }
 
 void OSPRayFrameBuffer::clear()

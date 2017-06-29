@@ -47,7 +47,7 @@ private:
     OSPFrameBuffer _frameBuffer;
     uint8_t* _colorBuffer;
     float* _depthBuffer;
-    OSPPixelOp _pixelOp;
+    OSPPixelOp _pixelOp{nullptr};
 };
 }
 #endif // OSPRAYFRAMEBUFFER_H

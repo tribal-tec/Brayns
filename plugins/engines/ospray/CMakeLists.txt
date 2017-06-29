@@ -356,8 +356,7 @@ OSPRAY_ISPC_COMPILE(${BRAYNSOSPRAYPLUGIN_ISPC_SOURCES})
 list(APPEND BRAYNSOSPRAYENGINEPLUGIN_SOURCES ${ISPC_OBJECTS})
 
 if(BRAYNS_DEFLECT_ENABLED)
-  add_subdirectory(modules/DeflectStreamer)
-  list(APPEND BRAYNSOSPRAYENGINEPLUGIN_LINK_LIBRARIES PUBLIC ospray_module_deflect)
+  add_subdirectory(modules/deflect)
 endif()
 
 common_library(braynsOSPRayEnginePlugin)

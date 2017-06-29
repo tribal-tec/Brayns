@@ -4,16 +4,15 @@
 #
 # This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 
-set(OSPRAY_MODULE_DEFLECT_LINK_LIBRARIES
-  PUBLIC Deflect Lexis ${OSPRAY_LIBRARIES})
+set(OSPRAY_MODULE_DEFLECT_LINK_LIBRARIES Deflect ${OSPRAY_LIBRARIES})
 
 set(OSPRAY_MODULE_DEFLECT_SOURCES
-    OSPRayPixelOperations.cpp
-    DeflectStreamer.cpp
+  DeflectPixelOp.cpp
+  ModuleInit.cpp
 )
 
-set(OSPRAY_MODULE_DEFLECT_PUBLIC_HEADERS
-  OSPRayPixelOperations.h
+set(OSPRAY_MODULE_DEFLECT_HEADERS
+  DeflectPixelOp.h
 )
 
 common_library(ospray_module_deflect)

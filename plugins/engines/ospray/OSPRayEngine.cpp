@@ -46,16 +46,17 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
                     << std::endl;
     }
 
+    RenderingParameters& rp = _parametersManager.getRenderingParameters();
+    if (!rp.getModule().empty())
+        ospLoadModule(rp.getModule().c_str());
+
     BRAYNS_INFO << "Initializing renderers" << std::endl;
-    _activeRenderer = _parametersManager.getRenderingParameters().getRenderer();
+    _activeRenderer = rp.getRenderer();
 
     Renderers renderersForScene;
-    for (const auto renderer :
-         parametersManager.getRenderingParameters().getRenderers())
+    for (const auto renderer : rp.getRenderers())
     {
-        const auto& rendererName =
-            parametersManager.getRenderingParameters().getRendererAsString(
-                renderer);
+        const auto& rendererName = rp.getRendererAsString(renderer);
         _renderers[renderer].reset(
             new OSPRayRenderer(rendererName, _parametersManager));
         renderersForScene.push_back(_renderers[renderer]);
@@ -67,16 +68,14 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
     BRAYNS_INFO << "Initializing frame buffer" << std::endl;
     _frameSize = _parametersManager.getApplicationParameters().getWindowSize();
 
-    bool accumulation =
-        _parametersManager.getRenderingParameters().getAccumulation();
+    bool accumulation = rp.getAccumulation();
     if (!_parametersManager.getApplicationParameters().getFilters().empty())
         accumulation = false;
 
     _frameBuffer.reset(new OSPRayFrameBuffer(_frameSize,
                                              FrameBufferFormat::rgba_i8,
                                              accumulation));
-    _camera.reset(new OSPRayCamera(
-        _parametersManager.getRenderingParameters().getCameraType()));
+    _camera.reset(new OSPRayCamera(rp.getCameraType()));
 
     BRAYNS_INFO << "Engine initialization complete" << std::endl;
 }

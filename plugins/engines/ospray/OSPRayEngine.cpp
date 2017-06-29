@@ -67,8 +67,10 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
     BRAYNS_INFO << "Initializing frame buffer" << std::endl;
     _frameSize = _parametersManager.getApplicationParameters().getWindowSize();
 
-    const bool accumulation =
-        _parametersManager.getApplicationParameters().getFilters().empty();
+    bool accumulation =
+        _parametersManager.getRenderingParameters().getAccumulation();
+    if (!_parametersManager.getApplicationParameters().getFilters().empty())
+        accumulation = false;
 
     _frameBuffer.reset(new OSPRayFrameBuffer(_frameSize,
                                              FrameBufferFormat::rgba_i8,

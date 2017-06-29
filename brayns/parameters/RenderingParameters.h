@@ -148,6 +148,7 @@ public:
        Light source follow camera origin
     */
     bool getHeadLight() const { return _headLight; }
+    bool getAccumulation() const { return _accumulation; }
 protected:
     bool _parse(const po::variables_map& vm) final;
 
@@ -159,6 +160,7 @@ protected:
     ShadingType _shading;
     bool _lightEmittingMaterials;
     int _spp;
+    bool _accumulation{true};
     float _shadows;
     float _softShadows;
     Vector3f _backgroundColor;

@@ -78,7 +78,7 @@ void Engine::setDefaultCamera()
     Vector3f position = target;
     position.z() += diag.find_max();
 
-    const Vector3f up = Vector3f(0.f, 1.f, 0.f);
+    const Vector3f up = Vector3f(0.f, -1.f, 0.f);
     _camera->setInitialState(position, target, up);
     _camera->setAspectRatio(static_cast<float>(frameSize.x()) /
                             static_cast<float>(frameSize.y()));

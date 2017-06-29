@@ -215,6 +215,7 @@ enum class FrameBufferFormat
     bgra_i8,
     rgb_i8,
     rgb_f32,
+    none
 };
 
 /** Define the color scheme to be applied to the geometry */

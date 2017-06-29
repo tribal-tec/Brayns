@@ -73,7 +73,9 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
         accumulation = false;
 
     _frameBuffer.reset(new OSPRayFrameBuffer(_frameSize,
-                                             FrameBufferFormat::rgba_i8,
+                                             rp.getModule() == "deflect"
+                                                 ? FrameBufferFormat::none
+                                                 : FrameBufferFormat::rgba_i8,
                                              accumulation));
     _camera.reset(new OSPRayCamera(rp.getCameraType()));
 

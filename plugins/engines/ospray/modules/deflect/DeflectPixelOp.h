@@ -49,8 +49,14 @@ public:
 
         std::string toString() const final { return "DeflectPixelOp"; }
         deflect::Stream& _deflectStream;
-        std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 3>>
-            _rgbBuffers;
+
+        struct PixelsDeleter
+        {
+            void operator()(unsigned char* pixels) { free(pixels); }
+        };
+        typedef std::unique_ptr<unsigned char, PixelsDeleter> Pixels;
+
+        std::vector<Pixels> _rgbBuffers;
         std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 4>>
             _rgbaBuffers;
         std::vector<deflect::Stream::Future> _futures;

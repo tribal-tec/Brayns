@@ -43,7 +43,24 @@ void DeflectPixelOp::Instance::beginFrame()
     if (_futures.size() < numTiles + 1)
         _futures.resize(numTiles + 1);
     if (_rgbBuffers.size() < numTiles)
+    {
         _rgbBuffers.resize(numTiles);
+
+        for (auto& i : _rgbBuffers)
+        {
+            if (i)
+                continue;
+
+            void* ptr;
+            if (posix_memalign(&ptr, 32, TILE_SIZE * TILE_SIZE * 3))
+            {
+                ptr = calloc(TILE_SIZE * TILE_SIZE * 3, sizeof(char));
+                if (!ptr)
+                    throw std::bad_alloc();
+            }
+            i.reset((unsigned char*)ptr);
+        }
+    }
     if (_rgbaBuffers.size() < numTiles)
         _rgbaBuffers.resize(numTiles);
 }
@@ -51,6 +68,11 @@ void DeflectPixelOp::Instance::beginFrame()
 void DeflectPixelOp::Instance::endFrame()
 {
     _futures[_futures.size() - 1] = _deflectStream.finishFrame();
+}
+
+inline unsigned char cvt_uint32(const float f)
+{
+    return 255.f * std::max(0.0f, std::min(f, 1.0f));
 }
 
 void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
@@ -63,13 +85,14 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     if (_settings.compression)
     {
         auto& pixels = _rgbBuffers[tileID];
+#pragma vector aligned
         for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
         {
-            pixels[i * 3 + 0] = std::min(255, int(255.f * tile.r[i]));
-            pixels[i * 3 + 1] = std::min(255, int(255.f * tile.g[i]));
-            pixels[i * 3 + 2] = std::min(255, int(255.f * tile.b[i]));
+            pixels.get()[i * 3 + 0] = cvt_uint32(tile.r[i]);
+            pixels.get()[i * 3 + 1] = cvt_uint32(tile.g[i]);
+            pixels.get()[i * 3 + 2] = cvt_uint32(tile.b[i]);
         }
-        pixelData = pixels.data();
+        pixelData = pixels.get();
     }
     else
     {

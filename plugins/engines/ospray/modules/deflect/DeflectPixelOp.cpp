@@ -22,6 +22,17 @@
 
 #include <ospray/SDK/fb/FrameBuffer.h>
 
+namespace
+{
+template <typename T>
+std::future<T> make_ready_future(const T value)
+{
+    std::promise<T> promise;
+    promise.set_value(value);
+    return promise.get_future();
+}
+}
+
 namespace brayns
 {
 DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
@@ -33,19 +44,8 @@ DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
     fb = fb_;
 }
 
-template <typename T>
-std::future<T> make_ready_future(const T value)
-{
-    std::promise<T> promise;
-    promise.set_value(value);
-    return promise.get_future();
-}
-
 void DeflectPixelOp::Instance::beginFrame()
 {
-    //    for (auto& future : _futures)
-    //        future.get();
-
     const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
 
     if (_futures.size() < numTiles + 1)
@@ -54,27 +54,30 @@ void DeflectPixelOp::Instance::beginFrame()
         for (size_t i = 0; i < numTiles + 1; ++i)
             _futures.emplace_back(make_ready_future(true));
     }
-    if (_rgbBuffers.size() < numTiles)
+#ifdef USE_ALIGNED_MEM
+    if (_rgbaBuffers.size() < numTiles)
     {
-        _rgbBuffers.resize(numTiles);
+        _rgbaBuffers.resize(numTiles);
 
-        for (auto& i : _rgbBuffers)
+        for (auto& i : _rgbaBuffers)
         {
             if (i)
                 continue;
 
             void* ptr;
-            if (posix_memalign(&ptr, 32, TILE_SIZE * TILE_SIZE * 3))
+            if (posix_memalign(&ptr, 32, TILE_SIZE * TILE_SIZE * 4))
             {
-                ptr = calloc(TILE_SIZE * TILE_SIZE * 3, sizeof(char));
+                ptr = calloc(TILE_SIZE * TILE_SIZE * 4, sizeof(char));
                 if (!ptr)
                     throw std::bad_alloc();
             }
             i.reset((unsigned char*)ptr);
         }
     }
+#else
     if (_rgbaBuffers.size() < numTiles)
         _rgbaBuffers.resize(numTiles);
+#endif
 }
 
 void DeflectPixelOp::Instance::endFrame()
@@ -82,7 +85,7 @@ void DeflectPixelOp::Instance::endFrame()
     _futures[_futures.size() - 1] = _deflectStream.finishFrame();
 }
 
-inline unsigned char cvt_uint32(const float f)
+inline unsigned char clampCvt(const float f)
 {
     return 255.f * std::max(0.0f, std::min(f, 1.0f));
 }
@@ -93,43 +96,28 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
         tile.region.lower.y / TILE_SIZE * fb->getNumTiles().x +
         tile.region.lower.x / TILE_SIZE;
 
-    const void* pixelData;
-    if (_settings.compression)
-    {
-        auto& pixels = _rgbBuffers[tileID];
+#ifdef USE_ALIGNED_MEM
+    auto pixels = _rgbaBuffers[tileID].get();
+#else
+    auto pixels = _rgbaBuffers[tileID].data();
+#endif
 #pragma vector aligned
 #pragma ivdep
-        for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
-        {
-            pixels.get()[i * 3 + 0] = cvt_uint32(tile.r[i]);
-            pixels.get()[i * 3 + 1] = cvt_uint32(tile.g[i]);
-            pixels.get()[i * 3 + 2] = cvt_uint32(tile.b[i]);
-        }
-        pixelData = pixels.get();
-    }
-    else
+    for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
     {
-        auto& pixels = _rgbaBuffers[tileID];
-        for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
-        {
-            pixels[i * 4 + 0] = std::min(255, int(255.f * tile.r[i]));
-            pixels[i * 4 + 1] = std::min(255, int(255.f * tile.g[i]));
-            pixels[i * 4 + 2] = std::min(255, int(255.f * tile.b[i]));
-            pixels[i * 4 + 3] = std::min(255, int(255.f * tile.a[i]));
-        }
-        pixelData = pixels.data();
+        pixels[i * 4 + 0] = clampCvt(tile.r[i]);
+        pixels[i * 4 + 1] = clampCvt(tile.g[i]);
+        pixels[i * 4 + 2] = clampCvt(tile.b[i]);
+        pixels[i * 4 + 3] = clampCvt(tile.b[i]);
     }
 
-    deflect::ImageWrapper image(pixelData, TILE_SIZE, TILE_SIZE,
-                                _settings.compression ? deflect::RGB
-                                                      : deflect::RGBA,
+    deflect::ImageWrapper image(pixels, TILE_SIZE, TILE_SIZE, deflect::RGBA,
                                 tile.region.lower.x, tile.region.lower.y);
     image.compressionPolicy = _settings.compression ? deflect::COMPRESSION_ON
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
-    _futures[_futures.size() - 1].wait();
-    //_futures[tileID].get();
+    _futures[_futures.size() - 1].wait(); // finish previous frame
     _futures[tileID] = _deflectStream.send(image);
 }
 

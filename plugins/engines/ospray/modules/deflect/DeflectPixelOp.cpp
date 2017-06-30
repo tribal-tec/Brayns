@@ -48,11 +48,11 @@ void DeflectPixelOp::Instance::beginFrame()
 {
     const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
 
-    if (_futures.size() < numTiles + 1)
+    if (_futures[_index].size() < numTiles + 1)
     {
-        _futures.reserve(numTiles + 1);
+        _futures[_index].reserve(numTiles + 1);
         for (size_t i = 0; i < numTiles + 1; ++i)
-            _futures.emplace_back(make_ready_future(true));
+            _futures[_index].emplace_back(make_ready_future(true));
     }
 #ifdef USE_ALIGNED_MEM
     if (_rgbaBuffers.size() < numTiles)
@@ -82,7 +82,9 @@ void DeflectPixelOp::Instance::beginFrame()
 
 void DeflectPixelOp::Instance::endFrame()
 {
-    _futures[_futures.size() - 1] = _deflectStream.finishFrame();
+    _futures[_index][_futures[_index].size() - 1] =
+        _deflectStream.finishFrame();
+    _index = _index == 0 ? 1 : 0;
 }
 
 inline unsigned char clampCvt(const float f)
@@ -108,7 +110,7 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
         pixels[i * 4 + 0] = clampCvt(tile.r[i]);
         pixels[i * 4 + 1] = clampCvt(tile.g[i]);
         pixels[i * 4 + 2] = clampCvt(tile.b[i]);
-        pixels[i * 4 + 3] = clampCvt(tile.b[i]);
+        pixels[i * 4 + 3] = clampCvt(tile.a[i]);
     }
 
     deflect::ImageWrapper image(pixels, TILE_SIZE, TILE_SIZE, deflect::RGBA,
@@ -117,8 +119,8 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
-    _futures[_futures.size() - 1].wait(); // finish previous frame
-    _futures[tileID] = _deflectStream.send(image);
+    //_futures[_futures.size() - 1].wait(); // finish previous frame
+    _futures[_index][tileID] = _deflectStream.send(image);
 }
 
 void DeflectPixelOp::commit()

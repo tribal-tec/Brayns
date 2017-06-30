@@ -64,8 +64,9 @@ public:
         std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 4>>
             _rgbaBuffers;
 #endif
-        std::vector<deflect::Stream::Future> _futures;
+        std::vector<deflect::Stream::Future> _futures[2];
         Settings& _settings;
+        size_t _index{0};
     };
 
     void commit() final;

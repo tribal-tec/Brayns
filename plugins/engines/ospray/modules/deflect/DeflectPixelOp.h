@@ -66,6 +66,7 @@ public:
 #endif
         std::vector<deflect::Stream::Future> _futures;
         std::map<pthread_t, std::shared_future<bool>> _finishFuture;
+        std::mutex _mutex;
         Settings& _settings;
     };
 

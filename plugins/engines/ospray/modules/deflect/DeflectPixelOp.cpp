@@ -123,7 +123,10 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     image.subsampling = deflect::ChromaSubsampling::YUV420;
     auto i = _finishFuture.find(pthread_self());
     if (i == _finishFuture.end())
+    {
+        std::lock_guard<std::mutex> _lock(_mutex);
         _finishFuture.insert({pthread_self(), make_ready_future(true)});
+    }
     else
         i->second.wait();
     //_finishFuture[pthread_self()].wait(); // finish previous frame

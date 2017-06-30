@@ -53,7 +53,7 @@ void DeflectPixelOp::Instance::beginFrame()
         _futures.reserve(numTiles);
         for (size_t i = 0; i < numTiles; ++i)
             _futures.emplace_back(make_ready_future(true));
-        _finishFuture = make_ready_future(true);
+        //_finishFuture = make_ready_future(true);
     }
 #ifdef USE_ALIGNED_MEM
     if (_rgbaBuffers.size() < numTiles)
@@ -83,7 +83,10 @@ void DeflectPixelOp::Instance::beginFrame()
 
 void DeflectPixelOp::Instance::endFrame()
 {
-    _finishFuture = _deflectStream.finishFrame().share();
+    auto fut = _deflectStream.finishFrame().share();
+    for (auto& i : _finishFuture)
+        i.second = fut;
+    //_finishFuture = _deflectStream.finishFrame().share();
 }
 
 inline unsigned char clampCvt(const float f)
@@ -118,7 +121,12 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
-    _finishFuture.wait(); // finish previous frame
+    auto i = _finishFuture.find(pthread_self());
+    if (i == _finishFuture.end())
+        _finishFuture.insert({pthread_self(), make_ready_future(true)});
+    else
+        i->second.wait();
+    //_finishFuture[pthread_self()].wait(); // finish previous frame
     _futures[tileID] = _deflectStream.send(image);
 }
 

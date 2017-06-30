@@ -21,8 +21,8 @@
 #pragma once
 
 #include <deflect/Stream.h>
+#include <map>
 #include <ospray/SDK/fb/PixelOp.h>
-
 #define USE_ALIGNED_MEM
 
 namespace brayns
@@ -65,7 +65,7 @@ public:
             _rgbaBuffers;
 #endif
         std::vector<deflect::Stream::Future> _futures;
-        std::shared_future<bool> _finishFuture;
+        std::map<pthread_t, std::shared_future<bool>> _finishFuture;
         Settings& _settings;
     };
 

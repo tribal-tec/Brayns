@@ -35,7 +35,7 @@ public:
     struct Settings
     {
         bool compression{true};
-        unsigned int quality{80};
+        unsigned int quality{1};
     };
 
     struct Instance : public ospray::PixelOp::Instance
@@ -64,9 +64,9 @@ public:
         std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 4>>
             _rgbaBuffers;
 #endif
-        std::vector<deflect::Stream::Future> _futures[2];
+        std::vector<deflect::Stream::Future> _futures;
+        std::shared_future<bool> _finishFuture;
         Settings& _settings;
-        size_t _index{0};
     };
 
     void commit() final;

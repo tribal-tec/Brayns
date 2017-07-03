@@ -53,7 +53,6 @@ void DeflectPixelOp::Instance::beginFrame()
         _futures.reserve(numTiles);
         for (size_t i = 0; i < numTiles; ++i)
             _futures.emplace_back(make_ready_future(true));
-        //_finishFuture = make_ready_future(true);
     }
 #ifdef USE_ALIGNED_MEM
     if (_rgbaBuffers.size() < numTiles)
@@ -86,12 +85,12 @@ void DeflectPixelOp::Instance::endFrame()
     auto fut = _deflectStream.finishFrame().share();
     for (auto& i : _finishFuture)
         i.second = fut;
-    //_finishFuture = _deflectStream.finishFrame().share();
 }
 
+#pragma omp declare simd
 inline unsigned char clampCvt(const float f)
 {
-    return 255.f * std::max(0.0f, std::min(f, 1.0f));
+    return std::max(uint8_t(0), std::min(uint8_t(f * 255.f), uint8_t(255)));
 }
 
 void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
@@ -101,13 +100,13 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
         tile.region.lower.x / TILE_SIZE;
 
 #ifdef USE_ALIGNED_MEM
-    auto pixels = _rgbaBuffers[tileID].get();
+    auto* __restrict__ pixels = _rgbaBuffers[tileID].get();
 #else
     auto pixels = _rgbaBuffers[tileID].data();
 #endif
 #pragma vector aligned
-#pragma ivdep
-    for (size_t i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
+#pragma omp simd
+    for (int i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
     {
         pixels[i * 4 + 0] = clampCvt(tile.r[i]);
         pixels[i * 4 + 1] = clampCvt(tile.g[i]);
@@ -129,7 +128,6 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     }
     else
         i->second.wait();
-    //_finishFuture[pthread_self()].wait(); // finish previous frame
     _futures[tileID] = _deflectStream.send(image);
 }
 

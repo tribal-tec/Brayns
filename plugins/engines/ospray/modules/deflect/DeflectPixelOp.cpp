@@ -32,6 +32,16 @@ std::future<T> make_ready_future(const T value)
     promise.set_value(value);
     return promise.get_future();
 }
+
+#pragma omp declare simd
+inline unsigned char clampCvt(float f)
+{
+    if (f < 0.f)
+        f = 0.f;
+    if (f > 1.f)
+        f = 1.f;
+    return f * 255.f;
+}
 }
 
 namespace bbp
@@ -94,12 +104,6 @@ void DeflectPixelOp::Instance::endFrame()
         i.second = sharedFuture;
 }
 
-#pragma omp declare simd
-inline unsigned char clampCvt(const float f)
-{
-    return std::max(0.f, std::min(f, 1.f)) * 255.f;
-}
-
 void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
 {
     if (!_settings.streamEnabled)
@@ -136,6 +140,7 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
+
     auto i = _finishFutures.find(pthread_self());
     if (i == _finishFutures.end())
     {
@@ -145,6 +150,7 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     }
     else
         i->second.wait(); // complete previous frame
+
     _sendFutures[tileID] = _deflectStream.send(image);
 }
 

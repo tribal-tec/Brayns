@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, EPFL/Blue Brain Project
+/* Copyright (c) 2017, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
  * Responsible Author: Daniel Nachbaur <daniel.nachbaur@epfl.ch>
  *
@@ -41,26 +41,21 @@ public:
                  Settings& settings);
 
         void beginFrame() final;
-
         void endFrame() final;
-
         void postAccum(ospray::Tile& tile) final;
-
         std::string toString() const final { return "DeflectPixelOp"; }
-        deflect::Stream& _deflectStream;
-
         struct PixelsDeleter
         {
             void operator()(unsigned char* pixels) { free(pixels); }
         };
         using Pixels = std::unique_ptr<unsigned char, PixelsDeleter>;
 
+        deflect::Stream& _deflectStream;
+        Settings& _settings;
         std::vector<Pixels> _pixels;
-
         std::vector<deflect::Stream::Future> _sendFutures;
         std::map<pthread_t, std::shared_future<bool>> _finishFutures;
         std::mutex _mutex;
-        Settings& _settings;
     };
 
     void commit() final;

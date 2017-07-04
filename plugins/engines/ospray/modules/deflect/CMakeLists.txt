@@ -4,7 +4,7 @@
 #
 # This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 
-set(OSPRAY_MODULE_DEFLECT_LINK_LIBRARIES Deflect ${OSPRAY_LIBRARIES})
+set(OSPRAY_MODULE_DEFLECT_LINK_LIBRARIES PUBLIC Deflect ${OSPRAY_LIBRARIES})
 
 set(OSPRAY_MODULE_DEFLECT_SOURCES
   DeflectPixelOp.cpp

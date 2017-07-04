@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, EPFL/Blue Brain Project
+/* Copyright (c) 2017, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
  * Responsible Author: Daniel Nachbaur <daniel.nachbaur@epfl.ch>
  *
@@ -40,8 +40,8 @@ DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
     : _deflectStream(stream)
     , _settings(settings)
 {
-    fb_->pixelOp = this;
     fb = fb_;
+    fb->pixelOp = this;
 }
 
 void DeflectPixelOp::Instance::beginFrame()
@@ -139,7 +139,7 @@ void DeflectPixelOp::commit()
         }
         catch (const std::runtime_error& ex)
         {
-            std::cout << "Deflect failed to initialize. " << ex.what()
+            std::cerr << "Deflect failed to initialize. " << ex.what()
                       << std::endl;
         }
     }

@@ -33,7 +33,7 @@ std::future<T> make_ready_future(const T value)
 }
 }
 
-namespace brayns
+namespace bbp
 {
 DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
                                    deflect::Stream& stream, Settings& settings)
@@ -46,7 +46,13 @@ DeflectPixelOp::Instance::Instance(ospray::FrameBuffer* fb_,
 
 void DeflectPixelOp::Instance::beginFrame()
 {
-    const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
+    if (!_settings.streamEnabled)
+    {
+        fb->pixelOp = nullptr;
+        return;
+    }
+
+    const size_t numTiles = fb->getTotalTiles();
 
     if (_sendFutures.size() < numTiles)
     {
@@ -67,10 +73,12 @@ void DeflectPixelOp::Instance::beginFrame()
             void* ptr;
             if (posix_memalign(&ptr, 32, TILE_SIZE * TILE_SIZE * 4))
             {
+                std::cerr << "Tile pixels memalign failed" << std::endl;
                 ptr = calloc(TILE_SIZE * TILE_SIZE * 4, sizeof(char));
                 if (!ptr)
                     throw std::bad_alloc();
             }
+            memset(ptr, 255, TILE_SIZE * TILE_SIZE * 4);
             i.reset((unsigned char*)ptr);
         }
     }
@@ -78,6 +86,8 @@ void DeflectPixelOp::Instance::beginFrame()
 
 void DeflectPixelOp::Instance::endFrame()
 {
+    if (!_settings.streamEnabled)
+        return;
     auto sharedFuture = _deflectStream.finishFrame().share();
     for (auto& i : _finishFutures)
         i.second = sharedFuture;
@@ -86,29 +96,37 @@ void DeflectPixelOp::Instance::endFrame()
 #pragma omp declare simd
 inline unsigned char clampCvt(const float f)
 {
-    return std::max(uint8_t(0), std::min(uint8_t(f * 255.f), uint8_t(255)));
+    return std::max(0.f, std::min(f, 1.f)) * 255.f;
 }
 
 void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
 {
+    if (!_settings.streamEnabled)
+        return;
+
     const size_t tileID =
         tile.region.lower.y / TILE_SIZE * fb->getNumTiles().x +
         tile.region.lower.x / TILE_SIZE;
 
+#ifdef __GNUC__
+    unsigned char* __restrict__ pixels =
+        (unsigned char*)__builtin_assume_aligned(_pixels[tileID].get(), 32);
+#else
     unsigned char* __restrict__ pixels = _pixels[tileID].get();
+#endif
     float* __restrict__ red = tile.r;
     float* __restrict__ green = tile.g;
     float* __restrict__ blue = tile.b;
-    float* __restrict__ alpha = tile.a;
 
+#ifdef __INTEL_COMPILER
 #pragma vector aligned
+#endif
 #pragma omp simd
     for (int i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
     {
         pixels[i * 4 + 0] = clampCvt(red[i]);
         pixels[i * 4 + 1] = clampCvt(green[i]);
         pixels[i * 4 + 2] = clampCvt(blue[i]);
-        pixels[i * 4 + 3] = clampCvt(alpha[i]);
     }
 
     deflect::ImageWrapper image(pixels, TILE_SIZE, TILE_SIZE, deflect::RGBA,
@@ -131,7 +149,7 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
 
 void DeflectPixelOp::commit()
 {
-    if (!_deflectStream || !_deflectStream->isConnected())
+    if (!_deflectStream)
     {
         try
         {
@@ -145,6 +163,7 @@ void DeflectPixelOp::commit()
     }
     _settings.compression = getParam1i("compression", 1);
     _settings.quality = getParam1i("quality", 80);
+    _settings.streamEnabled = _deflectStream && _deflectStream->isConnected();
 }
 
 ospray::PixelOp::Instance* DeflectPixelOp::createInstance(
@@ -155,9 +174,9 @@ ospray::PixelOp::Instance* DeflectPixelOp::createInstance(
     return nullptr;
 }
 
-} // namespace brayns
+} // namespace bbp
 
 namespace ospray
 {
-OSP_REGISTER_PIXEL_OP(brayns::DeflectPixelOp, DeflectPixelOp);
+OSP_REGISTER_PIXEL_OP(bbp::DeflectPixelOp, DeflectPixelOp);
 }

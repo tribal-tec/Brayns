@@ -24,7 +24,7 @@
 #include <map>
 #include <ospray/SDK/fb/PixelOp.h>
 
-namespace brayns
+namespace bbp
 {
 class DeflectPixelOp : public ospray::PixelOp
 {
@@ -33,6 +33,7 @@ public:
     {
         bool compression{true};
         unsigned int quality{80};
+        bool streamEnabled{true};
     };
 
     struct Instance : public ospray::PixelOp::Instance

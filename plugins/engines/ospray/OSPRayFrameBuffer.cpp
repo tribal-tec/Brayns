@@ -33,12 +33,15 @@ OSPRayFrameBuffer::OSPRayFrameBuffer(const Vector2ui& frameSize,
     , _colorBuffer(0)
     , _depthBuffer(0)
 {
+    _pixelOp = ospNewPixelOp("DeflectPixelOp");
+    ospCommit(_pixelOp);
     resize(frameSize);
 }
 
 OSPRayFrameBuffer::~OSPRayFrameBuffer()
 {
     unmap();
+    ospRelease(_pixelOp);
     ospFreeFrameBuffer(_frameBuffer);
 }
 
@@ -72,13 +75,8 @@ void OSPRayFrameBuffer::resize(const Vector2ui& frameSize)
         attributes |= OSP_FB_ACCUM;
 
     _frameBuffer = ospNewFrameBuffer(size, format, attributes);
-    ospRelease(_pixelOp);
-    _pixelOp = ospNewPixelOp("DeflectPixelOp");
     if (_pixelOp)
-    {
-        ospCommit(_pixelOp);
         ospSetPixelOp(_frameBuffer, _pixelOp);
-    }
     ospCommit(_frameBuffer);
     clear();
 }

@@ -123,6 +123,30 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     float* __restrict__ green = tile.g;
     float* __restrict__ blue = tile.b;
 
+// AVX vectorization with icc 17 reports (create with -qopt-report=5)
+// LOOP BEGIN at
+// ../plugins/engines/ospray/modules/deflect/DeflectPixelOp.cpp(130,16)
+//   remark #15388: vectorization support: reference red[i] has aligned access
+//   remark #15388: vectorization support: reference green[i] has aligned access
+//   remark #15388: vectorization support: reference blue[i] has aligned access
+//   remark #15329: vectorization support: non-unit strided store was emulated
+//   for the variable <U137_V[i*4]>, stride is 4
+//   remark #15329: vectorization support: non-unit strided store was emulated
+//   for the variable <U137_V[i*4+1]>, stride is 4
+//   remark #15329: vectorization support: non-unit strided store was emulated
+//   for the variable <U137_V[i*4+2]>, stride is 4
+//   remark #15305: vectorization support: vector length 32
+//   remark #15301: OpenMP SIMD LOOP WAS VECTORIZED
+//   remark #15448: unmasked aligned unit stride loads: 3
+//   remark #15453: unmasked strided stores: 3
+//   remark #15475: --- begin vector cost summary ---
+//   remark #15476: scalar cost: 56
+//   remark #15477: vector cost: 9.460
+//   remark #15478: estimated potential speedup: 5.910
+//   remark #15487: type converts: 3
+//   remark #15488: --- end vector cost summary ---
+//   remark #25015: Estimate of max trip count of loop=128
+// LOOP END
 #ifdef __INTEL_COMPILER
 #pragma vector aligned
 #endif

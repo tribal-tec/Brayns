@@ -23,19 +23,16 @@
 #include <deflect/Stream.h>
 #include <map>
 #include <ospray/SDK/fb/PixelOp.h>
-#define USE_ALIGNED_MEM
 
 namespace brayns
 {
 class DeflectPixelOp : public ospray::PixelOp
 {
 public:
-    DeflectPixelOp() {}
-    ~DeflectPixelOp() {}
     struct Settings
     {
         bool compression{true};
-        unsigned int quality{1};
+        unsigned int quality{80};
     };
 
     struct Instance : public ospray::PixelOp::Instance
@@ -52,20 +49,16 @@ public:
         std::string toString() const final { return "DeflectPixelOp"; }
         deflect::Stream& _deflectStream;
 
-#ifdef USE_ALIGNED_MEM
         struct PixelsDeleter
         {
             void operator()(unsigned char* pixels) { free(pixels); }
         };
-        typedef std::unique_ptr<unsigned char, PixelsDeleter> Pixels;
+        using Pixels = std::unique_ptr<unsigned char, PixelsDeleter>;
 
-        std::vector<Pixels> _rgbaBuffers;
-#else
-        std::vector<std::array<unsigned char, TILE_SIZE * TILE_SIZE * 4>>
-            _rgbaBuffers;
-#endif
-        std::vector<deflect::Stream::Future> _futures;
-        std::map<pthread_t, std::shared_future<bool>> _finishFuture;
+        std::vector<Pixels> _pixels;
+
+        std::vector<deflect::Stream::Future> _sendFutures;
+        std::map<pthread_t, std::shared_future<bool>> _finishFutures;
         std::mutex _mutex;
         Settings& _settings;
     };

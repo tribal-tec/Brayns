@@ -48,18 +48,18 @@ void DeflectPixelOp::Instance::beginFrame()
 {
     const size_t numTiles = fb->getNumTiles().x * fb->getNumTiles().y;
 
-    if (_futures.size() < numTiles)
+    if (_sendFutures.size() < numTiles)
     {
-        _futures.reserve(numTiles);
+        _sendFutures.reserve(numTiles);
         for (size_t i = 0; i < numTiles; ++i)
-            _futures.emplace_back(make_ready_future(true));
+            _sendFutures.emplace_back(make_ready_future(true));
     }
-#ifdef USE_ALIGNED_MEM
-    if (_rgbaBuffers.size() < numTiles)
-    {
-        _rgbaBuffers.resize(numTiles);
 
-        for (auto& i : _rgbaBuffers)
+    if (_pixels.size() < numTiles)
+    {
+        _pixels.resize(numTiles);
+
+        for (auto& i : _pixels)
         {
             if (i)
                 continue;
@@ -74,17 +74,13 @@ void DeflectPixelOp::Instance::beginFrame()
             i.reset((unsigned char*)ptr);
         }
     }
-#else
-    if (_rgbaBuffers.size() < numTiles)
-        _rgbaBuffers.resize(numTiles);
-#endif
 }
 
 void DeflectPixelOp::Instance::endFrame()
 {
-    auto fut = _deflectStream.finishFrame().share();
-    for (auto& i : _finishFuture)
-        i.second = fut;
+    auto sharedFuture = _deflectStream.finishFrame().share();
+    for (auto& i : _finishFutures)
+        i.second = sharedFuture;
 }
 
 #pragma omp declare simd
@@ -99,19 +95,20 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
         tile.region.lower.y / TILE_SIZE * fb->getNumTiles().x +
         tile.region.lower.x / TILE_SIZE;
 
-#ifdef USE_ALIGNED_MEM
-    auto* __restrict__ pixels = _rgbaBuffers[tileID].get();
-#else
-    auto pixels = _rgbaBuffers[tileID].data();
-#endif
+    unsigned char* __restrict__ pixels = _pixels[tileID].get();
+    float* __restrict__ red = tile.r;
+    float* __restrict__ green = tile.g;
+    float* __restrict__ blue = tile.b;
+    float* __restrict__ alpha = tile.a;
+
 #pragma vector aligned
 #pragma omp simd
     for (int i = 0; i < TILE_SIZE * TILE_SIZE; ++i)
     {
-        pixels[i * 4 + 0] = clampCvt(tile.r[i]);
-        pixels[i * 4 + 1] = clampCvt(tile.g[i]);
-        pixels[i * 4 + 2] = clampCvt(tile.b[i]);
-        pixels[i * 4 + 3] = clampCvt(tile.a[i]);
+        pixels[i * 4 + 0] = clampCvt(red[i]);
+        pixels[i * 4 + 1] = clampCvt(green[i]);
+        pixels[i * 4 + 2] = clampCvt(blue[i]);
+        pixels[i * 4 + 3] = clampCvt(alpha[i]);
     }
 
     deflect::ImageWrapper image(pixels, TILE_SIZE, TILE_SIZE, deflect::RGBA,
@@ -120,15 +117,16 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
                                                     : deflect::COMPRESSION_OFF;
     image.compressionQuality = _settings.quality;
     image.subsampling = deflect::ChromaSubsampling::YUV420;
-    auto i = _finishFuture.find(pthread_self());
-    if (i == _finishFuture.end())
+    auto i = _finishFutures.find(pthread_self());
+    if (i == _finishFutures.end())
     {
+        // only for the first frame
         std::lock_guard<std::mutex> _lock(_mutex);
-        _finishFuture.insert({pthread_self(), make_ready_future(true)});
+        _finishFutures.insert({pthread_self(), make_ready_future(true)});
     }
     else
-        i->second.wait();
-    _futures[tileID] = _deflectStream.send(image);
+        i->second.wait(); // complete previous frame
+    _sendFutures[tileID] = _deflectStream.send(image);
 }
 
 void DeflectPixelOp::commit()

@@ -1,8 +1,8 @@
-# Copyright (c) 2015-2017, EPFL/Blue Brain Project
+# Copyright (c) 2017, EPFL/Blue Brain Project
 # All rights reserved. Do not distribute without permission.
-# Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
+# Responsible Author: Daniel Nachbaur <daniel.nachbaur@epfl.ch>
 #
-# This file is part of Brayns <https://github.com/BlueBrain/Brayns>
+# This file is part of DeflectPixelOp <https://github.com/BlueBrain/DeflectPixelOp>
 
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 project(DeflectPixelOp VERSION 1.0.0)
@@ -27,3 +27,7 @@ set(OSPRAY_MODULE_DEFLECT_HEADERS DeflectPixelOp.h)
 set(OSPRAY_MODULE_DEFLECT_SOURCES DeflectPixelOp.cpp ModuleInit.cpp)
 set(OSPRAY_MODULE_DEFLECT_LINK_LIBRARIES PUBLIC Deflect ${OSPRAY_LIBRARIES})
 common_library(ospray_module_deflect)
+
+set(DOXYGEN_MAINPAGE_MD README.md)
+set(DOXYGEN_EXTRA_INPUT "${PROJECT_SOURCE_DIR}/README.md")
+include(DoxygenRule)

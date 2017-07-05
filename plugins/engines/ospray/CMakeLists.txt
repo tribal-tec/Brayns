@@ -355,8 +355,4 @@ set(OSPRAY_EMBREE_SOURCE_DIR ${OSPRAY_ROOT}/include/ospray/embree)
 OSPRAY_ISPC_COMPILE(${BRAYNSOSPRAYPLUGIN_ISPC_SOURCES})
 list(APPEND BRAYNSOSPRAYENGINEPLUGIN_SOURCES ${ISPC_OBJECTS})
 
-if(BRAYNS_DEFLECT_ENABLED)
-  add_subdirectory(modules/deflect)
-endif()
-
 common_library(braynsOSPRayEnginePlugin)

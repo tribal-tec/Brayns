@@ -41,7 +41,8 @@ public:
     uint8_t* getColorBuffer() final { return _colorBuffer; }
     float* getDepthBuffer() final { return _depthBuffer; }
     OSPFrameBuffer impl() { return _frameBuffer; }
-    void setStreamingParams(bool compression, unsigned int quality);
+    void setStreamingParams(bool compression, unsigned int quality,
+                            bool stereo);
 
 private:
     OSPFrameBuffer _frameBuffer;

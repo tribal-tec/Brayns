@@ -88,7 +88,9 @@ bool DeflectPlugin::run(Engine& engine)
 
     if (engine.getParametersManager().getRenderingParameters().getModule() ==
         "deflect")
+    {
         return true;
+    }
 
     if (_stream)
     {

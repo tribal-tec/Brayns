@@ -34,14 +34,16 @@ OSPRayFrameBuffer::OSPRayFrameBuffer(const Vector2ui& frameSize,
     , _depthBuffer(0)
 {
     _pixelOp = ospNewPixelOp("DeflectPixelOp");
-    ospCommit(_pixelOp);
+    if (_pixelOp)
+        ospCommit(_pixelOp);
     resize(frameSize);
 }
 
 OSPRayFrameBuffer::~OSPRayFrameBuffer()
 {
     unmap();
-    ospRelease(_pixelOp);
+    if (_pixelOp)
+        ospRelease(_pixelOp);
     ospFreeFrameBuffer(_frameBuffer);
 }
 
@@ -82,12 +84,14 @@ void OSPRayFrameBuffer::resize(const Vector2ui& frameSize)
 }
 
 void OSPRayFrameBuffer::setStreamingParams(const bool compression,
-                                           const unsigned int quality)
+                                           const unsigned int quality,
+                                           const bool stereo)
 {
     if (_pixelOp)
     {
         ospSet1i(_pixelOp, "compression", compression);
         ospSet1i(_pixelOp, "quality", quality);
+        ospSet1i(_pixelOp, "stereo", stereo);
         ospCommit(_pixelOp);
     }
 }

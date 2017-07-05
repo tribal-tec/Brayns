@@ -118,7 +118,8 @@ void OSPRayEngine::preRender()
         std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer);
     osprayFrameBuffer->setStreamingParams(
         getParametersManager().getApplicationParameters().streamCompression,
-        getParametersManager().getApplicationParameters().streamQuality);
+        getParametersManager().getApplicationParameters().streamQuality,
+        _camera->getType() == CameraType::stereo);
 
     _frameBuffer->map();
 }

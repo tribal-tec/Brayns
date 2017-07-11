@@ -86,11 +86,12 @@ bool DeflectPlugin::run(Engine& engine)
     engine.getParametersManager().getApplicationParameters().streamQuality =
         _params.getQuality();
 
-    if (engine.getParametersManager().getRenderingParameters().getModule() ==
-        "deflect")
-    {
-        return true;
-    }
+    //    if (engine.getParametersManager().getRenderingParameters().getModule()
+    //    ==
+    //        "deflect")
+    //    {
+    //        return true;
+    //    }
 
     if (_stream)
     {
@@ -118,7 +119,22 @@ bool DeflectPlugin::run(Engine& engine)
 
     if (deflectEnabled && _stream && _stream->isConnected())
     {
-        _sendDeflectFrame(engine);
+        if (engine.getParametersManager()
+                .getRenderingParameters()
+                .getModule() == "deflect")
+        {
+            //            deflect::ImageWrapper
+            //            deflectImage(nullptr,1,1,deflect::RGBA);
+            //            deflectImage.compressionPolicy =
+            //            deflect::CompressionPolicy::COMPRESSION_ON;
+            //            _stream->send(deflectImage).get();
+            //            _stream->finishFrame().get();
+        }
+        else
+        {
+            _sendDeflectFrame(engine);
+        }
+
         if (_handleDeflectEvents(engine))
         {
             engine.getFrameBuffer().clear();
@@ -246,7 +262,7 @@ bool DeflectPlugin::_handleDeflectEvents(Engine& engine)
         }
         case deflect::Event::EVT_VIEW_SIZE_CHANGED:
         {
-            engine.reshape(Vector2ui(event.dx, event.dy));
+            // engine.reshape(Vector2ui(event.dx, event.dy));
             break;
         }
         case deflect::Event::EVT_CLOSE:

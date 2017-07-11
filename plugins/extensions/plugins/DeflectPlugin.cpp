@@ -151,7 +151,7 @@ void DeflectPlugin::_initializeDeflect()
     {
         _stream.reset(new deflect::Stream(_params.getIdString(),
                                           _params.getHostString(),
-                                          _params.getPort()));
+                                          _params.getPort(), true));
 
         if (_stream->isConnected())
             BRAYNS_INFO << "Deflect successfully connected to Tide on host "

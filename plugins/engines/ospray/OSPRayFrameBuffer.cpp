@@ -33,7 +33,9 @@ OSPRayFrameBuffer::OSPRayFrameBuffer(const Vector2ui& frameSize,
     , _colorBuffer(0)
     , _depthBuffer(0)
 {
-    _pixelOp = ospNewPixelOp("DeflectPixelOp");
+    if (colorDepth == FrameBufferFormat::none)
+        _pixelOp = ospNewPixelOp("DeflectPixelOp");
+
     if (_pixelOp)
         ospCommit(_pixelOp);
     resize(frameSize);

@@ -123,7 +123,8 @@ enum Shader: uint {
     basic,
     proximity,
     simulation,
-    particle
+    particle,
+    scivis
 }
 
 enum Shading: uint {

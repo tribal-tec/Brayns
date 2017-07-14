@@ -48,8 +48,9 @@ const std::string PARAM_EPSILON = "epsilon";
 const std::string PARAM_CAMERA_TYPE = "camera-type";
 const std::string PARAM_HEAD_LIGHT = "head-light";
 
-const std::string RENDERERS[4] = {"exobj", "proximityrenderer",
-                                  "simulationrenderer", "particlerenderer"};
+const std::string RENDERERS[5] = {"exobj", "proximityrenderer",
+                                  "simulationrenderer", "particlerenderer",
+                                  "scivis"};
 
 const std::string CAMERA_TYPES[5] = {"perspective", "stereo", "orthographic",
                                      "panoramic", "clipped"};
@@ -119,6 +120,7 @@ RenderingParameters::RenderingParameters()
     _renderers.push_back(RendererType::simulation);
     _renderers.push_back(RendererType::particle);
     _renderers.push_back(RendererType::proximity);
+    _renderers.push_back(RendererType::scivis);
 }
 
 bool RenderingParameters::_parse(const po::variables_map& vm)

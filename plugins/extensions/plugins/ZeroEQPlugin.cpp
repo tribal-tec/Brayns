@@ -957,6 +957,9 @@ void ZeroEQPlugin::_initializeSettings()
     case RendererType::simulation:
         _remoteSettings.setShader(::brayns::v1::Shader::simulation);
         break;
+    case RendererType::scivis:
+        _remoteSettings.setShader(::brayns::v1::Shader::scivis);
+        break;
     default:
         _remoteSettings.setShader(::brayns::v1::Shader::basic);
         break;

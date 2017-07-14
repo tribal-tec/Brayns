@@ -1022,6 +1022,8 @@ void OSPRayScene::commitMaterials(const bool updateOnly)
             {
                 OSPRayRenderer* osprayRenderer =
                     dynamic_cast<OSPRayRenderer*>(renderer.get());
+                if (osprayRenderer->getName() == "scivis")
+                    continue;
                 _ospMaterials.push_back(ospNewMaterial(osprayRenderer->impl(),
                                                        "ExtendedOBJMaterial"));
             }

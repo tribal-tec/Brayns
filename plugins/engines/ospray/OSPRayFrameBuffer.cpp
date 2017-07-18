@@ -108,6 +108,9 @@ void OSPRayFrameBuffer::clear()
 
 void OSPRayFrameBuffer::map()
 {
+    if (_frameBufferFormat == FrameBufferFormat::none)
+        return;
+
     _colorBuffer = (uint8_t*)ospMapFrameBuffer(_frameBuffer, OSP_FB_COLOR);
     _depthBuffer = (float*)ospMapFrameBuffer(_frameBuffer, OSP_FB_DEPTH);
 }

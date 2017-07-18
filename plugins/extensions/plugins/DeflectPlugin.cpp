@@ -262,7 +262,9 @@ bool DeflectPlugin::_handleDeflectEvents(Engine& engine)
         }
         case deflect::Event::EVT_VIEW_SIZE_CHANGED:
         {
-            // engine.reshape(Vector2ui(event.dx, event.dy));
+            engine.getParametersManager()
+                .getApplicationParameters()
+                .setWindowSize(Vector2ui(event.dx, event.dy));
             break;
         }
         case deflect::Event::EVT_CLOSE:

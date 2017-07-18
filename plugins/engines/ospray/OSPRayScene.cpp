@@ -582,9 +582,9 @@ uint64_t OSPRayScene::_serializeSpheres(const size_t materialId)
                 ospSet1i(_ospExtendedSpheres[materialId], "offset_value_y",
                          6 * sizeof(float));
 
-                //                if (_ospMaterials[materialId])
-                //                    ospSetMaterial(_ospExtendedSpheres[materialId],
-                //                                   _ospMaterials[materialId]);
+                if (_ospMaterials[materialId])
+                    ospSetMaterial(_ospExtendedSpheres[materialId],
+                                   _ospMaterials[materialId]);
 
                 ospCommit(_ospExtendedSpheres[materialId]);
 
@@ -657,9 +657,9 @@ uint64_t OSPRayScene::_serializeCylinders(const size_t materialId)
                 ospSet1i(_ospExtendedCylinders[materialId], "offset_value_y",
                          9 * sizeof(float));
 
-                //                if (_ospMaterials[materialId])
-                //                    ospSetMaterial(_ospExtendedCylinders[materialId],
-                //                                   _ospMaterials[materialId]);
+                if (_ospMaterials[materialId])
+                    ospSetMaterial(_ospExtendedCylinders[materialId],
+                                   _ospMaterials[materialId]);
 
                 ospCommit(_ospExtendedCylinders[materialId]);
                 if (geometryParameters.getCircuitUseSimulationModel())
@@ -726,9 +726,9 @@ uint64_t OSPRayScene::_serializeCones(const size_t materialId)
                 ospSet1i(_ospExtendedCones[materialId], "offset_value_y",
                          10 * sizeof(float));
 
-                //                if (_ospMaterials[materialId])
-                //                    ospSetMaterial(_ospExtendedCones[materialId],
-                //                                   _ospMaterials[materialId]);
+                if (_ospMaterials[materialId])
+                    ospSetMaterial(_ospExtendedCones[materialId],
+                                   _ospMaterials[materialId]);
 
                 ospCommit(_ospExtendedCones[materialId]);
                 if (geometryParameters.getCircuitUseSimulationModel())
@@ -924,9 +924,8 @@ uint64_t OSPRayScene::_buildMeshOSPGeometry(const size_t materialId)
         ospSet1i(_ospMeshes[materialId], "alpha_type", 0);
         ospSet1i(_ospMeshes[materialId], "alpha_component", 4);
 
-        //        if (_ospMaterials[materialId])
-        //            ospSetMaterial(_ospMeshes[materialId],
-        //            _ospMaterials[materialId]);
+        if (_ospMaterials[materialId])
+            ospSetMaterial(_ospMeshes[materialId], _ospMaterials[materialId]);
 
         ospCommit(_ospMeshes[materialId]);
 

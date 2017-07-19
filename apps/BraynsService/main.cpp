@@ -24,6 +24,8 @@
 #include <brayns/common/log.h>
 #include <brayns/common/types.h>
 
+#include <thread>
+
 int main(int argc, const char** argv)
 {
     try
@@ -32,8 +34,18 @@ int main(int argc, const char** argv)
         brayns::Brayns brayns(argc, argv);
 
         auto start = std::chrono::system_clock::now();
-        while (true)
-            brayns.render();
+#define THREAD
+#ifdef THREAD
+        std::thread runner([&]() {
+#endif
+            while (true)
+                brayns.render();
+#ifdef THREAD
+        });
+
+        runner.join();
+#endif
+
         auto end = std::chrono::system_clock::now();
         auto elapsed =
             std::chrono::duration_cast<std::chrono::seconds>(end - start);

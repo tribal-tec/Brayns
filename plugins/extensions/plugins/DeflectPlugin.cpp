@@ -86,12 +86,11 @@ bool DeflectPlugin::run(Engine& engine)
     engine.getParametersManager().getApplicationParameters().streamQuality =
         _params.getQuality();
 
-    //    if (engine.getParametersManager().getRenderingParameters().getModule()
-    //    ==
-    //        "deflect")
-    //    {
-    //        return true;
-    //    }
+    if (engine.getParametersManager().getRenderingParameters().getModule() ==
+        "deflect")
+    {
+        return true;
+    }
 
     if (_stream)
     {

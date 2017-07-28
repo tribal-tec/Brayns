@@ -86,12 +86,15 @@ bool DeflectPlugin::run(Engine& engine)
     engine.getParametersManager().getApplicationParameters().streamQuality =
         _params.getQuality();
 
-    //    if (engine.getParametersManager().getRenderingParameters().getModule()
-    //    ==
-    //        "deflect")
-    //    {
-    //        return true;
-    //    }
+    const bool observerOnly =
+        engine.getParametersManager().getRenderingParameters().getModule() ==
+        "deflect";
+
+#if 0
+    if (observerOnly)
+        return true;
+
+#endif
 
     if (_stream)
     {
@@ -115,16 +118,12 @@ bool DeflectPlugin::run(Engine& engine)
     }
 
     if (deflectEnabled && !_stream)
-        _initializeDeflect();
+        _initializeDeflect(observerOnly);
 
     if (deflectEnabled && _stream && _stream->isConnected())
     {
-        if (engine.getParametersManager()
-                .getRenderingParameters()
-                .getModule() != "deflect")
-        {
+        if (!observerOnly)
             _sendDeflectFrame(engine);
-        }
 
         if (_handleDeflectEvents(engine))
         {
@@ -136,13 +135,20 @@ bool DeflectPlugin::run(Engine& engine)
     return true;
 }
 
-void DeflectPlugin::_initializeDeflect()
+void DeflectPlugin::_initializeDeflect(const bool observerOnly)
 {
     try
     {
-        _stream.reset(new deflect::Stream(_params.getIdString(),
-                                          _params.getHostString(),
-                                          _params.getPort(), true));
+        if (observerOnly)
+        {
+            _stream.reset(new deflect::Observer(_params.getIdString(),
+                                                _params.getHostString(),
+                                                _params.getPort()));
+        }
+        else
+            _stream.reset(new deflect::Stream(_params.getIdString(),
+                                              _params.getHostString(),
+                                              _params.getPort()));
 
         if (_stream->isConnected())
             BRAYNS_INFO << "Deflect successfully connected to Tide on host "
@@ -253,9 +259,9 @@ bool DeflectPlugin::_handleDeflectEvents(Engine& engine)
         }
         case deflect::Event::EVT_VIEW_SIZE_CHANGED:
         {
-            //            engine.getParametersManager()
-            //                .getApplicationParameters()
-            //                .setWindowSize(Vector2ui(event.dx, event.dy));
+            engine.getParametersManager()
+                .getApplicationParameters()
+                .setWindowSize(Vector2ui(event.dx, event.dy));
             break;
         }
         case deflect::Event::EVT_CLOSE:
@@ -303,7 +309,8 @@ void DeflectPlugin::_send(const Engine& engine, const bool swapYAxis)
                                          _lastImage.size.x(),
                                          _lastImage.size.y(), 4);
 
-    _sendFuture = _stream->asyncSend(deflectImage);
+    _sendFuture =
+        static_cast<deflect::Stream&>(*_stream).asyncSend(deflectImage);
 }
 
 Vector2d DeflectPlugin::_getWindowPos(const deflect::Event& event,

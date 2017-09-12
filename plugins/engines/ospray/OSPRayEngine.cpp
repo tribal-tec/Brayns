@@ -125,7 +125,7 @@ void OSPRayEngine::commit()
         _renderers[renderer.first]->setCamera(_camera);
         _renderers[renderer.first]->commit();
     }
-    _camera->commit();
+    //_camera->commit();
 }
 
 void OSPRayEngine::render()
@@ -158,11 +158,12 @@ void OSPRayEngine::preRender()
     auto osprayFrameBuffer =
         std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer);
     const auto& appParams = getParametersManager().getApplicationParameters();
-    osprayFrameBuffer->setStreamingParams(appParams.getStreamingEnabled(),
-                                          appParams.getStreamCompression(),
-                                          appParams.getStreamQuality(),
-                                          _camera->getType() ==
-                                              CameraType::stereo);
+    if (appParams.getModified() || _camera->getModified())
+        osprayFrameBuffer->setStreamingParams(appParams.getStreamingEnabled(),
+                                              appParams.getStreamCompression(),
+                                              appParams.getStreamQuality(),
+                                              _camera->getType() ==
+                                                  CameraType::stereo);
 
     _frameBuffer->map();
 }

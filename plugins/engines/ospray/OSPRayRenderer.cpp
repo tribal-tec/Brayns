@@ -66,6 +66,10 @@ void OSPRayRenderer::commit()
     RenderingParameters& rp = _parametersManager.getRenderingParameters();
     SceneParameters& sp = _parametersManager.getSceneParameters();
     VolumeParameters& vp = _parametersManager.getVolumeParameters();
+
+    if (!rp.getModified() && !sp.getModified() && !vp.getModified())
+        return;
+
     ShadingType mt = rp.getShading();
 
     Vector3f color = rp.getBackgroundColor();
@@ -81,6 +85,7 @@ void OSPRayRenderer::commit()
     ospSet1i(_renderer, "spp", rp.getSamplesPerPixel());
     ospSet1i(_renderer, "electronShading", (mt == ShadingType::electron));
     ospSet1f(_renderer, "epsilon", rp.getEpsilon());
+    // ospSet1f(_renderer, "varianceThreshold", 1.f);
     ospSet1i(_renderer, "moving", false);
     ospSet1f(_renderer, "detectionDistance", rp.getDetectionDistance());
     ospSet1i(_renderer, "detectionOnDifferentMaterial",

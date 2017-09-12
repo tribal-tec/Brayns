@@ -290,7 +290,7 @@ struct Brayns::Impl
         _engine->postRender();
     }
 
-    void render()
+    bool render()
     {
         const Vector2ui windowSize =
             _parametersManager->getApplicationParameters().getWindowSize();
@@ -320,10 +320,17 @@ struct Brayns::Impl
             }
         }
 
-        camera.commit();
+        if (camera.getModified())
+            camera.commit();
+
         _render();
 
         _engine->postRender();
+
+        _parametersManager->resetModified();
+        camera.resetModified();
+
+        return _engine->keepRunning();
     }
 
     Engine& getEngine() { return *_engine; }
@@ -1090,9 +1097,9 @@ void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
     _impl->render(renderInput, renderOutput);
 }
 
-void Brayns::render()
+bool Brayns::render()
 {
-    _impl->render();
+    return _impl->render();
 }
 Engine& Brayns::getEngine()
 {

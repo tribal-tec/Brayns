@@ -72,7 +72,7 @@ public:
        event triggers the rendering and gathers the results in a form of a
        base64 encoded JPEG image.
     */
-    BRAYNS_API void render();
+    BRAYNS_API bool render();
 
     /**
        @return the current engine

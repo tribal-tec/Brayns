@@ -109,6 +109,7 @@ public:
     void setCircuitBoundingBox(const Boxf& value)
     {
         _circuitBoundingBox = value;
+        _modified = true;
     }
 
     /**
@@ -124,6 +125,7 @@ public:
     void setCircuitUseSimulationModel(const bool value)
     {
         _circuitUseSimulationModel = value;
+        _modified = true;
     }
     /**
      * Return the filename pattern use to load meshes
@@ -136,20 +138,32 @@ public:
      * @param value Radius multiplier. Multiplies the radius contained in the
      *        data source by the specified value.
      */
-    void setRadiusMultiplier(const float value) { _radiusMultiplier = value; }
+    void setRadiusMultiplier(const float value)
+    {
+        _radiusMultiplier = value;
+        _modified = true;
+    }
     float getRadiusMultiplier() const { return _radiusMultiplier; }
     /** Radius correction applied to spheres and cylinders.
      * @param value Radius value. The radius contained in the data source is
      *        ignored and all geometries use the specified value.
      */
-    void setRadiusCorrection(const float value) { _radiusCorrection = value; }
+    void setRadiusCorrection(const float value)
+    {
+        _radiusCorrection = value;
+        _modified = true;
+    }
     float getRadiusCorrection() const { return _radiusCorrection; }
     /** Enables a different color for every molecule/morphology/mesh when
     * loading them from a given folder
     */
     ColorScheme getColorScheme() const { return _colorScheme; }
     const std::string& getColorSchemeAsString(const ColorScheme value) const;
-    void setColorScheme(const ColorScheme value) { _colorScheme = value; }
+    void setColorScheme(const ColorScheme value)
+    {
+        _colorScheme = value;
+        _modified = true;
+    }
     /** Scene environment (none, ground, wall, bounding_box ) */
     SceneEnvironment getSceneEnvironment() const { return _sceneEnvironment; }
     const std::string& getSceneEnvironmentAsString(
@@ -202,6 +216,7 @@ public:
     void setSplashSceneFolder(const std::string& value)
     {
         _splashSceneFolder = value;
+        _modified = true;
     }
     std::string getSplashSceneFolder() const { return _splashSceneFolder; }
     /** Biological assembly */

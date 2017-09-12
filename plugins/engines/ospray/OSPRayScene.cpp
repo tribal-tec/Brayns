@@ -1235,7 +1235,7 @@ void OSPRayScene::commitVolumeData()
 
 void OSPRayScene::commitSimulationData()
 {
-    if (!_simulationHandler)
+    if (!_simulationHandler /*|| !_parametersManager.getSceneParameters().getModified()*/)
         return;
 
     const float timestamp =

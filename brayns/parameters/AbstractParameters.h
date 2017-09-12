@@ -70,12 +70,15 @@ public:
 
     const strings& arguments() const;
 
+    bool getModified() const { return _modified; }
+    void resetModified() { _modified = false; }
 protected:
     virtual bool _parse(const po::variables_map&) = 0;
 
     std::string _name;
     po::options_description _parameters;
     strings _arguments;
+    bool _modified{true};
 };
 }
 #endif // ABSTRACTPARAMETERS_H

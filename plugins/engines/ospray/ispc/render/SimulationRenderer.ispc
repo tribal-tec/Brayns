@@ -24,7 +24,7 @@
 #include <plugins/engines/ospray/ispc/render/utils/AbstractRenderer.ih>
 
 // needs to be the same in MorphologyLoader.cpp
-uniform const uniform float OFFSET_MAGIC = 1e6;
+const float OFFSET_MAGIC = 1e6;
 
 struct SimulationRenderer
 {

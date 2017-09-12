@@ -103,6 +103,8 @@ public:
      */
     void set(const std::string& key, const std::string& value);
 
+    void resetModified();
+
 private:
     std::vector<AbstractParameters*> _parameterSets;
     po::options_description _parameters;

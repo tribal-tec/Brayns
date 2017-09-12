@@ -73,6 +73,7 @@ public:
     void setStreamingEnabled(const bool enabled)
     {
         _streamingEnabled = enabled;
+        _modified = true;
     }
 
     /** Stream compression enabled */
@@ -80,6 +81,7 @@ public:
     void setStreamCompression(const bool enabled)
     {
         _streamCompression = enabled;
+        _modified = true;
     }
 
     /** Stream compression quality, 1 (worst) to 100 (best) */
@@ -87,6 +89,7 @@ public:
     void setStreamQuality(const unsigned int quality)
     {
         _streamQuality = quality;
+        _modified = true;
     }
 
 protected:

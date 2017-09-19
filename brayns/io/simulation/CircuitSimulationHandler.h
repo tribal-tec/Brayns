@@ -67,6 +67,7 @@ private:
     double _timeBetweenFrames;
     std::shared_ptr<floats> _frameValues;
     std::future<brion::floatsPtr> _currentFrame;
+    float _timestampToUpdate{0.f};
 };
 }
 

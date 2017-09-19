@@ -74,23 +74,26 @@ void CircuitSimulationHandler::setTimestamp(const float timestamp)
     frame = std::min(_endFrame, frame);
     frame = std::max(_beginFrame, frame);
 
-    if (_currentFrame.valid() &&
-        _currentFrame.wait_for(std::chrono::milliseconds(0)) ==
-            std::future_status::ready)
-    {
-        _gotoNextFrame = true;
-        AbstractSimulationHandler::setTimestamp(timestamp);
-        _frameValues = _currentFrame.get();
-    }
-    else if (_gotoNextFrame)
+    if (_gotoNextFrame)
     {
         _gotoNextFrame = false;
         _currentFrame = _compartmentReport->loadFrame(frame);
     }
+
+    _timestampToUpdate = timestamp;
 }
 
 void* CircuitSimulationHandler::getFrameData()
 {
+    if (_currentFrame.valid() &&
+        _currentFrame.wait_for(std::chrono::milliseconds(0)) ==
+            std::future_status::ready)
+    {
+        AbstractSimulationHandler::setTimestamp(_timestampToUpdate);
+        _frameValues = _currentFrame.get();
+        _gotoNextFrame = true;
+    }
+
     if (_frameValues)
         return _frameValues.get()->data();
     return nullptr;

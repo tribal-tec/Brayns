@@ -861,6 +861,10 @@ private:
 
     void _increaseTimestamp()
     {
+        if (_engine->getScene().getSimulationHandler() &&
+            !_engine->getScene().getSimulationHandler()->gotoNextFrame())
+            return;
+
         SceneParameters& sceneParams = _parametersManager->getSceneParameters();
         float ts = sceneParams.getTimestamp();
         sceneParams.setTimestamp(ts + 1.f);
@@ -868,6 +872,10 @@ private:
 
     void _decreaseTimestamp()
     {
+        if (_engine->getScene().getSimulationHandler() &&
+            !_engine->getScene().getSimulationHandler()->gotoNextFrame())
+            return;
+
         SceneParameters& sceneParams = _parametersManager->getSceneParameters();
         float ts = sceneParams.getTimestamp();
         if (ts > 0.f)

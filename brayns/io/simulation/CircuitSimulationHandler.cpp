@@ -31,12 +31,9 @@ CircuitSimulationHandler::CircuitSimulationHandler(
     const GeometryParameters& geometryParameters,
     const std::string& reportSource, const brion::GIDSet& gids)
     : AbstractSimulationHandler(geometryParameters)
-    , _compartmentReport(nullptr)
+    , _compartmentReport(new brion::CompartmentReport(brion::URI(reportSource),
+                                                      brion::MODE_READ, gids))
 {
-    _compartmentReport.reset(
-        new brion::CompartmentReport(brion::URI(reportSource), brion::MODE_READ,
-                                     gids));
-
     // Load simulation information from compartment reports
     const auto reportStartTime = _compartmentReport->getStartTime();
     const auto reportEndTime = _compartmentReport->getEndTime();
@@ -71,17 +68,31 @@ CircuitSimulationHandler::~CircuitSimulationHandler()
 {
 }
 
+void CircuitSimulationHandler::setTimestamp(const float timestamp)
+{
+    auto frame = _beginFrame + timestamp * _timeBetweenFrames;
+    frame = std::min(_endFrame, frame);
+    frame = std::max(_beginFrame, frame);
+
+    if (_currentFrame.valid() &&
+        _currentFrame.wait_for(std::chrono::milliseconds(0)) ==
+            std::future_status::ready)
+    {
+        _gotoNextFrame = true;
+        AbstractSimulationHandler::setTimestamp(timestamp);
+        _frameValues = _currentFrame.get();
+    }
+    else if (_gotoNextFrame)
+    {
+        _gotoNextFrame = false;
+        _currentFrame = _compartmentReport->loadFrame(frame);
+    }
+}
+
 void* CircuitSimulationHandler::getFrameData()
 {
-    if (_compartmentReport)
-    {
-        auto frame = _beginFrame + _timestamp * _timeBetweenFrames;
-        frame = std::min(_endFrame, frame);
-        frame = std::max(_beginFrame, frame);
-        _frameValues = _compartmentReport->loadFrame(frame).get();
-        if (_frameValues)
-            return _frameValues.get()->data();
-    }
+    if (_frameValues)
+        return _frameValues.get()->data();
     return nullptr;
 }
 }

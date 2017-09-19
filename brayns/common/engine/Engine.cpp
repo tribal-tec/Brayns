@@ -61,9 +61,13 @@ void Engine::reshape(const Vector2ui& frameSize)
 
 void Engine::commit()
 {
-    auto& sceneParams = _parametersManager.getSceneParameters();
-    sceneParams.setTimestamp(sceneParams.getTimestamp() +
-                             sceneParams.getAnimationDelta());
+    if (getScene().getSimulationHandler() &&
+        getScene().getSimulationHandler()->gotoNextFrame())
+    {
+        auto& sceneParams = _parametersManager.getSceneParameters();
+        sceneParams.setTimestamp(sceneParams.getTimestamp() +
+                                 sceneParams.getAnimationDelta());
+    }
 
     _frameBuffer->clear();
 }

@@ -354,7 +354,7 @@ private:
         std::stringstream gidsStr;
         for (const auto& gid : gids)
             gidsStr << gid << " ";
-        BRAYNS_INFO << "Loaded GIDs: " << gidsStr.str() << std::endl;
+        BRAYNS_DEBUG << "Loaded GIDs: " << gidsStr.str() << std::endl;
     }
 
     /**

@@ -57,6 +57,8 @@ public:
      */
     void* getFrameData() final;
 
+    void setTimestamp(const float timestamp) final;
+
     CompartmentReportPtr getCompartmentReport() { return _compartmentReport; }
 private:
     CompartmentReportPtr _compartmentReport;
@@ -64,6 +66,7 @@ private:
     double _endFrame;
     double _timeBetweenFrames;
     std::shared_ptr<floats> _frameValues;
+    std::future<brion::floatsPtr> _currentFrame;
 };
 }
 

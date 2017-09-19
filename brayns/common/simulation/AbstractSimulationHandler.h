@@ -74,7 +74,7 @@ public:
      * @brief setTimestamp sets the current timestamp for the simulation
      * @param timestamp Timestamp to set
      */
-    void setTimestamp(const float timestamp);
+    virtual void setTimestamp(const float timestamp);
 
     /** @return the current timestamp for the simulation. */
     float getTimestamp() const { return _timestamp; }
@@ -130,6 +130,7 @@ public:
     /** @return true if the histogram has changed since the last update. */
     bool histogramChanged() const;
 
+    bool gotoNextFrame() const { return _gotoNextFrame; }
 protected:
     const GeometryParameters& _geometryParameters;
     float _timestamp;
@@ -142,6 +143,8 @@ protected:
     int _cacheFileDescriptor;
     Histogram _histogram;
     float* _frameData;
+
+    bool _gotoNextFrame{true};
 };
 }
 #endif // ABSTRACTSIMULATIONHANDLER_H

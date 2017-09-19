@@ -94,8 +94,17 @@ void* CircuitSimulationHandler::getFrameData()
         _gotoNextFrame = true;
     }
 
+    if (_resetBuffer)
+    {
+        _resetBuffer = false;
+        _frameValues.reset();
+    }
+
     if (_frameValues)
+    {
+        _resetBuffer = true;
         return _frameValues.get()->data();
+    }
     return nullptr;
 }
 }

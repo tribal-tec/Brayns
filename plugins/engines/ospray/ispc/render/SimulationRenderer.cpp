@@ -82,6 +82,6 @@ SimulationRenderer::SimulationRenderer()
     ispcEquivalent = ispc::SimulationRenderer_create(this);
 }
 
-OSP_REGISTER_RENDERER(SimulationRenderer, SIMULATIONRENDERER);
-OSP_REGISTER_RENDERER(SimulationRenderer, simulationrenderer);
+// OSP_REGISTER_RENDERER(SimulationRenderer, SIMULATIONRENDERER);
+// OSP_REGISTER_RENDERER(SimulationRenderer, simulationrenderer);
 } // ::brayns

@@ -89,6 +89,6 @@ void ExtendedSpheres::finalize(ospray::Model *model)
                                       offset_value_y, offset_materialID);
 }
 
-OSP_REGISTER_GEOMETRY(ExtendedSpheres, extendedspheres);
+// OSP_REGISTER_GEOMETRY(ExtendedSpheres, extendedspheres);
 
 } // ::brayns

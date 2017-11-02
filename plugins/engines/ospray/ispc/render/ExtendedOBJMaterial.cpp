@@ -81,6 +81,6 @@ void ExtendedOBJMaterial::commit()
         map_Normal != nullptr ? map_Normal->getIE() : nullptr);
 }
 
-OSP_REGISTER_EXMATERIAL(ExtendedOBJMaterial, ExtendedOBJMaterial);
+// OSP_REGISTER_EXMATERIAL(ExtendedOBJMaterial, ExtendedOBJMaterial);
 } // ::brayns::obj
 } // ::brayns

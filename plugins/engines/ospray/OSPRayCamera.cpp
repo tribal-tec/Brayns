@@ -67,6 +67,7 @@ void OSPRayCamera::commit()
 
     ospSet3f(_camera, "pos", position.x(), position.y(), position.z());
     ospSet3f(_camera, "dir", dir.x(), dir.y(), dir.z());
+    ospSet3f(_camera, "target", target.x(), target.y(), target.z());
     ospSet3f(_camera, "up", up.x(), up.y(), up.z());
     ospSet1f(_camera, "aspect", getAspectRatio());
     ospSet1f(_camera, "apertureRadius", getAperture());

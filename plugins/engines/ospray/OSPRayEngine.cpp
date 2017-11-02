@@ -57,6 +57,14 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
         BRAYNS_ERROR << "Error during ospInit(): " << e.what() << std::endl;
     }
 
+    ospDeviceSetStatusFunc(ospGetCurrentDevice(), [](const char* msg) {
+        std::cout << "$$$$$$$$$ " << msg << std::endl;
+    });
+    ospDeviceSetErrorFunc(ospGetCurrentDevice(), [](OSPError,
+                                                    const char* errorDetails) {
+        std::cout << "######### " << errorDetails << std::endl;
+    });
+
     RenderingParameters& rp = _parametersManager.getRenderingParameters();
     if (!rp.getModule().empty())
     {
@@ -95,6 +103,7 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
         _renderers[renderer].reset(
             new OSPRayRenderer(rendererName, _parametersManager));
         renderersForScene.push_back(_renderers[renderer]);
+        break;
     }
 
     BRAYNS_INFO << "Initializing scene" << std::endl;

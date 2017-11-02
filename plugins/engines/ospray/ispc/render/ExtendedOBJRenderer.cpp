@@ -49,6 +49,6 @@ ExtendedOBJRenderer::ExtendedOBJRenderer()
     ispcEquivalent = ispc::ExtendedOBJRenderer_create(this);
 }
 
-OSP_REGISTER_EXRENDERER(ExtendedOBJRenderer, EXOBJ);
-OSP_REGISTER_EXRENDERER(ExtendedOBJRenderer, exobj);
+// OSP_REGISTER_EXRENDERER(ExtendedOBJRenderer, EXOBJ);
+// OSP_REGISTER_EXRENDERER(ExtendedOBJRenderer, exobj);
 } // ::brayns

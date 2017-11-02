@@ -91,7 +91,7 @@ struct Brayns::Impl
 
         BRAYNS_INFO << "Parsing command line options" << std::endl;
         _parametersManager.parse(argc, argv);
-        _parametersManager.print();
+        //_parametersManager.print();
 
         _registerKeyboardShortcuts();
 

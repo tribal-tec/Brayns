@@ -29,7 +29,10 @@ endif()
 
 if(BRAYNS_NETWORKING_ENABLED)
   list(APPEND BRAYNSPLUGINS_SOURCES extensions/plugins/RocketsPlugin.cpp)
-  list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS extensions/plugins/RocketsPlugin.h)
+  list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS
+    extensions/plugins/RocketsPlugin.h
+    extensions/plugins/SDK.h
+  )
   list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Lexis Rockets
     BraynsZeroBufRender ${LibJpegTurbo_LIBRARIES})
 endif()

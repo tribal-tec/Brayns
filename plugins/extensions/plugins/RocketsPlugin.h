@@ -30,7 +30,6 @@
 #include <lexis/data/Progress.h>
 #include <lexis/render/ClipPlanes.h>
 #include <lexis/render/Histogram.h>
-#include <lexis/render/frame.h>
 #include <lexis/render/imageJPEG.h>
 #include <lexis/render/materialLUT.h>
 #include <lexis/render/stream.h>
@@ -74,6 +73,15 @@ private:
                        const servus::Serializable& obj);
     void _remove(const std::string& endpoint);
 
+    template <class T>
+    void _handle2(const std::string& endpoint, T& obj);
+    template <class T>
+    void _handleGET2(const std::string& endpoint, T& obj);
+    template <class T>
+    void _handlePUT2(const std::string& endpoint, T& obj);
+    template <class T>
+    void _handleSchema2(const std::string& endpoint, T& obj);
+
     void _broadcastWebsocketMessages();
     rockets::ws::Response _processWebsocketMessage(const std::string& message);
     void _handleWebsocketEvent(const std::string& endpoint,
@@ -97,9 +105,6 @@ private:
 
     void _initializeSettings();
     void _settingsUpdated();
-
-    bool _requestFrame();
-    void _frameUpdated();
 
     bool _requestViewport();
     void _viewportUpdated();
@@ -179,7 +184,6 @@ private:
     bool _forceRendering = false;
     bool _dirtyEngine = false;
 
-    ::lexis::render::Frame _remoteFrame;
     ::lexis::render::ImageJPEG _remoteImageJPEG;
     ::lexis::render::Viewport _remoteViewport;
     ::lexis::render::ClipPlanes _clipPlanes;

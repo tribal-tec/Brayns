@@ -39,6 +39,10 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include "SDK.h"
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
+
 namespace
 {
 const std::string ENDPOINT_API_VERSION = "v1/";
@@ -75,6 +79,43 @@ std::string _buildJsonMessage(const std::string& event, const std::string data,
     message["event"] = event;
     message[error ? "error" : "data"] = json::parse(data);
     return message.dump(4 /*indent*/);
+}
+
+template <class T>
+std::string getSchema(T& obj, const std::string& title)
+{
+    rapidjson::StringBuffer buffer;
+    buffer.Clear();
+
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    auto schema = staticjson::export_json_schema(&obj);
+    schema.AddMember(rapidjson::StringRef("title"),
+                     rapidjson::StringRef(title.c_str()),
+                     schema.GetAllocator());
+    schema.Accept(writer);
+
+    return strdup(buffer.GetString());
+}
+
+std::string hyphenatedToCamelCase(const std::string& scoreString)
+{
+    std::string camelString = scoreString;
+
+    for (size_t x = 0; x < camelString.length(); x++)
+    {
+        if (camelString[x] == '_')
+        {
+            std::string tempString = camelString.substr(x + 1, 1);
+
+            transform(tempString.begin(), tempString.end(), tempString.begin(),
+                      toupper);
+
+            camelString.erase(x, 2);
+            camelString.insert(x, tempString);
+        }
+    }
+    camelString[0] = toupper(camelString[0]);
+    return camelString;
 }
 }
 
@@ -193,6 +234,15 @@ void RocketsPlugin::_broadcastWebsocketMessages()
     if (_engine->getModified())
         _httpServer->broadcastText(_wsOutgoing[ENDPOINT_PROGRESS]());
 
+    if (_parametersManager.getSceneParameters()
+            .getAnimationParams()
+            .getModified())
+    {
+        auto bla = _wsOutgoing[ENDPOINT_FRAME]();
+        std::cout << "Send: " << bla << std::endl;
+        _httpServer->broadcastText(bla);
+    }
+
     if (_engine->getRenderer().hasNewImage())
     {
         const auto fps =
@@ -290,10 +340,8 @@ void RocketsPlugin::_setupHTTPServer()
     _remoteSettings.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_settingsUpdated, this));
 
-    _handle(ENDPOINT_FRAME, _remoteFrame);
-    _remoteFrame.registerSerializeCallback([this] { _requestFrame(); });
-    _remoteFrame.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_frameUpdated, this));
+    _handle2(ENDPOINT_FRAME,
+             _parametersManager.getSceneParameters().getAnimationParams());
 
     _handle(ENDPOINT_VIEWPORT, _remoteViewport);
     _remoteViewport.registerSerializeCallback([this] { _requestViewport(); });
@@ -367,6 +415,78 @@ std::string RocketsPlugin::_getHttpInterface() const
             return args[i + 1];
     }
     return std::string();
+}
+
+template <class T>
+void RocketsPlugin::_handle2(const std::string& endpoint, T& obj)
+{
+    _handleGET2(endpoint, obj);
+    _handlePUT2(endpoint, obj);
+}
+
+template <class T>
+void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj)
+{
+    using namespace rockets::http;
+
+    _httpServer->handle(
+        Method::GET, ENDPOINT_API_VERSION + endpoint, [&obj](const Request&) {
+            return make_ready_response(Code::OK,
+                                       staticjson::to_pretty_json_string(obj),
+                                       JSON_TYPE);
+        });
+
+    _handleSchema2(endpoint, obj);
+
+    _wsOutgoing[endpoint] = [&obj, endpoint] {
+        return _buildJsonMessage(endpoint,
+                                 staticjson::to_pretty_json_string(obj));
+    };
+}
+
+template <class T>
+void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj)
+{
+    using namespace rockets::http;
+    _httpServer->handle(Method::PUT, ENDPOINT_API_VERSION + endpoint,
+                        [&obj](const Request& req) {
+                            staticjson::ParseStatus status;
+                            const auto success =
+                                staticjson::from_json_string(req.body.c_str(),
+                                                             &obj, &status);
+                            std::cout << status.description() << std::endl;
+                            if (success)
+                                obj.markModified();
+                            return make_ready_response(
+                                success ? Code::OK : Code::BAD_REQUEST);
+                        });
+
+    _handleSchema2(endpoint, obj);
+
+    //_handleWebsocketEvent(endpoint, obj);
+
+    _wsIncoming[endpoint] = [&obj](const std::string& data) {
+        const auto success =
+            staticjson::from_json_string(data.c_str(), &obj, nullptr);
+        if (success)
+            obj.markModified();
+        std::cout << "Recv: " << data << std::endl;
+        return success;
+    };
+}
+
+template <class T>
+void RocketsPlugin::_handleSchema2(const std::string& endpoint, T& obj)
+{
+    using namespace rockets::http;
+    _httpServer->handle(Method::GET,
+                        ENDPOINT_API_VERSION + endpoint + "/schema",
+                        [&obj, endpoint](const Request&) {
+                            return make_ready_response(
+                                Code::OK,
+                                getSchema(obj, hyphenatedToCamelCase(endpoint)),
+                                JSON_TYPE);
+                        });
 }
 
 void RocketsPlugin::_handle(const std::string& endpoint,
@@ -1271,53 +1391,53 @@ void RocketsPlugin::_settingsUpdated()
         _engine->resetFrameNumber();
 }
 
-bool RocketsPlugin::_requestFrame()
-{
-    auto caSimHandler = _engine->getScene().getCADiffusionSimulationHandler();
-    auto simHandler = _engine->getScene().getSimulationHandler();
-    auto volHandler = _engine->getScene().getVolumeHandler();
-    uint64_t nbFrames = simHandler
-                            ? simHandler->getNbFrames()
-                            : (volHandler ? volHandler->getNbFrames() : 0);
-    nbFrames =
-        std::max(nbFrames, caSimHandler ? caSimHandler->getNbFrames() : 0);
+// bool RocketsPlugin::_requestFrame()
+//{
+//    auto caSimHandler = _engine->getScene().getCADiffusionSimulationHandler();
+//    auto simHandler = _engine->getScene().getSimulationHandler();
+//    auto volHandler = _engine->getScene().getVolumeHandler();
+//    uint64_t nbFrames = simHandler
+//                            ? simHandler->getNbFrames()
+//                            : (volHandler ? volHandler->getNbFrames() : 0);
+//    nbFrames =
+//        std::max(nbFrames, caSimHandler ? caSimHandler->getNbFrames() : 0);
 
-    const auto& sceneParams = _parametersManager.getSceneParameters();
-    const auto current =
-        nbFrames == 0 ? 0 : (sceneParams.getAnimationFrame() % nbFrames);
-    const auto animationDelta = sceneParams.getAnimationDelta();
+//    const auto& sceneParams = _parametersManager.getSceneParameters();
+//    const auto current =
+//        nbFrames == 0 ? 0 : (sceneParams.getAnimationFrame() % nbFrames);
+//    const auto animationDelta = sceneParams.getAnimationDelta();
 
-    if (current == _remoteFrame.getCurrent() &&
-        nbFrames == _remoteFrame.getEnd() &&
-        animationDelta == _remoteFrame.getDelta())
-    {
-        return false;
-    }
+//    if (current == _remoteFrame.getCurrent() &&
+//        nbFrames == _remoteFrame.getEnd() &&
+//        animationDelta == _remoteFrame.getDelta())
+//    {
+//        return false;
+//    }
 
-    _remoteFrame.setCurrent(current);
-    _remoteFrame.setDelta(animationDelta);
-    _remoteFrame.setEnd(nbFrames);
-    _remoteFrame.setStart(0);
-    return true;
-}
+//    _remoteFrame.setCurrent(current);
+//    _remoteFrame.setDelta(animationDelta);
+//    _remoteFrame.setEnd(nbFrames);
+//    _remoteFrame.setStart(0);
+//    return true;
+//}
 
-void RocketsPlugin::_frameUpdated()
-{
-    auto& sceneParams = _parametersManager.getSceneParameters();
-    sceneParams.setAnimationFrame(_remoteFrame.getCurrent());
-    sceneParams.setAnimationDelta(_remoteFrame.getDelta());
+// void RocketsPlugin::_frameUpdated()
+//{
+//    auto& sceneParams = _parametersManager.getSceneParameters();
+//    sceneParams.setAnimationFrame(_remoteFrame.getCurrent());
+//    sceneParams.setAnimationDelta(_remoteFrame.getDelta());
 
-    CADiffusionSimulationHandlerPtr handler =
-        _engine->getScene().getCADiffusionSimulationHandler();
-    if (handler && _engine->isReady())
-    {
-        auto& scene = _engine->getScene();
-        handler->setFrame(scene, _remoteFrame.getCurrent());
-        scene.setSpheresDirty(true);
-        scene.serializeGeometry();
-        scene.commit();
-    }
-}
+//    CADiffusionSimulationHandlerPtr handler =
+//        _engine->getScene().getCADiffusionSimulationHandler();
+//    if (handler && _engine->isReady())
+//    {
+//        auto& scene = _engine->getScene();
+//        handler->setFrame(scene, _remoteFrame.getCurrent());
+//        scene.setSpheresDirty(true);
+//        scene.serializeGeometry();
+//        scene.commit();
+//    }
+//}
 
 bool RocketsPlugin::_requestViewport()
 {

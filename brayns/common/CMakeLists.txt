@@ -70,6 +70,11 @@ set(BRAYNSCOMMON_LINK_LIBRARIES
 if(BRAYNS_NETWORKING_ENABLED)
   add_subdirectory(vocabulary)
   list(APPEND BRAYNSCOMMON_LINK_LIBRARIES Lexis ZeroBuf BraynsZeroBufRender)
+  list(APPEND BRAYNSCOMMON_SOURCES ${COMMON_SOURCE_DIR}/StaticJSON/src/staticjson.cpp)
 endif()
 
 common_library(braynsCommon)
+
+if(BRAYNS_NETWORKING_ENABLED)
+  target_include_directories(braynsCommon SYSTEM PUBLIC ${COMMON_SOURCE_DIR}/StaticJSON/include)
+endif()

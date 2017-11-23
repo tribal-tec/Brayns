@@ -17,6 +17,7 @@ set(BRAYNSPARAMETERS_SOURCES
 set(BRAYNSPARAMETERS_PUBLIC_HEADERS
   ParametersManager.h
   AbstractParameters.h
+  AnimationParameters.h
   RenderingParameters.h
   GeometryParameters.h
   ApplicationParameters.h

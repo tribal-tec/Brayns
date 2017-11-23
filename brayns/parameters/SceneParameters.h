@@ -22,6 +22,7 @@
 #define SCENEPARAMETERS_H
 
 #include "AbstractParameters.h"
+#include "AnimationParameters.h"
 
 namespace brayns
 {
@@ -33,28 +34,30 @@ public:
     /** @copydoc AbstractParameters::print */
     void print() final;
 
-    uint32_t getAnimationFrame() const { return _animationFrame; }
+    uint32_t getAnimationFrame() const { return _anim.current; }
     void setAnimationFrame(const uint32_t value)
     {
-        updateValue(_animationFrame, value);
+        _anim.updateValue(_anim.current, value);
+        updateValue(_anim.current, value);
     }
 
     /** The (frame) delta to apply for animations to select the next frame. */
     void setAnimationDelta(const int32_t animation)
     {
-        updateValue(_animationDelta, animation);
+        _anim.updateValue(_anim.delta, animation);
+        updateValue(_anim.delta, animation);
     }
-    int32_t getAnimationDelta() const { return _animationDelta; }
+    int32_t getAnimationDelta() const { return _anim.delta; }
     const std::string& getColorMapFilename() const { return _colorMapFilename; }
     /**
        file name of the environment map
     */
     const std::string& getEnvironmentMap() const { return _environmentMap; }
+    AnimationParameters& getAnimationParams() { return _anim; }
 protected:
     bool _parse(const po::variables_map& vm) final;
 
-    uint32_t _animationFrame{std::numeric_limits<uint32_t>::max()};
-    int32_t _animationDelta{0};
+    AnimationParameters _anim;
     std::string _colorMapFilename;
     std::string _environmentMap;
 };

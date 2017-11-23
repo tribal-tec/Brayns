@@ -66,7 +66,8 @@ void OSPRayRenderer::commit()
     SceneParameters& sp = _parametersManager.getSceneParameters();
     VolumeParameters& vp = _parametersManager.getVolumeParameters();
 
-    if (!rp.getModified() && !sp.getModified() && !vp.getModified())
+    if (!rp.getModified() && !sp.getModified() && !vp.getModified() &&
+        !sp.getAnimationParams().getModified())
         return;
 
     ShadingType mt = rp.getShading();

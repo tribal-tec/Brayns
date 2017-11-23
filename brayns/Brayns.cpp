@@ -363,6 +363,12 @@ private:
         _writeFrameToFile();
 
         _parametersManager.resetModified();
+        if (_parametersManager.getSceneParameters()
+                .getAnimationParams()
+                .delta == 0)
+            _parametersManager.getSceneParameters()
+                .getAnimationParams()
+                .resetModified();
         camera.resetModified();
         scene.resetModified();
         _engine->resetModified();

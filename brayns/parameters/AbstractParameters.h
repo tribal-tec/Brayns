@@ -79,6 +79,7 @@ public:
      * Reset the modified state, typically done after changes have been applied.
      */
     void resetModified() { _modified = false; }
+    void markModified() { _modified = true; }
     /**
      * Helper function for derived classes to update a parameter and mark it
      * modified if it has changed.

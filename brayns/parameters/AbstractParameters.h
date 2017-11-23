@@ -79,12 +79,15 @@ public:
      * Reset the modified state, typically done after changes have been applied.
      */
     void resetModified() { _modified = false; }
+protected:
+    virtual bool _parse(const po::variables_map&) = 0;
+
     /**
      * Helper function for derived classes to update a parameter and mark it
      * modified if it has changed.
      */
     template <typename T>
-    void updateValue(T& member, const T& newValue)
+    void _updateValue(T& member, const T& newValue)
     {
         if (member != newValue)
         {
@@ -92,9 +95,6 @@ public:
             _modified = true;
         }
     }
-
-protected:
-    virtual bool _parse(const po::variables_map&) = 0;
 
     std::string _name;
     po::options_description _parameters;

@@ -112,7 +112,7 @@ public:
     const Boxf& getCircuitBoundingBox() const { return _circuitBoundingBox; }
     void setCircuitBoundingBox(const Boxf& value)
     {
-        updateValue(_circuitBoundingBox, value);
+        _updateValue(_circuitBoundingBox, value);
     }
 
     /**
@@ -127,7 +127,7 @@ public:
     }
     void setCircuitUseSimulationModel(const bool value)
     {
-        updateValue(_circuitUseSimulationModel, value);
+        _updateValue(_circuitUseSimulationModel, value);
     }
     /**
      * Return the filename pattern use to load meshes
@@ -142,7 +142,7 @@ public:
      */
     void setRadiusMultiplier(const float value)
     {
-        updateValue(_radiusMultiplier, value);
+        _updateValue(_radiusMultiplier, value);
     }
     float getRadiusMultiplier() const { return _radiusMultiplier; }
     /** Radius correction applied to spheres and cylinders.
@@ -151,7 +151,7 @@ public:
      */
     void setRadiusCorrection(const float value)
     {
-        updateValue(_radiusCorrection, value);
+        _updateValue(_radiusCorrection, value);
     }
     float getRadiusCorrection() const { return _radiusCorrection; }
     /** Enables a different color for every molecule/morphology/mesh when
@@ -161,7 +161,7 @@ public:
     const std::string& getColorSchemeAsString(const ColorScheme value) const;
     void setColorScheme(const ColorScheme value)
     {
-        updateValue(_colorScheme, value);
+        _updateValue(_colorScheme, value);
     }
     /** Scene environment (none, ground, wall, bounding_box ) */
     SceneEnvironment getSceneEnvironment() const { return _sceneEnvironment; }
@@ -211,7 +211,7 @@ public:
     /** Splash scene folder */
     void setSplashSceneFolder(const std::string& value)
     {
-        updateValue(_splashSceneFolder, value);
+        _updateValue(_splashSceneFolder, value);
     }
     const std::string& getSplashSceneFolder() const
     {

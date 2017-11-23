@@ -36,13 +36,13 @@ public:
     uint32_t getAnimationFrame() const { return _animationFrame; }
     void setAnimationFrame(const uint32_t value)
     {
-        updateValue(_animationFrame, value);
+        _updateValue(_animationFrame, value);
     }
 
     /** The (frame) delta to apply for animations to select the next frame. */
     void setAnimationDelta(const int32_t animation)
     {
-        updateValue(_animationDelta, animation);
+        _updateValue(_animationDelta, animation);
     }
     int32_t getAnimationDelta() const { return _animationDelta; }
     const std::string& getColorMapFilename() const { return _colorMapFilename; }

@@ -7,13 +7,14 @@
 add_subdirectory(parameters)
 add_subdirectory(common)
 add_subdirectory(io)
+add_subdirectory(video)
 
 set(BRAYNS_PUBLIC_HEADERS Brayns.h)
 
 set(BRAYNS_SOURCES Brayns.cpp)
 
 set(BRAYNS_LINK_LIBRARIES
-    PUBLIC braynsParameters braynsCommon braynsIO braynsPlugins)
+    PUBLIC braynsParameters braynsCommon braynsIO braynsPlugins braynsVideo)
 
 if(BRAYNS_IMAGEMAGICK_ENABLED)
   list(APPEND BRAYNS_LINK_LIBRARIES PRIVATE ${Magick++_LIBRARIES})

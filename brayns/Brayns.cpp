@@ -34,6 +34,7 @@
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/utils/Utils.h>
 #include <brayns/common/volume/VolumeHandler.h>
+#include <brayns/video/VideoEncoder.h>
 
 #include <brayns/parameters/ParametersManager.h>
 
@@ -276,6 +277,17 @@ private:
 #if (BRAYNS_USE_MAGICKPP)
     void _writeFrameToFolder()
     {
+        /*
+         * streaming
+         *
+         * rgba to yuv
+         * yuv video encode (different thread, x264?)
+         * rtsp stream with SDP (different thread again I guess)
+         */
+
+        _videoEncoder.encode(_engine->getFrameBuffer().getColorBuffer());
+        return;
+
         const auto& frameExportFolder =
             _parametersManager.getApplicationParameters()
                 .getFrameExportFolder();
@@ -1228,6 +1240,7 @@ private:
         app.setSynchronousMode(!app.getSynchronousMode());
     }
 
+    VideoEncoder _videoEncoder;
     ParametersManager _parametersManager;
     EngineFactory _engineFactory;
     EnginePtr _engine;

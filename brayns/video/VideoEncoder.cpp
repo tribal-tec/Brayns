@@ -34,7 +34,10 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include <functional>
 #include <iostream>
+#include <lunchbox/mtQueue.h>
+#include <thread>
 
 namespace brayns
 {
@@ -90,6 +93,8 @@ public:
         pkt.size = 0;
 
         _setupStream();
+
+        thread = std::thread(std::bind(&Impl::_runLoop, this));
     }
 
     ~Impl()
@@ -135,46 +140,63 @@ public:
         if (!rgba)
             throw std::invalid_argument("what the fuck");
 
-        // rgba to yuv
+        _rgbas.push(
+            std::vector<uint8_t>{rgba,
+                                 rgba + 4 * context->width * context->height});
+    }
+
+    void _runLoop()
+    {
+        while (true)
         {
-            int in_linesize[1] = {4 * context->width};
-            sws_context =
-                sws_getCachedContext(sws_context, context->width,
-                                     context->height, AV_PIX_FMT_RGBA,
-                                     context->width, context->height, pixfmt,
-                                     SWS_FAST_BILINEAR, 0, 0, 0);
+            auto data = _rgbas.pop();
+            uint8_t* rgba = data.data();
 
-            sws_scale(sws_context, (const uint8_t* const*)&rgba, in_linesize, 0,
-                      context->height, frame->data, frame->linesize);
-        }
-        frame->pts = currentFrame++;
+            // rgba to yuv
+            {
+                int in_linesize[1] = {4 * context->width};
+                sws_context =
+                    sws_getCachedContext(sws_context, context->width,
+                                         context->height, AV_PIX_FMT_RGBA,
+                                         context->width, context->height,
+                                         pixfmt, 0, 0, 0, 0);
 
-        int got_output = false;
-        int ret = avcodec_encode_video2(context, &pkt, frame, &got_output);
-        if (ret < 0)
-        {
-            std::cerr << "video encode error " << ret << std::endl;
-            return;
-        }
-        if (got_output)
-        {
-            // printf("Write frame %3d (size=%5d)\n", outputFrame++, pkt.size);
+                sws_scale(sws_context, (const uint8_t* const*)&rgba,
+                          in_linesize, 0, context->height, frame->data,
+                          frame->linesize);
+            }
+            frame->pts = currentFrame++;
 
-            /* rescale output packet timestamp values from codec to stream
-             * timebase */
-            //            pkt.pts = av_rescale_q_rnd(pkt.pts,
-            //            context->time_base, stream->time_base,
-            //            AVRounding(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-            //            pkt.dts = av_rescale_q_rnd(pkt.dts,
-            //            context->time_base, stream->time_base,
-            //            AVRounding(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-            //            pkt.duration = av_rescale_q(pkt.duration,
-            //            context->time_base, stream->time_base);
-            pkt.stream_index = stream->index;
+            int got_output = false;
+            int ret = avcodec_encode_video2(context, &pkt, frame, &got_output);
+            if (ret < 0)
+            {
+                std::cerr << "video encode error " << ret << std::endl;
+                return;
+            }
+            if (got_output)
+            {
+                // printf("Write frame %3d (size=%5d)\n", outputFrame++,
+                // pkt.size);
 
-            av_interleaved_write_frame(avfctx, &pkt);
+                /* rescale output packet timestamp values from codec to stream
+                 * timebase */
+                //            pkt.pts = av_rescale_q_rnd(pkt.pts,
+                //            context->time_base, stream->time_base,
+                //            AVRounding(AV_ROUND_NEAR_INF |
+                //            AV_ROUND_PASS_MINMAX));
+                //            pkt.dts = av_rescale_q_rnd(pkt.dts,
+                //            context->time_base, stream->time_base,
+                //            AVRounding(AV_ROUND_NEAR_INF |
+                //            AV_ROUND_PASS_MINMAX));
+                //            pkt.duration = av_rescale_q(pkt.duration,
+                //            context->time_base, stream->time_base);
+                pkt.stream_index = stream->index;
 
-            av_packet_unref(&pkt);
+                av_interleaved_write_frame(avfctx, &pkt);
+
+                av_packet_unref(&pkt);
+            }
         }
     }
 
@@ -194,6 +216,9 @@ private:
     const int width = 1920;
     const int height = 1080;
     const int fps = 30;
+
+    std::thread thread;
+    lunchbox::MTQueue<std::vector<uint8_t>> _rgbas;
 
     void _setupStream()
     {

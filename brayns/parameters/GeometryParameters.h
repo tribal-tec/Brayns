@@ -263,6 +263,9 @@ public:
     }
     /** Range of dimensions */
     Vector3f getConnectivityScale() const { return _connectivityScale; }
+    void appendDataBlob(const std::string& blob) { _datablob += blob; }
+    void clearDataBlob() { _datablob.clear(); }
+    const std::string& getDataBlob() const { return _datablob; }
 protected:
     bool _parse(const po::variables_map& vm) final;
 
@@ -328,6 +331,8 @@ protected:
     bool _connectivityShowConnections;
     Vector2ui _connectivityDimensionRange;
     Vector3f _connectivityScale;
+
+    std::string _datablob;
 };
 }
 #endif // GEOMETRYPARAMETERS_H

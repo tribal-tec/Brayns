@@ -48,15 +48,19 @@ void MeshLoader::clear()
 #if (BRAYNS_USE_ASSIMP)
 bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
                                     const Matrix4f& transformation,
-                                    const size_t defaultMaterial)
+                                    const size_t defaultMaterial,
+                                    const bool blob)
 {
-    const boost::filesystem::path file = filename;
     Assimp::Importer importer;
-    if (!importer.IsExtensionSupported(file.extension().c_str()))
+    if (!blob)
     {
-        BRAYNS_DEBUG << "File extension " << file.extension()
-                     << " is not supported" << std::endl;
-        return false;
+        const boost::filesystem::path file = filename;
+        if (!importer.IsExtensionSupported(file.extension().c_str()))
+        {
+            BRAYNS_DEBUG << "File extension " << file.extension()
+                         << " is not supported" << std::endl;
+            return false;
+        }
     }
 
     size_t quality;
@@ -73,22 +77,40 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
         break;
     }
 
-    std::ifstream meshFile(filename, std::ios::in);
-    if (!meshFile.good())
+    if (!blob)
     {
-        BRAYNS_DEBUG << "Could not open file " << filename << std::endl;
-        return false;
+        std::ifstream meshFile(filename, std::ios::in);
+        if (!meshFile.good())
+        {
+            BRAYNS_DEBUG << "Could not open file " << filename << std::endl;
+            return false;
+        }
+        meshFile.close();
     }
-    meshFile.close();
 
     const aiScene* aiScene = nullptr;
-    aiScene = importer.ReadFile(filename.c_str(), quality);
 
-    if (!aiScene)
+    if (blob)
     {
-        BRAYNS_DEBUG << "Error parsing " << filename.c_str() << ": "
-                     << importer.GetErrorString() << std::endl;
-        return false;
+        aiScene = importer.ReadFileFromMemory(filename.data(), filename.size(),
+                                              quality);
+        if (!aiScene)
+        {
+            BRAYNS_DEBUG << "Error load scene from data blob: "
+                         << importer.GetErrorString() << std::endl;
+            return false;
+        }
+    }
+    else
+    {
+        aiScene = importer.ReadFile(filename.c_str(), quality);
+
+        if (!aiScene)
+        {
+            BRAYNS_DEBUG << "Error parsing " << filename.c_str() << ": "
+                         << importer.GetErrorString() << std::endl;
+            return false;
+        }
     }
 
     if (!aiScene->HasMeshes())
@@ -98,9 +120,17 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
         return false;
     }
 
-    boost::filesystem::path filepath = filename;
-    if (defaultMaterial == NO_MATERIAL)
-        _createMaterials(scene, aiScene, filepath.parent_path().string());
+    if (blob)
+    {
+        if (defaultMaterial == NO_MATERIAL)
+            _createMaterials(scene, aiScene, "");
+    }
+    else
+    {
+        boost::filesystem::path filepath = filename;
+        if (defaultMaterial == NO_MATERIAL)
+            _createMaterials(scene, aiScene, filepath.parent_path().string());
+    }
 
     size_t nbVertices = 0;
     size_t nbFaces = 0;

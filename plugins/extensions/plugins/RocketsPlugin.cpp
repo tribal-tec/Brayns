@@ -210,7 +210,7 @@ void RocketsPlugin::_broadcastWebsocketMessages()
 }
 
 rockets::ws::Response RocketsPlugin::_processWebsocketMessage(
-    const std::string& message)
+    const std::string& message, const bool /*lastFragment*/)
 {
     try
     {
@@ -232,6 +232,18 @@ rockets::ws::Response RocketsPlugin::_processWebsocketMessage(
                      << std::endl;
         return _buildJsonMessage("exception", exc.what(), true);
     }
+}
+
+rockets::ws::Response RocketsPlugin::_processWebsocketBinaryMessage(
+    const std::string& message, const bool lastFragment)
+{
+    if (!_engine->isReady())
+        return {};
+
+    _parametersManager.getGeometryParameters().appendDataBlob(message);
+    if (lastFragment)
+        _engine->buildScene();
+    return {};
 }
 
 void RocketsPlugin::_setupHTTPServer()
@@ -354,7 +366,11 @@ void RocketsPlugin::_setupWebsocket()
         return responses;
     });
     _httpServer->handleText(std::bind(&RocketsPlugin::_processWebsocketMessage,
-                                      this, std::placeholders::_1));
+                                      this, std::placeholders::_1,
+                                      std::placeholders::_2));
+    _httpServer->handleBinary(
+        std::bind(&RocketsPlugin::_processWebsocketBinaryMessage, this,
+                  std::placeholders::_1, std::placeholders::_2));
 }
 
 std::string RocketsPlugin::_getHttpInterface() const

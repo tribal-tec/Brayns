@@ -75,7 +75,10 @@ private:
     void _remove(const std::string& endpoint);
 
     void _broadcastWebsocketMessages();
-    rockets::ws::Response _processWebsocketMessage(const std::string& message);
+    rockets::ws::Response _processWebsocketMessage(const std::string& message,
+                                                   bool lastFragment);
+    rockets::ws::Response _processWebsocketBinaryMessage(
+        const std::string& message, bool lastFragment);
     void _handleWebsocketEvent(const std::string& endpoint,
                                servus::Serializable& obj);
 

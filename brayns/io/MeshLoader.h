@@ -54,7 +54,7 @@ public:
      */
     bool importMeshFromFile(const std::string& filename, Scene& scene,
                             const Matrix4f& transformation,
-                            const size_t defaultMaterial);
+                            const size_t defaultMaterial, bool blob = false);
 
     /** Exports meshes to a given file
      *

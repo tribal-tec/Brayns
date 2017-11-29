@@ -438,6 +438,13 @@ private:
             loadingProgress += tic;
         }
 
+        if (!geometryParameters.getDataBlob().empty())
+        {
+            _loadMeshFile(geometryParameters.getDataBlob(), true);
+            loadingProgress += tic;
+            geometryParameters.clearDataBlob();
+        }
+
 #if (BRAYNS_USE_BRION)
         if (!geometryParameters.getSceneFile().empty())
             _loadSceneFile(geometryParameters.getSceneFile(), updateProgress);
@@ -584,21 +591,19 @@ private:
     /**
         Loads data from mesh file (command line parameter --mesh-file)
     */
-    void _loadMeshFile(const std::string& filename)
+    void _loadMeshFile(const std::string& filename, const bool blob = false)
     {
         const auto& geometryParameters =
             _parametersManager.getGeometryParameters();
         auto& scene = _engine->getScene();
 
-        strings filters = {".obj", ".dae", ".fbx", ".ply", ".lwo",
-                           ".stl", ".3ds", ".ase", ".ifc", ".off"};
         size_t material =
             geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
                 ? NB_SYSTEM_MATERIALS
                 : NO_MATERIAL;
 
         if (!_meshLoader.importMeshFromFile(filename, scene, Matrix4f(),
-                                            material))
+                                            material, blob))
             BRAYNS_ERROR << "Failed to import " << filename << std::endl;
     }
 

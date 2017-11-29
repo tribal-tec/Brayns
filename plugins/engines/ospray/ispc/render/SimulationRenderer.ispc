@@ -595,7 +595,7 @@ export void SimulationRenderer_set(
     uniform vec3f* uniform emissionIntensitiesMap,
     const uniform int32 colorMapSize, const uniform float& colorMapMinValue,
     const uniform float& colorMapRange, const uniform float& threshold,
-    const uniform float& detectionDistance)
+    const uniform float& detectionDistance, const uniform int32& selection)
 {
     uniform SimulationRenderer* uniform self =
         (uniform SimulationRenderer * uniform)_self;
@@ -641,4 +641,5 @@ export void SimulationRenderer_set(
 
     self->threshold = threshold;
     self->detectionDistance = detectionDistance;
+    self->abstract.selection = selection;
 }

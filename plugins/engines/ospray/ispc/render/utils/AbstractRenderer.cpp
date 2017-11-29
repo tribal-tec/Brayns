@@ -61,6 +61,7 @@ void AbstractRenderer::commit()
     _timestamp = getParam1f("timestamp", 0.f);
     _spp = getParam1i("spp", 1);
     _electronShadingEnabled = bool(getParam1i("electronShading", 0));
+    _selection = getParam1i("selection", -1);
 
     // Those materials are used for simulation mapping only
     _materialData = (ospray::Data*)getParamData("materials");

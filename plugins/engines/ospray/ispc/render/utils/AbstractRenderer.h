@@ -69,6 +69,7 @@ protected:
     int _randomNumber;
     float _timestamp;
     int _spp;
+    ospray::int32 _selection;
 };
 }
 

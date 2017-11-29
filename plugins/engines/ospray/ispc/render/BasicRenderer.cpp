@@ -38,7 +38,7 @@ void BasicRenderer::commit()
     AbstractRenderer::commit();
     ispc::BasicRenderer_set(getIE(), (ispc::vec3f&)_bgColor, _timestamp, _spp,
                             _lightPtr, _lightArray.size(), _materialPtr,
-                            _materialArray.size());
+                            _materialArray.size(), _selection);
 }
 
 BasicRenderer::BasicRenderer()

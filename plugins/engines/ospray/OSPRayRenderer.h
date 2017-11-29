@@ -42,12 +42,15 @@ public:
 
     void setCamera(CameraPtr camera) final;
 
+    PickResult pick(const Vector2f& pickPos) final;
+
     const std::string& getName() const { return _name; }
     OSPRenderer impl() const { return _renderer; }
 private:
     std::string _name;
     OSPRayCamera* _camera;
     OSPRenderer _renderer;
+    OSPModel _selectionModel{nullptr};
     float _prevVariance{std::numeric_limits<float>::infinity()};
 };
 }

@@ -70,6 +70,8 @@ struct AbstractRenderer
     uint32 colorMapSize;
     float colorMapMinValue;
     float colorMapRange;
+
+    int selection;
 };
 
 /**

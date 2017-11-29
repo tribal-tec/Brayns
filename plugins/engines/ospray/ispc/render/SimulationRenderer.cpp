@@ -74,7 +74,7 @@ void SimulationRenderer::commit()
             ? (ispc::vec3f*)_transferFunctionEmissionData->data
             : NULL,
         _transferFunctionSize, _transferFunctionMinValue,
-        _transferFunctionRange, _threshold, _detectionDistance);
+        _transferFunctionRange, _threshold, _detectionDistance, _selection);
 }
 
 SimulationRenderer::SimulationRenderer()

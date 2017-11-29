@@ -73,7 +73,10 @@ inline vec3f BasicRenderer_shadeRay(const uniform BasicRenderer* uniform self,
     // Head-light shading
     const vec3f intersection = dg.P + self->abstract.super.epsilon * dg.Ns;
     const vec3f headLight = normalize(ray.org - intersection);
-    color = Kd * max(0.f, dot(headLight, dg.Ns));
+    if (ray.geomID == self->abstract.selection)
+        color = make_vec3f(1, 0, 0);
+    else
+        color = Kd * max(0.f, dot(headLight, dg.Ns));
     sample.alpha = 1.f;
 
     // Z-Depth
@@ -106,7 +109,8 @@ export void BasicRenderer_set(void* uniform _self, const uniform vec3f& bgColor,
                               const uniform float& timestamp,
                               const uniform int& spp, void** uniform lights,
                               uniform int32 numLights, void** uniform materials,
-                              uniform int32 numMaterials)
+                              uniform int32 numMaterials,
+                              uniform int32 selection)
 {
     uniform BasicRenderer* uniform self =
         (uniform BasicRenderer * uniform)_self;
@@ -121,4 +125,5 @@ export void BasicRenderer_set(void* uniform _self, const uniform vec3f& bgColor,
     self->abstract.materials =
         (const uniform ExtendedOBJMaterial* uniform* uniform)materials;
     self->abstract.numMaterials = numMaterials;
+    self->abstract.selection = selection;
 }

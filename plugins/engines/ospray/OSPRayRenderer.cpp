@@ -130,42 +130,43 @@ Renderer::PickResult OSPRayRenderer::pick(const Vector2f& pickPos)
     result.pos.y() = ospResult.position.y;
     result.pos.z() = ospResult.position.z;
 
-    bool select = false;
-    if (select)
-        ospSet1i(_renderer, "selection", result.hit ? ospResult.geomID : -1);
-    else
-    {
-        const auto animationFrame = _scene->getParametersManager()
-                                        .getSceneParameters()
-                                        .getAnimationFrame();
-        OSPRayScene* osprayScene = static_cast<OSPRayScene*>(_scene.get());
-        auto model = osprayScene->modelImpl(animationFrame);
-        if (result.hit)
-        {
-            if (!_selectionModel)
-            {
-                _selectionModel = ospNewModel();
-                ospCommit(_selectionModel);
-                ospAddGeometry(_selectionModel,
-                               ospGetGeometry(model, ospResult.geomID));
-                ospCommit(_selectionModel);
-                ospSetObject(_renderer, "world", _selectionModel);
-            }
-        }
-        else
-        {
-            if (_selectionModel)
-            {
-                ospSetObject(_renderer, "world", model);
-                ospCommit(_renderer);
-                // ospRemoveGeometry(_selectionModel,
-                // ospGetGeometry(_selectionModel, 0));
-                ospCommit(_selectionModel);
-                ospRelease(_selectionModel);
-                _selectionModel = nullptr;
-            }
-        }
-    }
+    //    bool select = false;
+    //    if (select)
+    ospSet1i(_renderer, "selection", result.hit ? ospResult.geomID : -1);
+    //    else
+    //    {
+    //        const auto animationFrame = _scene->getParametersManager()
+    //                                        .getSceneParameters()
+    //                                        .getAnimationFrame();
+    //        OSPRayScene* osprayScene =
+    //        static_cast<OSPRayScene*>(_scene.get());
+    //        auto model = osprayScene->modelImpl(animationFrame);
+    //        if (result.hit)
+    //        {
+    //            if (!_selectionModel)
+    //            {
+    //                _selectionModel = ospNewModel();
+    //                ospCommit(_selectionModel);
+    //                ospAddGeometry(_selectionModel,
+    //                               ospGetGeometry(model, ospResult.geomID));
+    //                ospCommit(_selectionModel);
+    //                ospSetObject(_renderer, "world", _selectionModel);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            if (_selectionModel)
+    //            {
+    //                ospSetObject(_renderer, "world", model);
+    //                ospCommit(_renderer);
+    //                // ospRemoveGeometry(_selectionModel,
+    //                // ospGetGeometry(_selectionModel, 0));
+    //                ospCommit(_selectionModel);
+    //                ospRelease(_selectionModel);
+    //                _selectionModel = nullptr;
+    //            }
+    //        }
+    //    }
     ospCommit(_renderer);
 
     // hack to redraw

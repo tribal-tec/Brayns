@@ -5,6 +5,7 @@ if(BRAYNS_NETWORKING_ENABLED)
   git_subproject(Lexis https://github.com/HBPVis/Lexis.git f84436c)
   git_subproject(Rockets https://github.com/BlueBrain/Rockets.git e93e1e4)
   git_subproject(ZeroBuf https://github.com/HBPVIS/ZeroBuf.git 96e793d)
+  git_subproject(StaticJSON https://github.com/netheril96/StaticJSON.git e3d415dd51ee63d4a2413e7dd0fe42bbedd7c33c)
 endif()
 
 # Streaming to display walls

@@ -39,6 +39,20 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
+#include <staticjson/staticjson.hpp>
+
+namespace std
+{
+template <class T, std::size_t N>
+ostream& operator<<(ostream& o, const array<T, N>& arr)
+{
+    copy(arr.cbegin(), arr.cend(), ostream_iterator<T>(o, " "));
+    return o;
+}
+}
+
 namespace
 {
 const std::string ENDPOINT_API_VERSION = "v1/";
@@ -62,6 +76,7 @@ const std::string ENDPOINT_VIEWPORT = "viewport";
 const std::string ENDPOINT_CIRCUIT_CONFIG_BUILDER = "circuit-config-builder";
 const std::string ENDPOINT_STREAM = "stream";
 const std::string ENDPOINT_STREAM_TO = "stream-to";
+const std::string ENDPOINT_INSPECT = "inspect";
 
 const std::string JSON_TYPE = "application/json";
 
@@ -75,6 +90,43 @@ std::string _buildJsonMessage(const std::string& event, const std::string data,
     message["event"] = event;
     message[error ? "error" : "data"] = json::parse(data);
     return message.dump(4 /*indent*/);
+}
+
+template <class T>
+std::string getSchema(T& obj, const std::string& title)
+{
+    rapidjson::StringBuffer buffer;
+    buffer.Clear();
+
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    auto schema = staticjson::export_json_schema(&obj);
+    schema.AddMember(rapidjson::StringRef("title"),
+                     rapidjson::StringRef(title.c_str()),
+                     schema.GetAllocator());
+    schema.Accept(writer);
+
+    return strdup(buffer.GetString());
+}
+
+std::string hyphenatedToCamelCase(const std::string& scoreString)
+{
+    std::string camelString = scoreString;
+
+    for (size_t x = 0; x < camelString.length(); x++)
+    {
+        if (camelString[x] == '_')
+        {
+            std::string tempString = camelString.substr(x + 1, 1);
+
+            transform(tempString.begin(), tempString.end(), tempString.begin(),
+                      toupper);
+
+            camelString.erase(x, 2);
+            camelString.insert(x, tempString);
+        }
+    }
+    camelString[0] = toupper(camelString[0]);
+    return camelString;
 }
 }
 
@@ -324,6 +376,34 @@ void RocketsPlugin::_setupHTTPServer()
 
     _handleGET(ENDPOINT_PROGRESS, _remoteProgress);
     _remoteProgress.registerSerializeCallback([this] { _requestProgress(); });
+
+    //_handleGET2(ENDPOINT_INSPECT, _inspect);
+    {
+        _wsIncoming[ENDPOINT_INSPECT] = [&](const std::string& data) {
+            std::array<float, 2> pos;
+            std::cout << "Incoming " << data << std::endl;
+            const auto success =
+                staticjson::from_json_string(data.c_str(), &pos, nullptr);
+            std::cout << "Parsed " << pos << std::endl;
+
+            if (!success || !_engine->isReady())
+                return false;
+
+            auto result = _engine->getRenderer().pick({pos[0], pos[1]});
+            if (!result.hit)
+                return true;
+
+            std::array<float, 3>* resultPos =
+                reinterpret_cast<std::array<float, 3>*>(&result.pos.array[0]);
+
+            //            std::cout << "Response " << *resultPos << std::endl;
+            _httpServer->broadcastText(_buildJsonMessage(
+                "inspect-result",
+                staticjson::to_pretty_json_string(*resultPos)));
+            //            std::cout << "Response send" << std::endl;
+            return true;
+        };
+    }
 }
 
 void RocketsPlugin::_setupWebsocket()
@@ -409,6 +489,78 @@ void RocketsPlugin::_remove(const std::string& endpoint)
 {
     _httpServer->remove(ENDPOINT_API_VERSION + endpoint);
     _httpServer->remove(ENDPOINT_API_VERSION + endpoint + "/schema");
+}
+
+template <class T>
+void RocketsPlugin::_handle2(const std::string& endpoint, T& obj)
+{
+    _handleGET2(endpoint, obj);
+    _handlePUT2(endpoint, obj);
+}
+
+template <class T>
+void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj)
+{
+    using namespace rockets::http;
+
+    _httpServer->handle(
+        Method::GET, ENDPOINT_API_VERSION + endpoint, [&obj](const Request&) {
+            return make_ready_response(Code::OK,
+                                       staticjson::to_pretty_json_string(obj),
+                                       JSON_TYPE);
+        });
+
+    _handleSchema2(endpoint, obj);
+
+    _wsOutgoing[endpoint] = [&obj, endpoint] {
+        return _buildJsonMessage(endpoint,
+                                 staticjson::to_pretty_json_string(obj));
+    };
+}
+
+template <class T>
+void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj)
+{
+    using namespace rockets::http;
+    _httpServer->handle(Method::PUT, ENDPOINT_API_VERSION + endpoint,
+                        [&obj](const Request& req) {
+                            staticjson::ParseStatus status;
+                            const auto success =
+                                staticjson::from_json_string(req.body.c_str(),
+                                                             &obj, &status);
+                            std::cout << status.description() << std::endl;
+                            if (success)
+                                obj.markModified();
+                            return make_ready_response(
+                                success ? Code::OK : Code::BAD_REQUEST);
+                        });
+
+    _handleSchema2(endpoint, obj);
+
+    //_handleWebsocketEvent(endpoint, obj);
+
+    _wsIncoming[endpoint] = [&obj](const std::string& data) {
+        const auto success =
+            staticjson::from_json_string(data.c_str(), &obj, nullptr);
+        if (success)
+            obj.markModified();
+        //        std::cout << "recv " << data << std::endl;
+        return success;
+    };
+}
+
+template <class T>
+void RocketsPlugin::_handleSchema2(const std::string& endpoint, T& obj)
+{
+    using namespace rockets::http;
+    _httpServer->handle(Method::GET,
+                        ENDPOINT_API_VERSION + endpoint + "/schema",
+                        [&obj, endpoint](const Request&) {
+                            return make_ready_response(
+                                Code::OK,
+                                getSchema(obj, hyphenatedToCamelCase(endpoint)),
+                                JSON_TYPE);
+                        });
 }
 
 void RocketsPlugin::_handleWebsocketEvent(const std::string& endpoint,

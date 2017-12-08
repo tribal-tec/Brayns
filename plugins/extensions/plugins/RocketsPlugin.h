@@ -74,6 +74,15 @@ private:
                        const servus::Serializable& obj);
     void _remove(const std::string& endpoint);
 
+    template <class T>
+    void _handle2(const std::string& endpoint, T& obj);
+    template <class T>
+    void _handleGET2(const std::string& endpoint, T& obj);
+    template <class T>
+    void _handlePUT2(const std::string& endpoint, T& obj);
+    template <class T>
+    void _handleSchema2(const std::string& endpoint, T& obj);
+
     void _broadcastWebsocketMessages();
     rockets::ws::Response _processWebsocketMessage(const std::string& message);
     void _handleWebsocketEvent(const std::string& endpoint,

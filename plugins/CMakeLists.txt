@@ -38,6 +38,7 @@ if(BRAYNS_NETWORKING_ENABLED)
   list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS extensions/plugins/RocketsPlugin.h)
   list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Lexis Rockets
     BraynsZeroBufRender ${LibJpegTurbo_LIBRARIES})
+  list(APPEND BRAYNSPLUGINS_SOURCES ${COMMON_SOURCE_DIR}/StaticJSON/src/staticjson.cpp)
 endif()
 
 if(BRAYNS_OSPRAY_ENABLED)
@@ -57,3 +58,7 @@ if(BRAYNS_LIVRE_ENABLED)
 endif()
 
 common_library(braynsPlugins)
+
+if(BRAYNS_NETWORKING_ENABLED)
+  target_include_directories(braynsPlugins SYSTEM PUBLIC ${COMMON_SOURCE_DIR}/StaticJSON/include)
+endif()

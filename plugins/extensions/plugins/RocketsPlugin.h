@@ -90,6 +90,7 @@ private:
 
     void _handleVersion();
     void _handleStreaming();
+    void _handleInspect();
 
     void _resetCameraUpdated();
     bool _requestScene();

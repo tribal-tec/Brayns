@@ -296,6 +296,7 @@ void RocketsPlugin::_setupHTTPServer()
 
     _handleVersion();
     _handleStreaming();
+    _handleInspect();
 
     _handleGET(ENDPOINT_IMAGE_JPEG, _remoteImageJPEG);
     _remoteImageJPEG.registerSerializeCallback([this] { _requestImageJPEG(); });
@@ -366,31 +367,6 @@ void RocketsPlugin::_setupHTTPServer()
 
     _handleGET(ENDPOINT_PROGRESS, _remoteProgress);
     _remoteProgress.registerSerializeCallback([this] { _requestProgress(); });
-
-    //_handleGET2(ENDPOINT_INSPECT, _inspect);
-    {
-        _wsIncoming[ENDPOINT_INSPECT] = [&](const std::string& data) {
-            std::array<float, 2> pos;
-            const auto success =
-                staticjson::from_json_string(data.c_str(), &pos, nullptr);
-
-            if (!success || !_engine->isReady())
-                return false;
-
-            auto result = _engine->getRenderer().pick({pos[0], pos[1]});
-            if (result.hit)
-            {
-                std::array<float, 3>* resultPos =
-                    reinterpret_cast<std::array<float, 3>*>(
-                        &result.pos.array[0]);
-
-                _httpServer->broadcastText(_buildJsonMessage(
-                    "inspect-result",
-                    staticjson::to_pretty_json_string(*resultPos)));
-            }
-            return true;
-        };
-    }
 }
 
 void RocketsPlugin::_setupWebsocket()
@@ -589,6 +565,63 @@ void RocketsPlugin::_handleStreaming()
     _httpServer->handle(Method::PUT, ENDPOINT_STREAM, respondNotImplemented);
     _httpServer->handle(Method::PUT, ENDPOINT_STREAM_TO, respondNotImplemented);
 #endif
+}
+
+void RocketsPlugin::_handleInspect()
+{
+    using namespace rockets::http;
+
+    _wsIncoming[ENDPOINT_INSPECT] = [&](const std::string& data) {
+        std::array<float, 2> pos;
+        const auto success =
+            staticjson::from_json_string(data.c_str(), &pos, nullptr);
+
+        if (!success || !_engine->isReady())
+            return false;
+
+        auto result = _engine->getRenderer().pick({pos[0], pos[1]});
+        if (result.hit)
+        {
+            std::array<float, 3>* resultPos =
+                reinterpret_cast<std::array<float, 3>*>(&result.pos.array[0]);
+
+            _httpServer->broadcastText(_buildJsonMessage(
+                "inspect-result",
+                staticjson::to_pretty_json_string(*resultPos)));
+        }
+        return true;
+    };
+
+    _httpServer->handle(
+        Method::GET, ENDPOINT_API_VERSION + ENDPOINT_INSPECT,
+        [&](const Request& request) {
+            if (request.body.empty() && request.query.empty())
+                return make_ready_response(Code::NOT_ACCEPTABLE);
+
+            std::array<float, 2> pos;
+            const auto success = staticjson::from_json_string(
+                request.body.empty() ? request.query.begin()->first.c_str()
+                                     : request.body.c_str(),
+                &pos, nullptr);
+
+            if (!success || !_engine->isReady())
+                return make_ready_response(Code::BAD_REQUEST);
+
+            auto result = _engine->getRenderer().pick({pos[0], pos[1]});
+            if (!result.hit)
+                return make_ready_response(Code::OK);
+
+            std::array<float, 3>* resultPos =
+                reinterpret_cast<std::array<float, 3>*>(&result.pos.array[0]);
+
+            return make_ready_response(Code::OK,
+                                       staticjson::to_pretty_json_string(
+                                           *resultPos),
+                                       JSON_TYPE);
+        });
+
+    std::array<float, 2> obj;
+    _handleSchema2(ENDPOINT_INSPECT, obj);
 }
 
 void RocketsPlugin::_resetCameraUpdated()

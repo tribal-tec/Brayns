@@ -43,16 +43,6 @@ using json = nlohmann::json;
 #include <rapidjson/stringbuffer.h>
 #include <staticjson/staticjson.hpp>
 
-namespace std
-{
-template <class T, std::size_t N>
-ostream& operator<<(ostream& o, const array<T, N>& arr)
-{
-    copy(arr.cbegin(), arr.cend(), ostream_iterator<T>(o, " "));
-    return o;
-}
-}
-
 namespace
 {
 const std::string ENDPOINT_API_VERSION = "v1/";
@@ -381,26 +371,23 @@ void RocketsPlugin::_setupHTTPServer()
     {
         _wsIncoming[ENDPOINT_INSPECT] = [&](const std::string& data) {
             std::array<float, 2> pos;
-            std::cout << "Incoming " << data << std::endl;
             const auto success =
                 staticjson::from_json_string(data.c_str(), &pos, nullptr);
-            std::cout << "Parsed " << pos << std::endl;
 
             if (!success || !_engine->isReady())
                 return false;
 
             auto result = _engine->getRenderer().pick({pos[0], pos[1]});
-            if (!result.hit)
-                return true;
+            if (result.hit)
+            {
+                std::array<float, 3>* resultPos =
+                    reinterpret_cast<std::array<float, 3>*>(
+                        &result.pos.array[0]);
 
-            std::array<float, 3>* resultPos =
-                reinterpret_cast<std::array<float, 3>*>(&result.pos.array[0]);
-
-            //            std::cout << "Response " << *resultPos << std::endl;
-            _httpServer->broadcastText(_buildJsonMessage(
-                "inspect-result",
-                staticjson::to_pretty_json_string(*resultPos)));
-            //            std::cout << "Response send" << std::endl;
+                _httpServer->broadcastText(_buildJsonMessage(
+                    "inspect-result",
+                    staticjson::to_pretty_json_string(*resultPos)));
+            }
             return true;
         };
     }
@@ -544,7 +531,6 @@ void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj)
             staticjson::from_json_string(data.c_str(), &obj, nullptr);
         if (success)
             obj.markModified();
-        //        std::cout << "recv " << data << std::endl;
         return success;
     };
 }

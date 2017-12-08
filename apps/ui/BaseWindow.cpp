@@ -155,15 +155,16 @@ void BaseWindow::mouseButton(const int button, const bool released,
 
     if (_currModifiers & GLUT_ACTIVE_SHIFT && released)
     {
-        auto result = _brayns.getEngine().getRenderer().pick(
+        /*auto result = */ _brayns.getEngine().getRenderer().pick(
             {pos.x() / float(_windowSize.x()),
              1.f - pos.y() / float(_windowSize.y())});
         _brayns.getEngine().getFrameBuffer().clear();
-        if (result.hit)
-        {
-            std::cout << result.pos << std::endl;
-            //_brayns.getEngine().getCamera().setTarget(result.pos);
-        }
+        /*
+                if (result.hit)
+                {
+                    _brayns.getEngine().getCamera().setTarget(result.pos);
+                }
+        */
     }
 
     if (button == GLUT_WHEEL_SCROLL_UP || button == GLUT_WHEEL_SCROLL_DOWN)

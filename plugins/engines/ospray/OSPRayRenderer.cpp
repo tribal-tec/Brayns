@@ -169,11 +169,6 @@ Renderer::PickResult OSPRayRenderer::pick(const Vector2f& pickPos)
     //    }
     ospCommit(_renderer);
 
-    // hack to redraw
-    // RenderingParameters& rp = _parametersManager.getRenderingParameters();
-    // rp.setDetectionOnDifferentMaterial(!rp.getDetectionDistance());
-    // rp.setDetectionOnDifferentMaterial(!rp.getDetectionDistance());
-    //    _engine->getFrameBuffer().clear();
     return result;
 }
 }

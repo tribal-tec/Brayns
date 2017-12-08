@@ -70,14 +70,15 @@ inline vec3f BasicRenderer_shadeRay(const uniform BasicRenderer* uniform self,
     else
         foreach_unique(mat in objMaterial) Kd = mat->Kd * make_vec3f(dg.color);
 
-    // Head-light shading
-    const vec3f intersection = dg.P + self->abstract.super.epsilon * dg.Ns;
-    const vec3f headLight = normalize(ray.org - intersection);
     if (ray.geomID == self->abstract.selection)
         color = make_vec3f(1, 0, 0);
     else
+    {
+        // Head-light shading
+        const vec3f intersection = dg.P + self->abstract.super.epsilon * dg.Ns;
+        const vec3f headLight = normalize(ray.org - intersection);
         color = Kd * max(0.f, dot(headLight, dg.Ns));
-    sample.alpha = 1.f;
+    }
 
     // Z-Depth
     sample.z = min(RAY_INFINITY, ray.t);

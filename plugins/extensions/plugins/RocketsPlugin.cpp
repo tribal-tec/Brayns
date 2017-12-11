@@ -36,8 +36,9 @@
 
 #include <fstream>
 
-#include "json.hpp"
-using json = nlohmann::json;
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+using namespace rapidjson;
 
 namespace
 {
@@ -71,10 +72,30 @@ const size_t NB_MAX_MESSAGES = 20; // Maximum number of network messages to read
 std::string _buildJsonMessage(const std::string& event, const std::string data,
                               const bool error = false)
 {
-    json message;
-    message["event"] = event;
-    message[error ? "error" : "data"] = json::parse(data);
-    return message.dump(4 /*indent*/);
+    Document message(kObjectType);
+
+    {
+        Value eventJson;
+        eventJson.SetString(event.c_str(), event.length(),
+                            message.GetAllocator());
+        message.AddMember("event", eventJson, message.GetAllocator());
+    }
+
+    {
+        Document dataJson;
+        dataJson.Parse(data.c_str());
+        if (error)
+            message.AddMember("error", dataJson.GetObject(),
+                              message.GetAllocator());
+        else
+            message.AddMember("data", dataJson.GetObject(),
+                              message.GetAllocator());
+    }
+
+    StringBuffer sb;
+    PrettyWriter<StringBuffer> writer(sb);
+    message.Accept(writer);
+    return sb.GetString();
 }
 }
 
@@ -214,13 +235,17 @@ rockets::ws::Response RocketsPlugin::_processWebsocketMessage(
 {
     try
     {
-        auto jsonData = json::parse(message);
-        const std::string event = jsonData["event"];
+        Document jsonData;
+        jsonData.Parse(message.c_str());
+        const std::string event = jsonData["event"].GetString();
         auto i = _wsIncoming.find(event);
         if (i == _wsIncoming.end())
             return _buildJsonMessage(event, "Unknown websocket event", true);
 
-        if (!i->second(jsonData["data"].dump()))
+        StringBuffer sb;
+        PrettyWriter<StringBuffer> writer(sb);
+        jsonData["data"].Accept(writer);
+        if (!i->second(sb.GetString()))
             return _buildJsonMessage(event, "Could not update object", true);
 
         // re-broadcast to all other clients

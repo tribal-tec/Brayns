@@ -23,6 +23,7 @@
 #define CAMERA_H
 
 #include <brayns/api.h>
+#include <brayns/common/BaseObject.h>
 #include <brayns/common/types.h>
 
 namespace staticjson
@@ -39,7 +40,7 @@ namespace brayns
    This object in an abstract interface to a camera which is defined by a
    position, target and up vector
 */
-class Camera
+class Camera : public BaseObject
 {
 public:
     /**
@@ -202,13 +203,6 @@ public:
     /** Resets the camera to its initial values */
     BRAYNS_API void reset();
 
-    /**
-       @return true if any modification happend after the last resetModified()
-    */
-    bool getModified() const { return _modified; }
-    /** Reset the modified flag */
-    void resetModified() { _modified = false; }
-    void markModified() { _modified = true; }
     /** Enable/disables environment mapping */
     BRAYNS_API virtual void setEnvironmentMap(const bool environmentMap) = 0;
 
@@ -225,16 +219,6 @@ public:
     */
     const ClipPlanes& getClipPlanes() const { return _clipPlanes; }
 private:
-    template <typename T>
-    void _updateValue(T& member, const T& newValue)
-    {
-        if (member != newValue)
-        {
-            member = newValue;
-            _modified = true;
-        }
-    }
-
     CameraType _type{CameraType::perspective};
     Vector3f _position;
     Vector3f _target;
@@ -256,8 +240,6 @@ private:
 
     /*! rotation matrice along x and y axis */
     Matrix4f _matrix;
-
-    bool _modified{false};
 
     friend void staticjson::init(Camera*, staticjson::ObjectHandler*);
 };

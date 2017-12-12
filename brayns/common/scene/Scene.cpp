@@ -60,16 +60,6 @@ void Scene::reset()
     _renderers.clear();
 }
 
-bool Scene::getModified() const
-{
-    return _modified;
-}
-
-void Scene::resetModified()
-{
-    _modified = false;
-}
-
 void Scene::unload()
 {
     _markGeometryDirty();
@@ -91,7 +81,7 @@ void Scene::_markGeometryDirty()
     _cylindersDirty = true;
     _conesDirty = true;
     _trianglesMeshesDirty = true;
-    _modified = true;
+    markModified();
 }
 
 void Scene::resetMaterials()

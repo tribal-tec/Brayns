@@ -78,7 +78,7 @@ public:
     }
     void setAmbientOcclusionDistance(const float value)
     {
-        updateValue(_ambientOcclusionDistance, value);
+        _updateValue(_ambientOcclusionDistance, value);
     }
 
     /** Shading applied to the geometry

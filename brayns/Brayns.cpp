@@ -323,7 +323,7 @@ private:
 #ifdef BRAYNS_USE_LUNCHBOX
             if (isAsyncMode())
             {
-                _engine->resetModified();
+                _engine->getProgress().resetModified();
                 return false;
             }
 #endif
@@ -372,7 +372,7 @@ private:
         _parametersManager.resetModified();
         camera.resetModified();
         scene.resetModified();
-        _engine->resetModified();
+        _engine->getProgress().resetModified();
 
         return true;
     }

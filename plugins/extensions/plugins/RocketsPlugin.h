@@ -27,7 +27,6 @@
 #include <rockets/server.h>
 #include <turbojpeg.h>
 
-#include <lexis/data/Progress.h>
 #include <lexis/render/ClipPlanes.h>
 #include <lexis/render/Histogram.h>
 #include <lexis/render/frame.h>
@@ -125,8 +124,6 @@ private:
 
     void _forceRenderingUpdated();
 
-    bool _requestProgress();
-
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
 
@@ -196,7 +193,6 @@ private:
     ::lexis::render::Histogram _remoteVolumeHistogram;
     ::lexis::render::MaterialLUT _remoteMaterialLUT;
     ::lexis::render::Stream _streamParams;
-    ::lexis::data::Progress _remoteProgress{0};
 
     ::brayns::v1::DataSource _remoteDataSource;
     ::brayns::v1::Settings _remoteSettings;

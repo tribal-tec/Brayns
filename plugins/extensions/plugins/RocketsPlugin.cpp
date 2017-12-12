@@ -76,23 +76,17 @@ std::string _buildJsonMessage(const std::string& event, const std::string data,
 {
     rapidjson::Document message(rapidjson::kObjectType);
 
-    {
-        rapidjson::Value eventJson;
-        eventJson.SetString(event.c_str(), event.length(),
-                            message.GetAllocator());
-        message.AddMember("event", eventJson, message.GetAllocator());
-    }
+    rapidjson::Value eventJson;
+    eventJson.SetString(event.c_str(), event.length(), message.GetAllocator());
+    message.AddMember("event", eventJson, message.GetAllocator());
 
-    {
-        rapidjson::Document dataJson(rapidjson::kObjectType);
-        dataJson.Parse(data.c_str());
-        if (error)
-            message.AddMember("error", dataJson.GetObject(),
-                              message.GetAllocator());
-        else
-            message.AddMember("data", dataJson.GetObject(),
-                              message.GetAllocator());
-    }
+    rapidjson::Document dataJson(rapidjson::kObjectType);
+    dataJson.Parse(data.c_str(), data.length());
+    if (error)
+        message.AddMember("error", dataJson.GetObject(),
+                          message.GetAllocator());
+    else
+        message.AddMember("data", dataJson.GetObject(), message.GetAllocator());
 
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(sb);
@@ -177,7 +171,10 @@ RocketsPlugin::~RocketsPlugin()
 void RocketsPlugin::_onNewEngine()
 {
     if (_httpServer)
+    {
         _handle2(ENDPOINT_CAMERA, _engine->getCamera());
+        _handleGET2(ENDPOINT_PROGRESS, _engine->getProgress());
+    }
 
     _engine->extensionInit(*this);
     _dirtyEngine = false;
@@ -186,7 +183,10 @@ void RocketsPlugin::_onNewEngine()
 void RocketsPlugin::_onChangeEngine()
 {
     if (_httpServer)
+    {
         _remove(ENDPOINT_CAMERA);
+        _remove(ENDPOINT_PROGRESS);
+    }
 
     try
     {
@@ -247,7 +247,7 @@ void RocketsPlugin::_broadcastWebsocketMessages()
     if (_engine->isReady() && _engine->getCamera().getModified())
         _httpServer->broadcastText(_wsOutgoing[ENDPOINT_CAMERA]());
 
-    if (_engine->getModified())
+    if (_engine->getProgress().getModified())
         _httpServer->broadcastText(_wsOutgoing[ENDPOINT_PROGRESS]());
 
     if (_engine->isReady() && _engine->getRenderer().hasNewImage())
@@ -382,18 +382,10 @@ void RocketsPlugin::_setupHTTPServer()
     _handle(ENDPOINT_FORCE_RENDERING, _remoteForceRendering);
     _remoteForceRendering.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_forceRenderingUpdated, this));
-
-    _handleGET(ENDPOINT_PROGRESS, _remoteProgress);
-    _remoteProgress.registerSerializeCallback([this] { _requestProgress(); });
 }
 
 void RocketsPlugin::_setupWebsocket()
 {
-    _wsOutgoing[ENDPOINT_PROGRESS] = [this] {
-        _requestProgress();
-        return _buildJsonMessage(ENDPOINT_PROGRESS, _remoteProgress.toJSON());
-    };
-
     _httpServer->handleOpen([this]() {
         std::vector<rockets::ws::Response> responses;
         for (auto& i : _wsOutgoing)
@@ -1536,13 +1528,6 @@ bool RocketsPlugin::_requestStreamParams()
 void RocketsPlugin::_forceRenderingUpdated()
 {
     _forceRendering = true;
-}
-
-bool RocketsPlugin::_requestProgress()
-{
-    _remoteProgress.setAmount(_engine->getLastProgress());
-    _remoteProgress.setOperation(_engine->getLastOperation());
-    return true;
 }
 
 std::future<rockets::http::Response> RocketsPlugin::_handleCircuitConfigBuilder(

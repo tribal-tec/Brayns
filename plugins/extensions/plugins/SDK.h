@@ -21,6 +21,7 @@
 #pragma once
 
 #include <brayns/common/camera/Camera.h>
+#include <brayns/common/engine/Engine.h>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -57,6 +58,13 @@ void init(brayns::Camera* c, ObjectHandler* h)
     h->add_property("focal_length", &c->_focalLength, Flags::Optional);
     h->add_property("stereo_mode", &c->_stereoMode, Flags::Optional);
     h->add_property("eye_separation", &c->_eyeSeparation, Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::Engine::Progress* p, ObjectHandler* h)
+{
+    h->add_property("amount", &p->amount);
+    h->add_property("operation", &p->operation);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

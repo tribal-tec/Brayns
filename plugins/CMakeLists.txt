@@ -34,9 +34,13 @@ if(BRAYNS_NETWORKING_ENABLED)
   endif()
   list(APPEND CPPCHECK_EXTRA_ARGS
     --suppress=*:${CMAKE_CURRENT_SOURCE_DIR}/extensions/plugins/json.hpp)
+  list(APPEND BRAYNSPLUGINS_HEADERS
+    extensions/plugins/SDK.h
+  )
   list(APPEND BRAYNSPLUGINS_SOURCES
     extensions/plugins/RocketsPlugin.cpp
     extensions/plugins/staticjson/staticjson.cpp
+    extensions/plugins/base64/base64.cpp
   )
   set_source_files_properties(extensions/plugins/staticjson/staticjson.cpp
     PROPERTIES COMPILE_FLAGS -Wno-shadow)

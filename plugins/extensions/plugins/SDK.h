@@ -22,6 +22,9 @@
 
 #include <brayns/common/camera/Camera.h>
 #include <brayns/common/engine/Engine.h>
+#include <brayns/common/renderer/FrameBuffer.h>
+
+#include "base64/base64.h"
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -65,6 +68,29 @@ void init(brayns::Engine::Progress* p, ObjectHandler* h)
 {
     h->add_property("amount", &p->amount);
     h->add_property("operation", &p->operation);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::FrameBuffer* f, ObjectHandler* h)
+{
+    static brayns::Vector2ui frameSize;
+    static std::string diffuse, depth;
+
+    frameSize = f->getSize();
+    diffuse = base64_encode(f->getColorBuffer(),
+                            frameSize.x() * frameSize.y() * f->getColorDepth());
+
+    if (f->getDepthBuffer())
+    {
+        depth =
+            base64_encode(reinterpret_cast<const uint8_t*>(f->getDepthBuffer()),
+                          frameSize.x() * frameSize.y() * sizeof(float));
+    }
+
+    h->add_property("width", &frameSize[0]);
+    h->add_property("height", &frameSize[1]);
+    h->add_property("diffuse", &diffuse);
+    h->add_property("depth", &depth, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

@@ -29,7 +29,6 @@
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/io/simulation/CADiffusionSimulationHandler.h>
-#include <brayns/io/simulation/SpikeSimulationHandler.h>
 #include <brayns/parameters/ParametersManager.h>
 #include <brayns/version.h>
 #include <zerobuf/render/camera.h>
@@ -64,7 +63,6 @@ const std::string ENDPOINT_RESET_CAMERA = "reset-camera";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_SETTINGS = "settings";
 const std::string ENDPOINT_SIMULATION_HISTOGRAM = "simulation-histogram";
-const std::string ENDPOINT_SPIKES = "spikes";
 const std::string ENDPOINT_VOLUME_HISTOGRAM = "volume-histogram";
 const std::string ENDPOINT_VERSION = "version";
 const std::string ENDPOINT_PROGRESS = "progress";
@@ -189,6 +187,7 @@ void RocketsPlugin::_onNewEngine()
     {
         _handle2(ENDPOINT_CAMERA, _engine->getCamera());
         _handleGET2(ENDPOINT_PROGRESS, _engine->getProgress());
+        _handleGET2(ENDPOINT_FRAME_BUFFERS, _engine->getFrameBuffer());
     }
 
     _engine->extensionInit(*this);
@@ -201,6 +200,7 @@ void RocketsPlugin::_onChangeEngine()
     {
         _remove(ENDPOINT_CAMERA);
         _remove(ENDPOINT_PROGRESS);
+        _remove(ENDPOINT_FRAME_BUFFERS);
     }
 
     try
@@ -334,10 +334,6 @@ void RocketsPlugin::_setupHTTPServer()
     _handleGET(ENDPOINT_IMAGE_JPEG, _remoteImageJPEG);
     _remoteImageJPEG.registerSerializeCallback([this] { _requestImageJPEG(); });
 
-    _handleGET(ENDPOINT_FRAME_BUFFERS, _remoteFrameBuffers);
-    _remoteFrameBuffers.registerSerializeCallback(
-        [this] { _requestFrameBuffers(); });
-
     _handlePUT(ENDPOINT_RESET_CAMERA, _remoteResetCamera);
     _remoteResetCamera.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_resetCameraUpdated, this));
@@ -346,11 +342,6 @@ void RocketsPlugin::_setupHTTPServer()
     _remoteScene.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_sceneUpdated, this));
     _remoteScene.registerSerializeCallback([this] { _requestScene(); });
-
-    _handle(ENDPOINT_SPIKES, _remoteSpikes);
-    _remoteSpikes.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_spikesUpdated, this));
-    _remoteSpikes.registerSerializeCallback([this] { _requestSpikes(); });
 
     _handle(ENDPOINT_MATERIAL_LUT, _remoteMaterialLUT);
     _remoteMaterialLUT.registerDeserializedCallback(
@@ -647,28 +638,6 @@ void RocketsPlugin::_sceneUpdated()
     scene.commitMaterials(Action::update);
 }
 
-void RocketsPlugin::_spikesUpdated()
-{
-#if 0
-    AbstractSimulationHandlerPtr simulationHandler =
-        _engine->getScene().getSimulationHandler();
-
-    SpikeSimulationHandler* spikeSimulationHandler =
-        dynamic_cast< SpikeSimulationHandler * >(simulationHandler.get());
-
-    if( spikeSimulationHandler )
-    {
-        uint64_t ts = _remoteSpikes.getTimestamp();
-        float* data = (float*)spikeSimulationHandler->getFrameData( ts );
-        for( const auto& gid: _remoteSpikes.getGidsVector() )
-            data[gid] = ts;
-
-        _engine->getFrameBuffer().clear();
-        _engine->getScene().commitSimulationData();
-    }
-#endif
-}
-
 void RocketsPlugin::_materialLUTUpdated()
 {
     if (!_engine->isReady())
@@ -802,56 +771,6 @@ bool RocketsPlugin::_requestImageJPEG()
         return false;
 
     _remoteImageJPEG.setData(image.data.get(), image.size);
-    return true;
-}
-
-bool RocketsPlugin::_requestFrameBuffers()
-{
-    auto& frameBuffer = _engine->getFrameBuffer();
-    const Vector2i frameSize = frameBuffer.getSize();
-    const float* depthBuffer = frameBuffer.getDepthBuffer();
-
-    _remoteFrameBuffers.setWidth(frameSize.x());
-    _remoteFrameBuffers.setHeight(frameSize.y());
-    if (depthBuffer)
-        _remoteFrameBuffers.setDepth(
-            reinterpret_cast<const uint8_t*>(depthBuffer),
-            frameSize.x() * frameSize.y() * sizeof(float));
-    else
-        _remoteFrameBuffers.setDepth(0, 0);
-
-    const uint8_t* colorBuffer = frameBuffer.getColorBuffer();
-    if (colorBuffer)
-        _remoteFrameBuffers.setDiffuse(colorBuffer,
-                                       frameSize.x() * frameSize.y() *
-                                           frameBuffer.getColorDepth());
-    else
-        _remoteFrameBuffers.setDiffuse(0, 0);
-
-    return true;
-}
-
-bool RocketsPlugin::_requestSpikes()
-{
-#if 0
-    AbstractSimulationHandlerPtr simulationHandler = _engine->getScene().getSimulationHandler();
-
-    SpikeSimulationHandler* spikeSimulationHandler =
-        dynamic_cast< SpikeSimulationHandler * >( simulationHandler.get() );
-
-    std::vector< uint64_t > spikeGids;
-    uint64_t ts = 0.f;
-
-    _remoteSpikes.setTimestamp( ts );
-    if( spikeSimulationHandler )
-    {
-        uint64_t frameSize = spikeSimulationHandler->getFrameSize();
-        uint64_t* gids = (uint64_t*)spikeSimulationHandler->getFrameData( ts );
-        spikeGids.reserve( frameSize );
-        spikeGids.assign( gids, gids + frameSize );
-    }
-    _remoteSpikes.setGids( spikeGids );
-#endif
     return true;
 }
 

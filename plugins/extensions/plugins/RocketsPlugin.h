@@ -35,11 +35,9 @@
 #include <lexis/render/stream.h>
 #include <lexis/render/viewport.h>
 
-#include <zerobuf/render/frameBuffers.h>
 #include <zerobuf/render/parameters.h>
 #include <zerobuf/render/reset.h>
 #include <zerobuf/render/scene.h>
-#include <zerobuf/render/spikes.h>
 
 namespace brayns
 {
@@ -93,12 +91,9 @@ private:
     void _resetCameraUpdated();
     bool _requestScene();
     void _sceneUpdated();
-    void _spikesUpdated();
     void _materialLUTUpdated();
     void _requestMaterialLUT();
     bool _requestImageJPEG();
-    bool _requestFrameBuffers();
-    bool _requestSpikes();
 
     void _initializeDataSource();
     void _dataSourceUpdated();
@@ -196,8 +191,6 @@ private:
 
     ::brayns::v1::DataSource _remoteDataSource;
     ::brayns::v1::Settings _remoteSettings;
-    ::brayns::v1::Spikes _remoteSpikes;
-    ::brayns::v1::FrameBuffers _remoteFrameBuffers;
     ::brayns::v1::Material _remoteMaterial;
     ::brayns::v1::ResetCamera _remoteResetCamera;
     ::brayns::v1::Scene _remoteScene;

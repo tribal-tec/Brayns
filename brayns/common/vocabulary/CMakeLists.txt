@@ -16,11 +16,9 @@ include(zerobufGenerateCxx)
 zerobuf_generate_cxx(
   BRAYNSZEROBUFRENDER
   ${PROJECT_BINARY_DIR}/include/${BRAYNSZEROBUFRENDER_INCLUDE_NAME}
-  frameBuffers.fbs
   parameters.fbs
   reset.fbs
   scene.fbs
-  spikes.fbs
 )
 
 common_library(BraynsZeroBufRender)

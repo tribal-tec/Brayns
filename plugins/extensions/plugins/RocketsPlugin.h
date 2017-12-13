@@ -36,7 +36,6 @@
 #include <lexis/render/viewport.h>
 
 #include <zerobuf/render/parameters.h>
-#include <zerobuf/render/reset.h>
 #include <zerobuf/render/scene.h>
 
 namespace brayns
@@ -88,7 +87,6 @@ private:
     void _handleVersion();
     void _handleStreaming();
 
-    void _resetCameraUpdated();
     bool _requestScene();
     void _sceneUpdated();
     void _materialLUTUpdated();
@@ -192,7 +190,6 @@ private:
     ::brayns::v1::DataSource _remoteDataSource;
     ::brayns::v1::Settings _remoteSettings;
     ::brayns::v1::Material _remoteMaterial;
-    ::brayns::v1::ResetCamera _remoteResetCamera;
     ::brayns::v1::Scene _remoteScene;
     ::brayns::v1::ForceRendering _remoteForceRendering;
     ::brayns::v1::CircuitConfigurationBuilder _remoteCircuitConfigBuilder;

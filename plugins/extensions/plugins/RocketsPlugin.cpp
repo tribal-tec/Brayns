@@ -59,7 +59,6 @@ const std::string ENDPOINT_CAMERA = "camera";
 const std::string ENDPOINT_DATA_SOURCE = "data-source";
 const std::string ENDPOINT_FORCE_RENDERING = "force-rendering";
 const std::string ENDPOINT_FRAME_BUFFERS = "frame-buffers";
-const std::string ENDPOINT_RESET_CAMERA = "reset-camera";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_SETTINGS = "settings";
 const std::string ENDPOINT_SIMULATION_HISTOGRAM = "simulation-histogram";
@@ -334,10 +333,6 @@ void RocketsPlugin::_setupHTTPServer()
     _handleGET(ENDPOINT_IMAGE_JPEG, _remoteImageJPEG);
     _remoteImageJPEG.registerSerializeCallback([this] { _requestImageJPEG(); });
 
-    _handlePUT(ENDPOINT_RESET_CAMERA, _remoteResetCamera);
-    _remoteResetCamera.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_resetCameraUpdated, this));
-
     _handle(ENDPOINT_SCENE, _remoteScene);
     _remoteScene.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_sceneUpdated, this));
@@ -563,14 +558,6 @@ void RocketsPlugin::_handleStreaming()
     _httpServer->handle(Method::PUT, ENDPOINT_STREAM, respondNotImplemented);
     _httpServer->handle(Method::PUT, ENDPOINT_STREAM_TO, respondNotImplemented);
 #endif
-}
-
-void RocketsPlugin::_resetCameraUpdated()
-{
-    auto& sceneParameters = _parametersManager.getSceneParameters();
-    _engine->getCamera().setEnvironmentMap(
-        !sceneParameters.getEnvironmentMap().empty());
-    _engine->getCamera().reset();
 }
 
 bool RocketsPlugin::_requestScene()

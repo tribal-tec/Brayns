@@ -26,6 +26,12 @@
 #include <brayns/common/mathTypes.h>
 #include <brayns/common/types.h>
 
+namespace staticjson
+{
+class ObjectHandler;
+void init(brayns::Material* c, ObjectHandler* h);
+}
+
 namespace brayns
 {
 typedef std::map<TextureType, std::string> TextureTypes;
@@ -101,6 +107,8 @@ private:
     bool _castSimulationData;
     TextureTypes _textures;
     bool _locked;
+
+    friend void staticjson::init(Material*, staticjson::ObjectHandler*);
 };
 }
 #endif // MATERIAL_H

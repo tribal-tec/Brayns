@@ -25,7 +25,6 @@
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/renderer/Renderer.h>
-#include <brayns/common/scene/Scene.h>
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/io/simulation/CADiffusionSimulationHandler.h>
@@ -155,12 +154,13 @@ inline std::string to_json(const Version& obj)
     return obj.toJSON();
 }
 template <class T>
-inline bool from_json(T& obj, const std::string& json)
+inline bool from_json(T& obj, const std::string& json,
+                      std::function<void(T&)> updateFunc)
 {
     const auto success =
         staticjson::from_json_string(json.c_str(), &obj, nullptr);
     if (success)
-        obj.markModified();
+        updateFunc(obj);
     return success;
 }
 
@@ -189,6 +189,10 @@ void RocketsPlugin::_onNewEngine()
         _handleGET2(ENDPOINT_FRAME_BUFFERS, _engine->getFrameBuffer());
         _handle2(ENDPOINT_MATERIAL_LUT,
                  _engine->getScene().getTransferFunction());
+        std::function<void(Scene&)> func = [](Scene& scene) {
+            scene.markModified(), scene.commitMaterials(Action::update);
+        };
+        _handle2(ENDPOINT_SCENE, _engine->getScene(), func);
     }
 
     _engine->extensionInit(*this);
@@ -203,6 +207,7 @@ void RocketsPlugin::_onChangeEngine()
         _remove(ENDPOINT_PROGRESS);
         _remove(ENDPOINT_FRAME_BUFFERS);
         _remove(ENDPOINT_MATERIAL_LUT);
+        _remove(ENDPOINT_SCENE);
     }
 
     try
@@ -336,11 +341,6 @@ void RocketsPlugin::_setupHTTPServer()
     _handleGET(ENDPOINT_IMAGE_JPEG, _remoteImageJPEG);
     _remoteImageJPEG.registerSerializeCallback([this] { _requestImageJPEG(); });
 
-    _handle(ENDPOINT_SCENE, _remoteScene);
-    _remoteScene.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_sceneUpdated, this));
-    _remoteScene.registerSerializeCallback([this] { _requestScene(); });
-
     _handle(ENDPOINT_DATA_SOURCE, _remoteDataSource);
     _remoteDataSource.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_dataSourceUpdated, this));
@@ -417,10 +417,11 @@ std::string RocketsPlugin::_getHttpInterface() const
 }
 
 template <class T>
-void RocketsPlugin::_handle2(const std::string& endpoint, T& obj)
+void RocketsPlugin::_handle2(const std::string& endpoint, T& obj,
+                             std::function<void(T&)> updateFunc)
 {
     _handleGET2(endpoint, obj);
-    _handlePUT2(endpoint, obj);
+    _handlePUT2(endpoint, obj, updateFunc);
 }
 
 template <class T>
@@ -442,20 +443,22 @@ void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj)
 }
 
 template <class T>
-void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj)
+void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj,
+                                std::function<void(T&)> updateFunc)
 {
     using namespace rockets::http;
     _httpServer->handle(Method::PUT, ENDPOINT_API_VERSION + endpoint,
-                        [&obj](const Request& req) {
-                            return make_ready_response(from_json(obj, req.body)
-                                                           ? Code::OK
-                                                           : Code::BAD_REQUEST);
+                        [&obj, updateFunc](const Request& req) {
+                            return make_ready_response(
+                                from_json(obj, req.body, updateFunc)
+                                    ? Code::OK
+                                    : Code::BAD_REQUEST);
                         });
 
     _handleSchema2(endpoint, obj);
 
-    _wsIncoming[endpoint] = [&obj](const std::string& data) {
-        return from_json(obj, data);
+    _wsIncoming[endpoint] = [&obj, updateFunc](const std::string& data) {
+        return from_json(obj, data, updateFunc);
     };
 }
 
@@ -555,71 +558,6 @@ void RocketsPlugin::_handleStreaming()
     _httpServer->handle(Method::PUT, ENDPOINT_STREAM, respondNotImplemented);
     _httpServer->handle(Method::PUT, ENDPOINT_STREAM_TO, respondNotImplemented);
 #endif
-}
-
-bool RocketsPlugin::_requestScene()
-{
-    auto& ms = _remoteScene.getMaterials();
-    ms.clear();
-    auto& scene = _engine->getScene();
-    auto& materials = scene.getMaterials();
-
-    for (size_t materialId = NB_SYSTEM_MATERIALS; materialId < materials.size();
-         ++materialId)
-    {
-        // Materials
-        auto& material = scene.getMaterial(materialId);
-        ::brayns::v1::Material m;
-        m.setDiffuseColor(material.getColor());
-        m.setSpecularColor(material.getSpecularColor());
-        m.setSpecularExponent(material.getSpecularExponent());
-        m.setReflectionIndex(material.getReflectionIndex());
-        m.setOpacity(material.getOpacity());
-        m.setRefractionIndex(material.getRefractionIndex());
-        m.setLightEmission(material.getEmission());
-        m.setGlossiness(material.getGlossiness());
-        m.setCastSimulationData(material.getCastSimulationData());
-        ms.push_back(m);
-    }
-
-    const auto& boundsMin = scene.getWorldBounds().getMin();
-    const auto& boundsMax = scene.getWorldBounds().getMax();
-    _remoteScene.setBounds({{boundsMin.begin(), boundsMin.end()},
-                            {boundsMax.begin(), boundsMax.end()}});
-    return true;
-}
-
-void RocketsPlugin::_sceneUpdated()
-{
-    if (!_engine->isReady())
-        return;
-
-    auto& materials = _remoteScene.getMaterials();
-    auto& scene = _engine->getScene();
-
-    for (size_t materialId = 0; materialId < materials.size(); ++materialId)
-    {
-        // Materials
-        auto& material = scene.getMaterial(materialId + NB_SYSTEM_MATERIALS);
-        ::brayns::v1::Material& m = materials[materialId];
-        const auto& diffuse = m.getDiffuseColor();
-        Vector3f kd = {diffuse[0], diffuse[1], diffuse[2]};
-        material.setColor(kd);
-
-        const auto& specular = m.getSpecularColor();
-        Vector3f ks = {specular[0], specular[1], specular[2]};
-        material.setSpecularColor(ks);
-
-        material.setSpecularExponent(m.getSpecularExponent());
-        material.setReflectionIndex(m.getReflectionIndex());
-        material.setOpacity(m.getOpacity());
-        material.setRefractionIndex(m.getRefractionIndex());
-        material.setEmission(m.getLightEmission());
-        material.setGlossiness(m.getGlossiness());
-        material.setCastSimulationData(m.getCastSimulationData());
-    }
-
-    scene.commitMaterials(Action::update);
 }
 
 void RocketsPlugin::_resizeImage(unsigned int* srcData, const Vector2i& srcSize,

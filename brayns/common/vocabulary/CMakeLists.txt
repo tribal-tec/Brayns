@@ -17,7 +17,6 @@ zerobuf_generate_cxx(
   BRAYNSZEROBUFRENDER
   ${PROJECT_BINARY_DIR}/include/${BRAYNSZEROBUFRENDER_INCLUDE_NAME}
   parameters.fbs
-  scene.fbs
 )
 
 common_library(BraynsZeroBufRender)

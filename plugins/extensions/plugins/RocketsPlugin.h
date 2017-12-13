@@ -35,7 +35,6 @@
 #include <lexis/render/viewport.h>
 
 #include <zerobuf/render/parameters.h>
-#include <zerobuf/render/scene.h>
 
 namespace brayns
 {
@@ -70,11 +69,17 @@ private:
     void _remove(const std::string& endpoint);
 
     template <class T>
-    void _handle2(const std::string& endpoint, T& obj);
+    void _handle2(const std::string& endpoint, T& obj,
+                  std::function<void(T& obj)> updateFunc = [](T& obj) {
+                      obj.markModified();
+                  });
     template <class T>
     void _handleGET2(const std::string& endpoint, T& obj);
     template <class T>
-    void _handlePUT2(const std::string& endpoint, T& obj);
+    void _handlePUT2(const std::string& endpoint, T& obj,
+                     std::function<void(T&)> updateFunc = [](T& obj) {
+                         obj.markModified();
+                     });
     template <class T>
     void _handleSchema2(const std::string& endpoint, T& obj);
 
@@ -86,8 +91,6 @@ private:
     void _handleVersion();
     void _handleStreaming();
 
-    bool _requestScene();
-    void _sceneUpdated();
     bool _requestImageJPEG();
 
     void _initializeDataSource();
@@ -185,8 +188,6 @@ private:
 
     ::brayns::v1::DataSource _remoteDataSource;
     ::brayns::v1::Settings _remoteSettings;
-    ::brayns::v1::Material _remoteMaterial;
-    ::brayns::v1::Scene _remoteScene;
     ::brayns::v1::ForceRendering _remoteForceRendering;
     ::brayns::v1::CircuitConfigurationBuilder _remoteCircuitConfigBuilder;
 

@@ -23,6 +23,7 @@
 #include <brayns/common/camera/Camera.h>
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/renderer/FrameBuffer.h>
+#include <brayns/common/scene/Scene.h>
 #include <brayns/common/transferFunction/TransferFunction.h>
 
 #include "base64/base64.h"
@@ -98,14 +99,64 @@ void init(brayns::FrameBuffer* f, ObjectHandler* h)
 void init(brayns::TransferFunction* t, ObjectHandler* h)
 {
     h->add_property("range", reinterpret_cast<std::array<float, 2>*>(
-                                 &t->getValuesRange()[0]));
+                                 &t->getValuesRange()[0]),
+                    Flags::Optional);
     h->add_property("diffuse",
                     reinterpret_cast<std::vector<std::array<float, 4>>*>(
-                        &t->getDiffuseColors()));
+                        &t->getDiffuseColors()),
+                    Flags::Optional);
     h->add_property("emission",
                     reinterpret_cast<std::vector<std::array<float, 3>>*>(
-                        &t->getEmissionIntensities()));
-    h->add_property("contribution", &t->getContributions());
+                        &t->getEmissionIntensities()),
+                    Flags::Optional);
+    h->add_property("contribution", &t->getContributions(), Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::Boxf* b, ObjectHandler* h)
+{
+    static brayns::Vector3f bMin, bMax;
+    bMin = b->getMin();
+    bMax = b->getMax();
+    h->add_property("min", reinterpret_cast<std::array<float, 3>*>(&bMin[0]));
+    h->add_property("max", reinterpret_cast<std::array<float, 3>*>(&bMax[0]));
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::Material* m, ObjectHandler* h)
+{
+    h->add_property("diffuse_color",
+                    reinterpret_cast<std::array<float, 3>*>(&m->_color[0]),
+                    Flags::Optional);
+    h->add_property("specular_color", reinterpret_cast<std::array<float, 3>*>(
+                                          &m->_specularColor[0]),
+                    Flags::Optional);
+    h->add_property("specular_exponent", &m->_specularExponent,
+                    Flags::Optional);
+    h->add_property("reflection_index", &m->_reflectionIndex, Flags::Optional);
+    h->add_property("opacity", &m->_opacity, Flags::Optional);
+    h->add_property("refraction_index", &m->_refractionIndex, Flags::Optional);
+    h->add_property("light_emission", &m->_emission, Flags::Optional);
+    h->add_property("glossiness", &m->_glossiness, Flags::Optional);
+    h->add_property("cast_simulation_data", &m->_castSimulationData,
+                    Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::Scene* s, ObjectHandler* h)
+{
+    // FIXME: expose materials as vector directly from scene
+    static std::vector<brayns::Material> materials;
+    materials.clear();
+    materials.reserve(s->getMaterials().size());
+    for (size_t materialId = brayns::NB_SYSTEM_MATERIALS;
+         materialId < s->getMaterials().size(); ++materialId)
+    {
+        materials.push_back(s->getMaterial(materialId));
+    }
+    h->add_property("bounds", &s->getWorldBounds(),
+                    Flags::IgnoreWrite | Flags::Optional);
+    h->add_property("materials", &materials);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

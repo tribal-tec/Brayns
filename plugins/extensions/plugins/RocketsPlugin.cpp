@@ -41,6 +41,18 @@
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 
+namespace servus
+{
+inline std::string to_json(const Serializable& obj)
+{
+    return obj.toJSON();
+}
+inline bool from_json(Serializable& obj, const std::string& json)
+{
+    return obj.fromJSON(json);
+}
+}
+
 namespace
 {
 const std::string ENDPOINT_API_VERSION = "v1/";
@@ -71,8 +83,8 @@ const size_t NB_MAX_MESSAGES = 20; // Maximum number of network messages to read
                                    // between each rendering loop
 
 // JSON for websocket text messages
-std::string _buildJsonMessage(const std::string& event, const std::string data,
-                              const bool error = false)
+std::string buildJsonMessage(const std::string& event, const std::string data,
+                             const bool error = false)
 {
     rapidjson::Document message(rapidjson::kObjectType);
 
@@ -92,23 +104,6 @@ std::string _buildJsonMessage(const std::string& event, const std::string data,
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(sb);
     message.Accept(writer);
     return sb.GetString();
-}
-
-// get JSON schema from JSON-serializable object
-template <class T>
-std::string getSchema(T& obj, const std::string& title)
-{
-    rapidjson::StringBuffer buffer;
-    buffer.Clear();
-
-    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-    auto schema = staticjson::export_json_schema(&obj);
-    schema.AddMember(rapidjson::StringRef("title"),
-                     rapidjson::StringRef(title.c_str()),
-                     schema.GetAllocator());
-    schema.Accept(writer);
-
-    return buffer.GetString();
 }
 
 std::string hyphenatedToCamelCase(const std::string& scoreString)
@@ -131,25 +126,45 @@ std::string hyphenatedToCamelCase(const std::string& scoreString)
     camelString[0] = toupper(camelString[0]);
     return camelString;
 }
-}
 
-namespace servus
+// get JSON schema from JSON-serializable object
+template <class T>
+std::string getSchema(T& obj, const std::string& title)
 {
-inline std::string to_json(const Serializable& obj)
-{
-    return obj.toJSON();
-}
-inline bool from_json(Serializable& obj, const std::string& json)
-{
-    return obj.fromJSON(json);
+    rapidjson::StringBuffer buffer;
+    buffer.Clear();
+
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    auto schema = staticjson::export_json_schema(&obj);
+    schema.AddMember(rapidjson::StringRef("title"),
+                     rapidjson::StringRef(title.c_str()),
+                     schema.GetAllocator());
+    schema.Accept(writer);
+
+    return buffer.GetString();
 }
 }
 
 namespace brayns
 {
+template <class T>
+inline std::string to_json(const T& obj)
+{
+    return staticjson::to_pretty_json_string(obj);
+}
+template <>
 inline std::string to_json(const Version& obj)
 {
     return obj.toJSON();
+}
+template <class T>
+inline bool from_json(T& obj, const std::string& json)
+{
+    const auto success =
+        staticjson::from_json_string(json.c_str(), &obj, nullptr);
+    if (success)
+        obj.markModified();
+    return success;
 }
 
 RocketsPlugin::RocketsPlugin(ParametersManager& parametersManager)
@@ -276,13 +291,13 @@ rockets::ws::Response RocketsPlugin::_processWebsocketMessage(
         const std::string event = jsonData["event"].GetString();
         auto i = _wsIncoming.find(event);
         if (i == _wsIncoming.end())
-            return _buildJsonMessage(event, "Unknown websocket event", true);
+            return buildJsonMessage(event, "Unknown websocket event", true);
 
         rapidjson::StringBuffer sb;
         rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(sb);
         jsonData["data"].Accept(writer);
         if (!i->second(sb.GetString()))
-            return _buildJsonMessage(event, "Could not update object", true);
+            return buildJsonMessage(event, "Could not update object", true);
 
         // re-broadcast to all other clients
         return rockets::ws::Response{message, rockets::ws::Recipient::others};
@@ -291,7 +306,7 @@ rockets::ws::Response RocketsPlugin::_processWebsocketMessage(
     {
         BRAYNS_ERROR << "Error in websocket message handling: " << exc.what()
                      << std::endl;
-        return _buildJsonMessage("exception", exc.what(), true);
+        return buildJsonMessage("exception", exc.what(), true);
     }
 }
 
@@ -430,18 +445,16 @@ void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj)
 {
     using namespace rockets::http;
 
-    _httpServer->handle(
-        Method::GET, ENDPOINT_API_VERSION + endpoint, [&obj](const Request&) {
-            return make_ready_response(Code::OK,
-                                       staticjson::to_pretty_json_string(obj),
-                                       JSON_TYPE);
-        });
+    _httpServer->handle(Method::GET, ENDPOINT_API_VERSION + endpoint,
+                        [&obj](const Request&) {
+                            return make_ready_response(Code::OK, to_json(obj),
+                                                       JSON_TYPE);
+                        });
 
     _handleSchema2(endpoint, obj);
 
     _wsOutgoing[endpoint] = [&obj, endpoint] {
-        return _buildJsonMessage(endpoint,
-                                 staticjson::to_pretty_json_string(obj));
+        return buildJsonMessage(endpoint, to_json(obj));
     };
 }
 
@@ -451,27 +464,15 @@ void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj)
     using namespace rockets::http;
     _httpServer->handle(Method::PUT, ENDPOINT_API_VERSION + endpoint,
                         [&obj](const Request& req) {
-                            staticjson::ParseStatus status;
-                            const auto success =
-                                staticjson::from_json_string(req.body.c_str(),
-                                                             &obj, &status);
-                            std::cout << status.description() << std::endl;
-                            if (success)
-                                obj.markModified();
-                            return make_ready_response(
-                                success ? Code::OK : Code::BAD_REQUEST);
+                            return make_ready_response(from_json(obj, req.body)
+                                                           ? Code::OK
+                                                           : Code::BAD_REQUEST);
                         });
 
     _handleSchema2(endpoint, obj);
 
-    //_handleWebsocketEvent(endpoint, obj);
-
     _wsIncoming[endpoint] = [&obj](const std::string& data) {
-        const auto success =
-            staticjson::from_json_string(data.c_str(), &obj, nullptr);
-        if (success)
-            obj.markModified();
-        return success;
+        return from_json(obj, data);
     };
 }
 

@@ -23,6 +23,7 @@
 #include <brayns/common/camera/Camera.h>
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/renderer/FrameBuffer.h>
+#include <brayns/common/transferFunction/TransferFunction.h>
 
 #include "base64/base64.h"
 
@@ -91,6 +92,20 @@ void init(brayns::FrameBuffer* f, ObjectHandler* h)
     h->add_property("height", &frameSize[1]);
     h->add_property("diffuse", &diffuse);
     h->add_property("depth", &depth, Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::TransferFunction* t, ObjectHandler* h)
+{
+    h->add_property("range", reinterpret_cast<std::array<float, 2>*>(
+                                 &t->getValuesRange()[0]));
+    h->add_property("diffuse",
+                    reinterpret_cast<std::vector<std::array<float, 4>>*>(
+                        &t->getDiffuseColors()));
+    h->add_property("emission",
+                    reinterpret_cast<std::vector<std::array<float, 3>>*>(
+                        &t->getEmissionIntensities()));
+    h->add_property("contribution", &t->getContributions());
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

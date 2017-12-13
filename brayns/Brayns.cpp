@@ -337,6 +337,12 @@ private:
 
         Scene& scene = _engine->getScene();
 
+        if (scene.getTransferFunction().getModified())
+        {
+            scene.commitTransferFunctionData();
+            scene.getTransferFunction().resetModified();
+        }
+
         if (_parametersManager.getRenderingParameters().getHeadLight())
         {
             LightPtr sunLight = scene.getLight(0);
@@ -416,7 +422,6 @@ private:
             TransferFunctionLoader transferFunctionLoader;
             transferFunctionLoader.loadFromFile(colorMapFilename, scene);
         }
-        scene.commitTransferFunctionData();
 
         if (!geometryParameters.getLoadCacheFile().empty())
         {
@@ -691,7 +696,6 @@ private:
                 }
 
                 scene.setSimulationHandler(simulationHandler);
-                scene.commitTransferFunctionData();
             }
         }
     }

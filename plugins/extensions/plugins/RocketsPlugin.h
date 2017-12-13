@@ -31,7 +31,6 @@
 #include <lexis/render/Histogram.h>
 #include <lexis/render/frame.h>
 #include <lexis/render/imageJPEG.h>
-#include <lexis/render/materialLUT.h>
 #include <lexis/render/stream.h>
 #include <lexis/render/viewport.h>
 
@@ -89,8 +88,6 @@ private:
 
     bool _requestScene();
     void _sceneUpdated();
-    void _materialLUTUpdated();
-    void _requestMaterialLUT();
     bool _requestImageJPEG();
 
     void _initializeDataSource();
@@ -184,7 +181,6 @@ private:
     ::lexis::render::ClipPlanes _clipPlanes;
     ::lexis::render::Histogram _remoteSimulationHistogram;
     ::lexis::render::Histogram _remoteVolumeHistogram;
-    ::lexis::render::MaterialLUT _remoteMaterialLUT;
     ::lexis::render::Stream _streamParams;
 
     ::brayns::v1::DataSource _remoteDataSource;

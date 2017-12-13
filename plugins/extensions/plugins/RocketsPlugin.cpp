@@ -187,6 +187,8 @@ void RocketsPlugin::_onNewEngine()
         _handle2(ENDPOINT_CAMERA, _engine->getCamera());
         _handleGET2(ENDPOINT_PROGRESS, _engine->getProgress());
         _handleGET2(ENDPOINT_FRAME_BUFFERS, _engine->getFrameBuffer());
+        _handle2(ENDPOINT_MATERIAL_LUT,
+                 _engine->getScene().getTransferFunction());
     }
 
     _engine->extensionInit(*this);
@@ -200,6 +202,7 @@ void RocketsPlugin::_onChangeEngine()
         _remove(ENDPOINT_CAMERA);
         _remove(ENDPOINT_PROGRESS);
         _remove(ENDPOINT_FRAME_BUFFERS);
+        _remove(ENDPOINT_MATERIAL_LUT);
     }
 
     try
@@ -337,12 +340,6 @@ void RocketsPlugin::_setupHTTPServer()
     _remoteScene.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_sceneUpdated, this));
     _remoteScene.registerSerializeCallback([this] { _requestScene(); });
-
-    _handle(ENDPOINT_MATERIAL_LUT, _remoteMaterialLUT);
-    _remoteMaterialLUT.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_materialLUTUpdated, this));
-    _remoteMaterialLUT.registerSerializeCallback(
-        std::bind(&RocketsPlugin::_requestMaterialLUT, this));
 
     _handle(ENDPOINT_DATA_SOURCE, _remoteDataSource);
     _remoteDataSource.registerDeserializedCallback(
@@ -623,112 +620,6 @@ void RocketsPlugin::_sceneUpdated()
     }
 
     scene.commitMaterials(Action::update);
-}
-
-void RocketsPlugin::_materialLUTUpdated()
-{
-    if (!_engine->isReady())
-        return;
-
-    auto& scene = _engine->getScene();
-    TransferFunction& transferFunction = scene.getTransferFunction();
-
-    transferFunction.clear();
-    auto& diffuseColors = transferFunction.getDiffuseColors();
-
-    const auto size = _remoteMaterialLUT.getDiffuse().size();
-    if (_remoteMaterialLUT.getAlpha().size() != size)
-    {
-        BRAYNS_ERROR << "All lookup tables must have the same size. "
-                     << "Event will be ignored" << std::endl;
-        return;
-    }
-
-    for (size_t i = 0; i < size; ++i)
-    {
-        const auto& diffuse = _remoteMaterialLUT.getDiffuse()[i];
-        const auto alpha = _remoteMaterialLUT.getAlpha()[i];
-        Vector4f color = {diffuse.getRed(), diffuse.getGreen(),
-                          diffuse.getBlue(), alpha};
-        diffuseColors.push_back(color);
-    }
-
-    auto& emissionIntensities = transferFunction.getEmissionIntensities();
-    for (const auto& emission : _remoteMaterialLUT.getEmission())
-    {
-        const Vector3f intensity = {emission.getRed(), emission.getGreen(),
-                                    emission.getBlue()};
-        emissionIntensities.push_back(intensity);
-    }
-
-    auto& contributions = transferFunction.getContributions();
-    for (const auto& contribution : _remoteMaterialLUT.getContribution())
-        contributions.push_back(contribution);
-
-    const auto& range = _remoteMaterialLUT.getRange();
-    if (range[0] == range[1])
-        transferFunction.setValuesRange(Vector2f(0.f, 255.f));
-    else
-        transferFunction.setValuesRange(Vector2f(range[0], range[1]));
-    scene.commitTransferFunctionData();
-}
-
-void RocketsPlugin::_requestMaterialLUT()
-{
-    auto& scene = _engine->getScene();
-    TransferFunction& transferFunction = scene.getTransferFunction();
-
-    _remoteMaterialLUT.getEmission().resize(
-        transferFunction.getEmissionIntensities().size());
-    _remoteMaterialLUT.getDiffuse().resize(
-        transferFunction.getDiffuseColors().size());
-    _remoteMaterialLUT.getAlpha().resize(
-        transferFunction.getDiffuseColors().size());
-    _remoteMaterialLUT.getContribution().resize(
-        transferFunction.getContributions().size());
-
-    size_t j = 0;
-    for (const auto& diffuseColor : transferFunction.getDiffuseColors())
-    {
-        ::lexis::render::Color color(diffuseColor.x(), diffuseColor.y(),
-                                     diffuseColor.z());
-        _remoteMaterialLUT.getDiffuse()[j] = color;
-        _remoteMaterialLUT.getAlpha()[j] = diffuseColor.w();
-        ++j;
-    }
-
-    j = 0;
-    if (transferFunction.getEmissionIntensities().empty())
-    {
-        _remoteMaterialLUT.getEmission().resize(
-            transferFunction.getDiffuseColors().size());
-        for (size_t i = 0; i < transferFunction.getDiffuseColors().size(); ++i)
-            _remoteMaterialLUT.getEmission()[j++] = {0, 0, 0};
-    }
-    else
-        for (const auto& emission : transferFunction.getEmissionIntensities())
-        {
-            ::lexis::render::Color color(emission.x(), emission.y(),
-                                         emission.z());
-            _remoteMaterialLUT.getEmission()[j] = color;
-            ++j;
-        }
-
-    j = 0;
-    if (transferFunction.getContributions().empty())
-    {
-        _remoteMaterialLUT.getContribution().resize(
-            transferFunction.getDiffuseColors().size());
-        for (size_t i = 0; i < transferFunction.getDiffuseColors().size(); ++i)
-            _remoteMaterialLUT.getContribution()[j++] = 0.f;
-    }
-    else
-        for (const auto& contribution : transferFunction.getContributions())
-            _remoteMaterialLUT.getContribution()[j++] = contribution;
-
-    const auto& range = transferFunction.getValuesRange();
-    std::vector<double> rangeVector = {range.x(), range.y()};
-    _remoteMaterialLUT.setRange(rangeVector);
 }
 
 void RocketsPlugin::_resizeImage(unsigned int* srcData, const Vector2i& srcSize,

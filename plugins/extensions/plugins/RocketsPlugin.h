@@ -93,9 +93,6 @@ private:
 
     bool _requestImageJPEG();
 
-    void _initializeDataSource();
-    void _dataSourceUpdated();
-
     bool _requestFrame();
     void _frameUpdated();
 
@@ -183,7 +180,6 @@ private:
     ::lexis::render::Histogram _remoteVolumeHistogram;
     ::lexis::render::Stream _streamParams;
 
-    ::brayns::v1::DataSource _remoteDataSource;
     ::brayns::v1::ForceRendering _remoteForceRendering;
     ::brayns::v1::CircuitConfigurationBuilder _remoteCircuitConfigBuilder;
 

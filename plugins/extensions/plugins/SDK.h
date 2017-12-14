@@ -110,6 +110,8 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
 
 #define Vector2uiArray(vec) \
     reinterpret_cast<std::array<unsigned, 2>*>(&vec.array[0])
+#define Vector3uiArray(vec) \
+    reinterpret_cast<std::array<unsigned, 3>*>(&vec.array[0])
 #define Vector2fArray(vec) \
     reinterpret_cast<std::array<float, 2>*>(&vec.array[0])
 #define Vector3fArray(vec) \
@@ -229,6 +231,49 @@ void init(brayns::MorphologyLayout* m, ObjectHandler* h)
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
+void init(brayns::CircuitConfiguration* c, ObjectHandler* h)
+{
+    h->add_property("circuit_config_file", &c->_circuitConfiguration,
+                    Flags::Optional);
+    h->add_property("density", &c->_circuitDensity, Flags::Optional);
+    h->add_property("bounding_box", &c->_circuitBoundingBox, Flags::Optional);
+    h->add_property("mesh_filename_pattern", &c->_circuitMeshFilenamePattern,
+                    Flags::Optional);
+    h->add_property("mesh_folder", &c->_circuitMeshFolder, Flags::Optional);
+    h->add_property("mesh_transformation", &c->_circuitMeshTransformation,
+                    Flags::Optional);
+    h->add_property("use_simulation_model", &c->_circuitUseSimulationModel,
+                    Flags::Optional);
+    h->add_property("targets", &c->_circuitTargets, Flags::Optional);
+    h->add_property("report", &c->_circuitReport, Flags::Optional);
+    h->add_property("start_simulation_time", &c->_circuitStartSimulationTime,
+                    Flags::Optional);
+    h->add_property("end_simulation_time", &c->_circuitEndSimulationTime,
+                    Flags::Optional);
+    h->add_property("simulation_step", &c->_circuitSimulationStep,
+                    Flags::Optional);
+    h->add_property("simulation_values_range",
+                    Vector2fArray(c->_circuitSimulationValuesRange),
+                    Flags::Optional);
+    h->add_property("histogram_size", &c->_circuitSimulationHistogramSize,
+                    Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::ConnectivityConfiguration* c, ObjectHandler* h)
+{
+    h->add_property("filename", &c->_connectivityFile, Flags::Optional);
+    h->add_property("matrix_id", &c->_connectivityMatrixId, Flags::Optional);
+    h->add_property("show_connections", &c->_connectivityShowConnections,
+                    Flags::Optional);
+    h->add_property("dimension_range",
+                    Vector2uiArray(c->_connectivityDimensionRange),
+                    Flags::Optional);
+    h->add_property("scale", Vector3fArray(c->_connectivityScale),
+                    Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
 void init(brayns::ApplicationParameters* a, ObjectHandler* h)
 {
     h->add_property("jpeg_compression", &a->_jpegCompression, Flags::Optional);
@@ -242,6 +287,44 @@ void init(brayns::ApplicationParameters* a, ObjectHandler* h)
 
 void init(brayns::GeometryParameters* g, ObjectHandler* h)
 {
+    h->add_property("morphology_folder", &g->_morphologyFolder,
+                    Flags::Optional);
+    h->add_property("nest_circuit", &g->_NESTCircuit, Flags::Optional);
+    h->add_property("nest_report", &g->_NESTReport, Flags::Optional);
+    h->add_property("nest_cache_file", &g->_NESTCacheFile, Flags::Optional);
+    h->add_property("pdb_file", &g->_pdbFile, Flags::Optional);
+    h->add_property("pdb_folder", &g->_pdbFolder, Flags::Optional);
+    h->add_property("xyzb_file", &g->_xyzbFile, Flags::Optional);
+    h->add_property("mesh_folder", &g->_meshFolder, Flags::Optional);
+    h->add_property("mesh_file", &g->_meshFile, Flags::Optional);
+    h->add_property("load_cache_file", &g->_loadCacheFile, Flags::Optional);
+    h->add_property("save_cache_file", &g->_saveCacheFile, Flags::Optional);
+    h->add_property("radius_multiplier", &g->_radiusMultiplier,
+                    Flags::Optional);
+    h->add_property("radius_correction", &g->_radiusCorrection,
+                    Flags::Optional);
+    h->add_property("color_scheme", &g->_colorScheme, Flags::Optional);
+    h->add_property("scene_environment", &g->_sceneEnvironment,
+                    Flags::Optional);
+    h->add_property("geometry_quality", &g->_geometryQuality, Flags::Optional);
+    h->add_property("morphology_section_types", &g->_morphologySectionTypes,
+                    Flags::Optional);
+    h->add_property("morphology_layout", &g->_morphologyLayout,
+                    Flags::Optional);
+    h->add_property("molecular_system_config", &g->_molecularSystemConfig,
+                    Flags::Optional);
+    h->add_property("metaballs_grid_size", &g->_metaballsGridSize,
+                    Flags::Optional);
+    h->add_property("metaballs_threshold", &g->_metaballsThreshold,
+                    Flags::Optional);
+    h->add_property("metaballs_samples_from_soma",
+                    &g->_metaballsSamplesFromSoma, Flags::Optional);
+    h->add_property("memory_mode", &g->_memoryMode, Flags::Optional);
+    h->add_property("scene_file", &g->_sceneFile, Flags::Optional);
+    h->add_property("circuit_configuration", &g->_circuitConfiguration,
+                    Flags::Optional);
+    h->add_property("connectivity_configuration",
+                    &g->_connectivityConfiguration, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
@@ -276,12 +359,22 @@ void init(brayns::RenderingParameters* r, ObjectHandler* h)
 
 void init(brayns::SceneParameters* s, ObjectHandler* h)
 {
+    h->add_property("color_map_file", &s->_colorMapFilename, Flags::Optional);
+    h->add_property("environment_map", &s->_environmentMap, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
 void init(brayns::VolumeParameters* v, ObjectHandler* h)
 {
     h->add_property("samples_per_ray", &v->_spr, Flags::Optional);
+    h->add_property("volume_folder", &v->_folder, Flags::Optional);
+    h->add_property("volume_file", &v->_filename, Flags::Optional);
+    h->add_property("volume_dimensions", Vector3uiArray(v->_dimensions),
+                    Flags::Optional);
+    h->add_property("volume_element_spacing", Vector3fArray(v->_elementSpacing),
+                    Flags::Optional);
+    h->add_property("volume_offset", Vector3fArray(v->_offset),
+                    Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

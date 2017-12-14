@@ -25,6 +25,8 @@
 
 #include <brayns/common/types.h>
 
+SERIALIZATION_ACCESS(GeometryParameters)
+
 namespace brayns
 {
 /**
@@ -325,6 +327,8 @@ protected:
     bool _connectivityShowConnections;
     Vector2ui _connectivityDimensionRange;
     Vector3f _connectivityScale;
+
+    SERIALIZATION_FRIEND(GeometryParameters)
 };
 }
 #endif // GEOMETRYPARAMETERS_H

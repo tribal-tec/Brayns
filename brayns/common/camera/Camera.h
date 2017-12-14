@@ -26,11 +26,7 @@
 #include <brayns/common/BaseObject.h>
 #include <brayns/common/types.h>
 
-namespace staticjson
-{
-class ObjectHandler;
-void init(brayns::Camera* c, ObjectHandler* h);
-}
+SERIALIZATION_ACCESS(Camera)
 
 namespace brayns
 {
@@ -241,7 +237,7 @@ private:
     /*! rotation matrice along x and y axis */
     Matrix4f _matrix;
 
-    friend void staticjson::init(Camera*, staticjson::ObjectHandler*);
+    SERIALIZATION_FRIEND(Camera)
 };
 
 std::ostream& operator<<(std::ostream& os, Camera& camera);

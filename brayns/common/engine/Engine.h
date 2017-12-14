@@ -48,7 +48,7 @@ public:
     /**
        @return the name of the engine
     */
-    virtual std::string name() const = 0;
+    virtual EngineType name() const = 0;
 
     /**
        Commits changes to the engine. This include scene and camera

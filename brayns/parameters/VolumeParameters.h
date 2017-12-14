@@ -23,6 +23,8 @@
 
 #include "AbstractParameters.h"
 
+SERIALIZATION_ACCESS(VolumeParameters)
+
 namespace brayns
 {
 class VolumeParameters final : public AbstractParameters
@@ -59,6 +61,8 @@ protected:
     Vector3f _elementSpacing;
     Vector3f _offset;
     size_t _spr;
+
+    SERIALIZATION_FRIEND(VolumeParameters)
 };
 }
 #endif // VOLUMEPARAMETERS_H

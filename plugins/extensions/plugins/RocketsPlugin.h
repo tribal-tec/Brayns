@@ -96,9 +96,6 @@ private:
     void _initializeDataSource();
     void _dataSourceUpdated();
 
-    void _initializeSettings();
-    void _settingsUpdated();
-
     bool _requestFrame();
     void _frameUpdated();
 
@@ -187,7 +184,6 @@ private:
     ::lexis::render::Stream _streamParams;
 
     ::brayns::v1::DataSource _remoteDataSource;
-    ::brayns::v1::Settings _remoteSettings;
     ::brayns::v1::ForceRendering _remoteForceRendering;
     ::brayns::v1::CircuitConfigurationBuilder _remoteCircuitConfigBuilder;
 

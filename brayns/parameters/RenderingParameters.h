@@ -25,6 +25,8 @@
 
 #include "AbstractParameters.h"
 
+SERIALIZATION_ACCESS(RenderingParameters)
+
 namespace brayns
 {
 class AbstractParameters;
@@ -40,8 +42,9 @@ public:
     void print() final;
 
     /** Engine*/
-    const std::string& getEngine() const { return _engine; }
-    void setEngine(const std::string& name) { _updateValue(_engine, name); }
+    EngineType getEngine() const { return _engine; }
+    void setEngine(const EngineType name) { _updateValue(_engine, name); }
+    const std::string& getEngineAsString(const EngineType value) const;
     /** OSPRay module */
     const std::string& getModule() const { return _module; }
     /** OSPRay renderer */
@@ -197,7 +200,7 @@ public:
 protected:
     bool _parse(const po::variables_map& vm) final;
 
-    std::string _engine;
+    EngineType _engine;
     std::string _module;
     RendererType _renderer;
     RendererTypes _renderers;
@@ -219,6 +222,8 @@ protected:
     bool _headLight;
     bool _dynamicLoadBalancer{false};
     float _varianceThreshold{-1.f};
+
+    SERIALIZATION_FRIEND(RenderingParameters)
 };
 }
 #endif // RENDERINGPARAMETERS_H

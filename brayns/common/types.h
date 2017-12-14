@@ -21,6 +21,15 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#define SERIALIZATION_ACCESS(type)            \
+    namespace staticjson                      \
+    {                                         \
+    class ObjectHandler;                      \
+    void init(brayns::type*, ObjectHandler*); \
+    }
+#define SERIALIZATION_FRIEND(type) \
+    friend void staticjson::init(type*, staticjson::ObjectHandler*);
+
 #include <brayns/common/mathTypes.h>
 
 #include <boost/program_options.hpp>
@@ -200,6 +209,13 @@ enum class RendererType
 };
 typedef std::vector<RendererType> RendererTypes;
 typedef std::map<RendererType, RendererPtr> RendererMap;
+
+enum class EngineType
+{
+    ospray,
+    optix,
+    livre
+};
 
 /** Define the frame buffer format */
 enum class FrameBufferFormat

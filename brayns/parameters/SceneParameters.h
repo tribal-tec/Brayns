@@ -23,6 +23,8 @@
 
 #include "AbstractParameters.h"
 
+SERIALIZATION_ACCESS(SceneParameters)
+
 namespace brayns
 {
 class SceneParameters final : public AbstractParameters
@@ -57,6 +59,8 @@ protected:
     int32_t _animationDelta{0};
     std::string _colorMapFilename;
     std::string _environmentMap;
+
+    SERIALIZATION_FRIEND(SceneParameters)
 };
 }
 #endif // SCENEPARAMETERS_H

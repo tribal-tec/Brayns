@@ -27,6 +27,8 @@
 #include <string>
 #include <vector>
 
+SERIALIZATION_ACCESS(ApplicationParameters)
+
 namespace brayns
 {
 /** Manages application parameters
@@ -134,6 +136,8 @@ protected:
     std::string _tmpFolder;
     bool _synchronousMode{false};
     size_t _imageStreamFPS{60};
+
+    SERIALIZATION_FRIEND(ApplicationParameters)
 };
 }
 

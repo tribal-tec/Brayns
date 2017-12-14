@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(defaults)
     BOOST_CHECK_EQUAL(appParams.getImageStreamFPS(), 60);
 
     const auto& renderParams = pm.getRenderingParameters();
-    BOOST_CHECK_EQUAL(renderParams.getEngine(), "ospray");
+    BOOST_CHECK(renderParams.getEngine() == brayns::EngineType::ospray);
     BOOST_CHECK_EQUAL(renderParams.getModule(), "");
     BOOST_CHECK(renderParams.getRenderer() == brayns::RendererType::basic);
     BOOST_CHECK_EQUAL(renderParams.getRenderers().size(), 7);

@@ -135,54 +135,6 @@ table DataSource {
     connectivity_configuration: ConnectivityConfiguration;
 }
 
-enum Shader: uint {
-    basic,
-    proximity,
-    simulation,
-    particle,
-    geometry_normals,
-    shading_normals,
-    scientific_visualization
-}
-
-enum Shading: uint {
-    none,
-    diffuse,
-    electron,
-}
-
-enum Engine: string {
-    ospray,
-    optix
-}
-
-table Settings {
-    engine: Engine;
-    volume_samples_per_ray: uint;
-    shader: Shader;
-    samples_per_pixel: int;
-    ambient_occlusion: float;
-    ambient_occlusion_distance: float;
-    accumulation: bool;
-    shadows: float;
-    soft_shadows: float;
-    shading: Shading;
-    radiance: bool;
-    background_color: [float:3];
-    detection_distance: float;
-    detection_on_different_material: bool;
-    detection_near_color: [float:3];
-    detection_far_color: [float:3];
-    epsilon: float;
-    head_light: bool;
-    jpeg_size: [uint:2];
-    jpeg_compression: uint;
-    frame_export_folder: string;
-    synchronous_mode: bool;
-    variance_threshold:float;
-    image_stream_fps: uint;
-}
-
 table ForceRendering
 {
     frame_number: uint;

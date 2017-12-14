@@ -59,7 +59,11 @@ const std::string ENDPOINT_DATA_SOURCE = "data-source";
 const std::string ENDPOINT_FORCE_RENDERING = "force-rendering";
 const std::string ENDPOINT_FRAME_BUFFERS = "frame-buffers";
 const std::string ENDPOINT_SCENE = "scene";
-const std::string ENDPOINT_SETTINGS = "settings";
+const std::string ENDPOINT_APP_PARAMS = "application-parameters";
+const std::string ENDPOINT_GEOMETRY_PARAMS = "geometry-parameters";
+const std::string ENDPOINT_RENDERING_PARAMS = "rendering-parameters";
+const std::string ENDPOINT_SCENE_PARAMS = "scene-parameters";
+const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 const std::string ENDPOINT_SIMULATION_HISTOGRAM = "simulation-histogram";
 const std::string ENDPOINT_VOLUME_HISTOGRAM = "volume-histogram";
 const std::string ENDPOINT_VERSION = "version";
@@ -108,7 +112,7 @@ std::string hyphenatedToCamelCase(const std::string& scoreString)
 
     for (size_t x = 0; x < camelString.length(); x++)
     {
-        if (camelString[x] == '_')
+        if (camelString[x] == '-')
         {
             std::string tempString = camelString.substr(x + 1, 1);
 
@@ -171,7 +175,6 @@ RocketsPlugin::RocketsPlugin(ParametersManager& parametersManager)
 {
     _setupHTTPServer();
     _initializeDataSource();
-    _initializeSettings();
 }
 
 RocketsPlugin::~RocketsPlugin()
@@ -189,10 +192,11 @@ void RocketsPlugin::_onNewEngine()
         _handleGET2(ENDPOINT_FRAME_BUFFERS, _engine->getFrameBuffer());
         _handle2(ENDPOINT_MATERIAL_LUT,
                  _engine->getScene().getTransferFunction());
-        std::function<void(Scene&)> func = [](Scene& scene) {
-            scene.markModified(), scene.commitMaterials(Action::update);
-        };
-        _handle2(ENDPOINT_SCENE, _engine->getScene(), func);
+        _handle2(ENDPOINT_SCENE, _engine->getScene(),
+                 std::function<void(Scene&)>([](Scene& scene) {
+                     scene.markModified();
+                     scene.commitMaterials(Action::update);
+                 }));
     }
 
     _engine->extensionInit(*this);
@@ -338,16 +342,32 @@ void RocketsPlugin::_setupHTTPServer()
     _handleVersion();
     _handleStreaming();
 
+    _handle2(ENDPOINT_APP_PARAMS, _parametersManager.getApplicationParameters(),
+             std::function<void(ApplicationParameters&)>(
+                 [this](ApplicationParameters& params) {
+                     params.markModified();
+                     if (params.getFrameExportFolder().empty())
+                         _engine->resetFrameNumber();
+                 }));
+    _handle2(ENDPOINT_GEOMETRY_PARAMS,
+             _parametersManager.getGeometryParameters());
+    _handle2(ENDPOINT_RENDERING_PARAMS,
+             _parametersManager.getRenderingParameters(),
+             std::function<void(RenderingParameters&)>(
+                 [this](RenderingParameters& params) {
+                     params.markModified();
+                     if (_engine->name() != params.getEngine())
+                         _onChangeEngine();
+                 }));
+    _handle2(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
+    _handle2(ENDPOINT_VOLUME_PARAMS, _parametersManager.getVolumeParameters());
+
     _handleGET(ENDPOINT_IMAGE_JPEG, _remoteImageJPEG);
     _remoteImageJPEG.registerSerializeCallback([this] { _requestImageJPEG(); });
 
     _handle(ENDPOINT_DATA_SOURCE, _remoteDataSource);
     _remoteDataSource.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_dataSourceUpdated, this));
-
-    _handle(ENDPOINT_SETTINGS, _remoteSettings);
-    _remoteSettings.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_settingsUpdated, this));
 
     _handle(ENDPOINT_FRAME, _remoteFrame);
     _remoteFrame.registerSerializeCallback([this] { _requestFrame(); });
@@ -930,188 +950,6 @@ void RocketsPlugin::_dataSourceUpdated()
     _parametersManager.print();
 
     _engine->buildScene();
-}
-
-void RocketsPlugin::_initializeSettings()
-{
-    auto& renderingParameters = _parametersManager.getRenderingParameters();
-    auto& volumeParameters = _parametersManager.getVolumeParameters();
-    auto& applicationParameters = _parametersManager.getApplicationParameters();
-
-    if (renderingParameters.getEngine() == "ospray")
-        _remoteSettings.setEngine(::brayns::v1::Engine::ospray);
-    else if (renderingParameters.getEngine() == "optix")
-        _remoteSettings.setEngine(::brayns::v1::Engine::optix);
-    _remoteSettings.setVolumeSamplesPerRay(volumeParameters.getSamplesPerRay());
-
-    switch (renderingParameters.getRenderer())
-    {
-    case RendererType::proximity:
-        _remoteSettings.setShader(::brayns::v1::Shader::proximity);
-        break;
-    case RendererType::particle:
-        _remoteSettings.setShader(::brayns::v1::Shader::particle);
-        break;
-    case RendererType::simulation:
-        _remoteSettings.setShader(::brayns::v1::Shader::simulation);
-        break;
-    case RendererType::geometryNormals:
-        _remoteSettings.setShader(::brayns::v1::Shader::geometry_normals);
-        break;
-    case RendererType::shadingNormals:
-        _remoteSettings.setShader(::brayns::v1::Shader::shading_normals);
-        break;
-    default:
-        _remoteSettings.setShader(::brayns::v1::Shader::basic);
-        break;
-    }
-
-    switch (renderingParameters.getShading())
-    {
-    case ShadingType::diffuse:
-        _remoteSettings.setShading(::brayns::v1::Shading::diffuse);
-        break;
-    case ShadingType::electron:
-        _remoteSettings.setShading(::brayns::v1::Shading::electron);
-        break;
-    default:
-        _remoteSettings.setShading(::brayns::v1::Shading::none);
-        break;
-    }
-    _remoteSettings.setSamplesPerPixel(
-        renderingParameters.getSamplesPerPixel());
-    _remoteSettings.setAmbientOcclusion(
-        renderingParameters.getAmbientOcclusionStrength());
-    _remoteSettings.setAmbientOcclusionDistance(
-        renderingParameters.getAmbientOcclusionDistance());
-    _remoteSettings.setAccumulation(renderingParameters.getAccumulation());
-    _remoteSettings.setShadows(renderingParameters.getShadows());
-    _remoteSettings.setSoftShadows(renderingParameters.getSoftShadows());
-    _remoteSettings.setRadiance(
-        renderingParameters.getLightEmittingMaterials());
-    Vector3f value = renderingParameters.getBackgroundColor();
-    _remoteSettings.setBackgroundColor(value);
-    _remoteSettings.setDetectionDistance(
-        renderingParameters.getDetectionDistance());
-    value = renderingParameters.getDetectionNearColor();
-    _remoteSettings.setDetectionNearColor(value);
-    value = renderingParameters.getDetectionFarColor();
-    _remoteSettings.setDetectionFarColor(value);
-    _remoteSettings.setEpsilon(renderingParameters.getEpsilon());
-    _remoteSettings.setHeadLight(renderingParameters.getHeadLight());
-    _remoteSettings.setJpegCompression(
-        applicationParameters.getJpegCompression());
-    const auto& jpegSize = applicationParameters.getJpegSize();
-    _remoteSettings.setJpegSize({jpegSize[0], jpegSize[1]});
-    _remoteSettings.setFrameExportFolder(
-        applicationParameters.getFrameExportFolder());
-    _remoteSettings.setSynchronousMode(
-        applicationParameters.getSynchronousMode());
-    _remoteSettings.setVarianceThreshold(
-        renderingParameters.getVarianceThreshold());
-    _remoteSettings.setImageStreamFps(
-        applicationParameters.getImageStreamFPS());
-}
-
-void RocketsPlugin::_settingsUpdated()
-{
-    const auto& renderingParameters =
-        _parametersManager.getRenderingParameters();
-
-    switch (_remoteSettings.getEngine())
-    {
-    case ::brayns::v1::Engine::ospray:
-        _parametersManager.getRenderingParameters().setEngine("ospray");
-        break;
-    case ::brayns::v1::Engine::optix:
-        _parametersManager.getRenderingParameters().setEngine("optix");
-        break;
-    }
-
-    _parametersManager.set("volume-samples-per-ray",
-                           std::to_string(
-                               _remoteSettings.getVolumeSamplesPerRay()));
-    _parametersManager.set("renderer", renderingParameters.getRendererAsString(
-                                           static_cast<RendererType>(
-                                               _remoteSettings.getShader())));
-
-    switch (_remoteSettings.getShading())
-    {
-    case ::brayns::v1::Shading::diffuse:
-        _parametersManager.set("shading", "diffuse");
-        break;
-    case ::brayns::v1::Shading::electron:
-        _parametersManager.set("shading", "electron");
-        break;
-    default:
-        _parametersManager.set("shading", "none");
-        break;
-    }
-    _parametersManager.set("samples-per-pixel",
-                           std::to_string(
-                               _remoteSettings.getSamplesPerPixel()));
-    _parametersManager.set("ambient-occlusion",
-                           std::to_string(
-                               _remoteSettings.getAmbientOcclusion()));
-    _parametersManager.set("ambient-occlusion-distance",
-                           std::to_string(
-                               _remoteSettings.getAmbientOcclusionDistance()));
-    _parametersManager.set("accumulation",
-                           (_remoteSettings.getAccumulation() ? "1" : "0"));
-    _parametersManager.set("shadows",
-                           std::to_string(_remoteSettings.getShadows()));
-    _parametersManager.set("soft-shadows",
-                           std::to_string(_remoteSettings.getSoftShadows()));
-    _parametersManager.set("radiance",
-                           (_remoteSettings.getRadiance() ? "1" : "0"));
-    _parametersManager.set(
-        "background-color",
-        std::to_string(_remoteSettings.getBackgroundColor()[0]) + " " +
-            std::to_string(_remoteSettings.getBackgroundColor()[1]) + " " +
-            std::to_string(_remoteSettings.getBackgroundColor()[2]));
-    _parametersManager.set("detection-distance",
-                           std::to_string(
-                               _remoteSettings.getDetectionDistance()));
-    _parametersManager.set("detection-on-different-material",
-                           (_remoteSettings.getDetectionOnDifferentMaterial()
-                                ? "1"
-                                : "0"));
-    _parametersManager.set(
-        "detection-near-color",
-        std::to_string(_remoteSettings.getDetectionNearColor()[0]) + " " +
-            std::to_string(_remoteSettings.getDetectionNearColor()[1]) + " " +
-            std::to_string(_remoteSettings.getDetectionNearColor()[2]));
-    _parametersManager.set(
-        "detection-far-color",
-        std::to_string(_remoteSettings.getDetectionFarColor()[0]) + " " +
-            std::to_string(_remoteSettings.getDetectionFarColor()[1]) + " " +
-            std::to_string(_remoteSettings.getDetectionFarColor()[2]));
-    _parametersManager.set("epsilon",
-                           std::to_string(_remoteSettings.getEpsilon()));
-    _parametersManager.set("head-light",
-                           (_remoteSettings.getHeadLight() ? "1" : "0"));
-
-    auto& app = _parametersManager.getApplicationParameters();
-    app.setJpegSize(Vector2ui{_remoteSettings.getJpegSize()});
-    app.setJpegCompression(
-        std::min(_remoteSettings.getJpegCompression(), 100u));
-    app.setImageStreamFPS(_remoteSettings.getImageStreamFps());
-
-    if (_engine->name() !=
-        _parametersManager.getRenderingParameters().getEngine())
-    {
-        _onChangeEngine();
-    }
-
-    _parametersManager.set("synchronous-mode",
-                           (_remoteSettings.getSynchronousMode() ? "1" : "0"));
-    _parametersManager.set("variance-threshold",
-                           std::to_string(
-                               _remoteSettings.getVarianceThreshold()));
-    _parametersManager.set("frame-export-folder",
-                           _remoteSettings.getFrameExportFolderString());
-    if (_remoteSettings.getFrameExportFolderString().empty())
-        _engine->resetFrameNumber();
 }
 
 bool RocketsPlugin::_requestFrame()

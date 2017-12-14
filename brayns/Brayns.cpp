@@ -113,7 +113,10 @@ struct Brayns::Impl
             _parametersManager.getRenderingParameters().getEngine();
         _engine = _engineFactory.create(engineName);
         if (!_engine)
-            throw std::runtime_error("Unsupported engine: " + engineName);
+            throw std::runtime_error(
+                "Unsupported engine: " +
+                _parametersManager.getRenderingParameters().getEngineAsString(
+                    engineName));
 
         _engine->recreate = std::bind(&Impl::createEngine, this);
         _engine->buildScene = std::bind(&Impl::buildScene, this);

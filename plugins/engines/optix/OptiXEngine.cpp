@@ -144,9 +144,9 @@ void OptiXEngine::_initializeContext()
     }
 }
 
-std::string OptiXEngine::name() const
+EngineType OptiXEngine::name() const
 {
-    return "optix";
+    return EngineType::optix;
 }
 
 void OptiXEngine::commit()

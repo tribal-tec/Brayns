@@ -25,6 +25,11 @@
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/transferFunction/TransferFunction.h>
+#include <brayns/parameters/ApplicationParameters.h>
+#include <brayns/parameters/GeometryParameters.h>
+#include <brayns/parameters/RenderingParameters.h>
+#include <brayns/parameters/SceneParameters.h>
+#include <brayns/parameters/VolumeParameters.h>
 
 #include "base64/base64.h"
 
@@ -44,20 +49,80 @@ STATICJSON_DECLARE_ENUM(brayns::CameraStereoMode,
                         {"side_by_side",
                          brayns::CameraStereoMode::side_by_side});
 
+STATICJSON_DECLARE_ENUM(brayns::GeometryQuality,
+                        {"low", brayns::GeometryQuality::low},
+                        {"medium", brayns::GeometryQuality::medium},
+                        {"high", brayns::GeometryQuality::high});
+
+STATICJSON_DECLARE_ENUM(brayns::MorphologySectionType,
+                        {"undefined", brayns::MorphologySectionType::undefined},
+                        {"soma", brayns::MorphologySectionType::soma},
+                        {"axon", brayns::MorphologySectionType::axon},
+                        {"dendrite", brayns::MorphologySectionType::dendrite},
+                        {"apical_dendrite",
+                         brayns::MorphologySectionType::apical_dendrite},
+                        {"all", brayns::MorphologySectionType::all});
+
+STATICJSON_DECLARE_ENUM(
+    brayns::ColorScheme, {"none", brayns::ColorScheme::none},
+    {"neuron_by_id", brayns::ColorScheme::neuron_by_id},
+    {"neuron_by_type", brayns::ColorScheme::neuron_by_type},
+    {"neuron_by_segment_type", brayns::ColorScheme::neuron_by_segment_type},
+    {"neuron_by_layer", brayns::ColorScheme::neuron_by_layer},
+    {"neuron_by_mtype", brayns::ColorScheme::neuron_by_mtype},
+    {"neuron_by_etype", brayns::ColorScheme::neuron_by_etype},
+    {"neuron_by_target", brayns::ColorScheme::neuron_by_target},
+    {"protein_by_id", brayns::ColorScheme::protein_by_id},
+    {"protein_atoms", brayns::ColorScheme::protein_atoms},
+    {"protein_chains", brayns::ColorScheme::protein_chains},
+    {"protein_residues", brayns::ColorScheme::protein_residues});
+
+STATICJSON_DECLARE_ENUM(brayns::SceneEnvironment,
+                        {"none", brayns::SceneEnvironment::none},
+                        {"ground", brayns::SceneEnvironment::ground},
+                        {"wall", brayns::SceneEnvironment::wall},
+                        {"bounding_box",
+                         brayns::SceneEnvironment::bounding_box});
+
+STATICJSON_DECLARE_ENUM(brayns::MemoryMode,
+                        {"shared", brayns::MemoryMode::shared},
+                        {"replicated", brayns::MemoryMode::replicated});
+
+STATICJSON_DECLARE_ENUM(
+    brayns::RendererType, {"basic", brayns::RendererType::basic},
+    {"proximity", brayns::RendererType::proximity},
+    {"simulation", brayns::RendererType::simulation},
+    {"particle", brayns::RendererType::particle},
+    {"geometry_normals", brayns::RendererType::geometryNormals},
+    {"shading_normals", brayns::RendererType::shadingNormals},
+    {"scientific_visualization",
+     brayns::RendererType::scientificvisualization});
+
+STATICJSON_DECLARE_ENUM(brayns::ShadingType,
+                        {"none", brayns::ShadingType::none},
+                        {"diffuse", brayns::ShadingType::diffuse},
+                        {"electron", brayns::ShadingType::electron});
+
+STATICJSON_DECLARE_ENUM(brayns::EngineType,
+                        {"ospray", brayns::EngineType::ospray},
+                        {"optix", brayns::EngineType::optix},
+                        {"livre", brayns::EngineType::livre});
+
+#define Vector2uiArray(vec) \
+    reinterpret_cast<std::array<unsigned, 2>*>(&vec.array[0])
+#define Vector2fArray(vec) \
+    reinterpret_cast<std::array<float, 2>*>(&vec.array[0])
+#define Vector3fArray(vec) \
+    reinterpret_cast<std::array<float, 3>*>(&vec.array[0])
+
 namespace staticjson
 {
 void init(brayns::Camera* c, ObjectHandler* h)
 {
     // thx for the hack: https://stackoverflow.com/questions/11205186
-    h->add_property("origin", reinterpret_cast<std::array<float, 3>*>(
-                                  &c->_position.array[0]),
-                    Flags::Optional);
-    h->add_property("look_at", reinterpret_cast<std::array<float, 3>*>(
-                                   &c->_target.array[0]),
-                    Flags::Optional);
-    h->add_property("up",
-                    reinterpret_cast<std::array<float, 3>*>(&c->_up.array[0]),
-                    Flags::Optional);
+    h->add_property("origin", Vector3fArray(c->_position), Flags::Optional);
+    h->add_property("look_at", Vector3fArray(c->_target), Flags::Optional);
+    h->add_property("up", Vector3fArray(c->_up), Flags::Optional);
     h->add_property("field_of_view", &c->_fieldOfView, Flags::Optional);
     h->add_property("aperture", &c->_aperture, Flags::Optional);
     h->add_property("focal_length", &c->_focalLength, Flags::Optional);
@@ -98,8 +163,7 @@ void init(brayns::FrameBuffer* f, ObjectHandler* h)
 
 void init(brayns::TransferFunction* t, ObjectHandler* h)
 {
-    h->add_property("range", reinterpret_cast<std::array<float, 2>*>(
-                                 &t->getValuesRange()[0]),
+    h->add_property("range", Vector2fArray(t->getValuesRange()),
                     Flags::Optional);
     h->add_property("diffuse",
                     reinterpret_cast<std::vector<std::array<float, 4>>*>(
@@ -118,18 +182,15 @@ void init(brayns::Boxf* b, ObjectHandler* h)
     static brayns::Vector3f bMin, bMax;
     bMin = b->getMin();
     bMax = b->getMax();
-    h->add_property("min", reinterpret_cast<std::array<float, 3>*>(&bMin[0]));
-    h->add_property("max", reinterpret_cast<std::array<float, 3>*>(&bMax[0]));
+    h->add_property("min", Vector3fArray(bMin));
+    h->add_property("max", Vector3fArray(bMax));
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
 void init(brayns::Material* m, ObjectHandler* h)
 {
-    h->add_property("diffuse_color",
-                    reinterpret_cast<std::array<float, 3>*>(&m->_color[0]),
-                    Flags::Optional);
-    h->add_property("specular_color", reinterpret_cast<std::array<float, 3>*>(
-                                          &m->_specularColor[0]),
+    h->add_property("diffuse_color", Vector3fArray(m->_color), Flags::Optional);
+    h->add_property("specular_color", Vector3fArray(m->_specularColor),
                     Flags::Optional);
     h->add_property("specular_exponent", &m->_specularExponent,
                     Flags::Optional);
@@ -157,6 +218,70 @@ void init(brayns::Scene* s, ObjectHandler* h)
     h->add_property("bounds", &s->getWorldBounds(),
                     Flags::IgnoreWrite | Flags::Optional);
     h->add_property("materials", &materials);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::MorphologyLayout* m, ObjectHandler* h)
+{
+    h->add_property("nb_columns", &m->nbColumns);
+    h->add_property("vertical_spacing", &m->verticalSpacing);
+    h->add_property("horizontal_spacing", &m->horizontalSpacing);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::ApplicationParameters* a, ObjectHandler* h)
+{
+    h->add_property("jpeg_compression", &a->_jpegCompression, Flags::Optional);
+    h->add_property("jpeg_size", Vector2uiArray(a->_jpegSize), Flags::Optional);
+    h->add_property("frame_export_folder", &a->_frameExportFolder,
+                    Flags::Optional);
+    h->add_property("synchronous_mode", &a->_synchronousMode, Flags::Optional);
+    h->add_property("image_stream_fps", &a->_imageStreamFPS, Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::GeometryParameters* g, ObjectHandler* h)
+{
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::RenderingParameters* r, ObjectHandler* h)
+{
+    h->add_property("engine", &r->_engine, Flags::Optional);
+    h->add_property("samples_per_pixel", &r->_spp, Flags::Optional);
+    h->add_property("shader", &r->_renderer, Flags::Optional);
+    h->add_property("shading", &r->_shading, Flags::Optional);
+    h->add_property("shadows", &r->_shadows, Flags::Optional);
+    h->add_property("soft_shadows", &r->_softShadows, Flags::Optional);
+    h->add_property("ambient_occlusion", &r->_ambientOcclusionStrength,
+                    Flags::Optional);
+    h->add_property("accumulation", &r->_accumulation, Flags::Optional);
+    h->add_property("radiance", &r->_lightEmittingMaterials, Flags::Optional);
+    h->add_property("epsilon", &r->_epsilon, Flags::Optional);
+    h->add_property("head_light", &r->_headLight, Flags::Optional);
+    h->add_property("variance_threshold", &r->_varianceThreshold,
+                    Flags::Optional);
+    h->add_property("background_color", Vector3fArray(r->_backgroundColor),
+                    Flags::Optional);
+    h->add_property("detection_distance", &r->_detectionDistance,
+                    Flags::Optional);
+    h->add_property("detection_on_different_material",
+                    &r->_detectionOnDifferentMaterial, Flags::Optional);
+    h->add_property("detection_near_color",
+                    Vector3fArray(r->_detectionNearColor), Flags::Optional);
+    h->add_property("detection_far_color", Vector3fArray(r->_detectionFarColor),
+                    Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::SceneParameters* s, ObjectHandler* h)
+{
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::VolumeParameters* v, ObjectHandler* h)
+{
+    h->add_property("samples_per_ray", &v->_spr, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

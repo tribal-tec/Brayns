@@ -26,11 +26,7 @@
 #include <brayns/common/mathTypes.h>
 #include <brayns/common/types.h>
 
-namespace staticjson
-{
-class ObjectHandler;
-void init(brayns::Material* c, ObjectHandler* h);
-}
+SERIALIZATION_ACCESS(Material)
 
 namespace brayns
 {
@@ -108,7 +104,7 @@ private:
     TextureTypes _textures;
     bool _locked;
 
-    friend void staticjson::init(Material*, staticjson::ObjectHandler*);
+    SERIALIZATION_FRIEND(Material)
 };
 }
 #endif // MATERIAL_H

@@ -132,9 +132,9 @@ OSPRayEngine::~OSPRayEngine()
 {
 }
 
-std::string OSPRayEngine::name() const
+EngineType OSPRayEngine::name() const
 {
-    return "ospray";
+    return EngineType::ospray;
 }
 
 void OSPRayEngine::commit()

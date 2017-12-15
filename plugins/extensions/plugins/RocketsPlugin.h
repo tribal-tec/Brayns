@@ -28,10 +28,48 @@
 #include <turbojpeg.h>
 
 #include <lexis/render/frame.h>
-#include <lexis/render/imageJPEG.h>
 
 namespace brayns
 {
+class ImageGenerator
+{
+public:
+    ImageGenerator(RocketsPlugin& parent)
+        : _parent(parent)
+    {
+    }
+    ~ImageGenerator()
+    {
+        if (_compressor)
+            tjDestroy(_compressor);
+    }
+
+    struct ImageJPEG
+    {
+        struct tjDeleter
+        {
+            void operator()(uint8_t* ptr) { tjFree(ptr); }
+        };
+        using JpegData = std::unique_ptr<uint8_t, tjDeleter>;
+        JpegData data;
+        unsigned long size{0};
+    };
+
+    ImageJPEG createJPEG();
+
+private:
+    RocketsPlugin& _parent;
+    bool _processingImageJpeg = false;
+    tjhandle _compressor{tjInitCompress()};
+
+    void _resizeImage(unsigned int* srcData, const Vector2i& srcSize,
+                      const Vector2i& dstSize, uints& dstData);
+    ImageJPEG::JpegData _encodeJpeg(const uint32_t width, const uint32_t height,
+                                    const uint8_t* rawData,
+                                    const int32_t pixelFormat,
+                                    unsigned long& dataSize);
+};
+
 /**
    The RocketsPlugin is in charge of exposing a both an http/REST interface to
    the outside world. The http server is configured according
@@ -85,52 +123,13 @@ private:
 
     void _handleVersion();
     void _handleStreaming();
-
-    bool _requestImageJPEG();
+    void _handleImageJPEG();
 
     bool _requestFrame();
     void _frameUpdated();
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
-
-    /**
-     * @brief Resizes an given image according to the new size
-     * @param srcData Source buffer
-     * @param srcSize Source size
-     * @param dstSize Returned destination size
-     * @param dstData Returned destination buffer
-     */
-    void _resizeImage(unsigned int* srcData, const Vector2i& srcSize,
-                      const Vector2i& dstSize, uints& dstData);
-
-    struct tjDeleter
-    {
-        void operator()(uint8_t* ptr) { tjFree(ptr); }
-    };
-
-    using JpegData = std::unique_ptr<uint8_t, tjDeleter>;
-
-    /**
-     * @brief Encodes an RAW image buffer into JPEG
-     * @param width Image width
-     * @param height Image height
-     * @param rawData Source buffer
-     * @param pixelFormat pixel format of rawData
-     * @param dataSize Returned buffer size
-     * @return Destination buffer
-     */
-    JpegData _encodeJpeg(const uint32_t width, const uint32_t height,
-                         const uint8_t* rawData, const int32_t pixelFormat,
-                         unsigned long& dataSize);
-
-    struct ImageJPEG
-    {
-        unsigned long size{0};
-        JpegData data;
-    };
-
-    ImageJPEG _createJPEG();
 
     bool _writeBlueConfigFile(const std::string& filename,
                               const std::map<std::string, std::string>& params);
@@ -146,13 +145,13 @@ private:
     ParametersManager& _parametersManager;
 
     std::unique_ptr<rockets::Server> _httpServer;
-    tjhandle _compressor;
 
-    bool _processingImageJpeg = false;
     bool _dirtyEngine = false;
 
     ::lexis::render::Frame _remoteFrame;
-    ::lexis::render::ImageJPEG _remoteImageJPEG;
+
+    friend class ImageGenerator;
+    ImageGenerator _imageGenerator{*this};
 
     class Timer
     {

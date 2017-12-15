@@ -167,15 +167,12 @@ inline bool from_json(T& obj, const std::string& json,
 RocketsPlugin::RocketsPlugin(ParametersManager& parametersManager)
     : ExtensionPlugin()
     , _parametersManager(parametersManager)
-    , _compressor(tjInitCompress())
 {
     _setupHTTPServer();
 }
 
 RocketsPlugin::~RocketsPlugin()
 {
-    if (_compressor)
-        tjDestroy(_compressor);
 }
 
 void RocketsPlugin::_onNewEngine()
@@ -290,7 +287,7 @@ void RocketsPlugin::_broadcastWebsocketMessages()
 
         _timer.restart();
 
-        const auto image = _createJPEG();
+        const auto image = _imageGenerator.createJPEG();
         if (image.size > 0)
             _httpServer->broadcastBinary((const char*)image.data.get(),
                                          image.size);
@@ -346,6 +343,7 @@ void RocketsPlugin::_setupHTTPServer()
 
     _handleVersion();
     _handleStreaming();
+    _handleImageJPEG();
 
     _handle2(ENDPOINT_APP_PARAMS, _parametersManager.getApplicationParameters(),
              std::function<void(ApplicationParameters&)>(
@@ -373,9 +371,6 @@ void RocketsPlugin::_setupHTTPServer()
     _handle2(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
     _handle2(ENDPOINT_VOLUME_PARAMS, _parametersManager.getVolumeParameters());
 
-    _handleGET(ENDPOINT_IMAGE_JPEG, _remoteImageJPEG);
-    _remoteImageJPEG.registerSerializeCallback([this] { _requestImageJPEG(); });
-
     _handle(ENDPOINT_FRAME, _remoteFrame);
     _remoteFrame.registerSerializeCallback([this] { _requestFrame(); });
     _remoteFrame.registerDeserializedCallback(
@@ -395,7 +390,7 @@ void RocketsPlugin::_setupWebsocket()
             responses.push_back({i.second(), rockets::ws::Recipient::sender,
                                  rockets::ws::Format::text});
 
-        const auto image = _createJPEG();
+        const auto image = _imageGenerator.createJPEG();
         if (image.size > 0)
         {
             std::string message;
@@ -569,8 +564,33 @@ void RocketsPlugin::_handleStreaming()
 #endif
 }
 
-void RocketsPlugin::_resizeImage(unsigned int* srcData, const Vector2i& srcSize,
-                                 const Vector2i& dstSize, uints& dstData)
+void RocketsPlugin::_handleImageJPEG()
+{
+    using namespace rockets::http;
+
+    _httpServer->handle(Method::GET, ENDPOINT_API_VERSION + ENDPOINT_IMAGE_JPEG,
+                        [&](const Request&) {
+                            auto obj = _imageGenerator.createJPEG();
+                            if (obj.size == 0)
+                                return make_ready_response(Code::BAD_REQUEST);
+                            return make_ready_response(Code::OK, to_json(obj),
+                                                       JSON_TYPE);
+                        });
+
+    _httpServer->handle(
+        Method::GET, ENDPOINT_API_VERSION + ENDPOINT_IMAGE_JPEG + "/schema",
+        [&](const Request&) {
+            ImageGenerator::ImageJPEG obj;
+            return make_ready_response(Code::OK,
+                                       getSchema(obj, hyphenatedToCamelCase(
+                                                          ENDPOINT_IMAGE_JPEG)),
+                                       JSON_TYPE);
+        });
+}
+
+void ImageGenerator::_resizeImage(unsigned int* srcData,
+                                  const Vector2i& srcSize,
+                                  const Vector2i& dstSize, uints& dstData)
 {
     dstData.reserve(dstSize.x() * dstSize.y());
     size_t x_ratio =
@@ -587,16 +607,6 @@ void RocketsPlugin::_resizeImage(unsigned int* srcData, const Vector2i& srcSize,
             dstData[(y * dstSize.x()) + x] = srcData[(y2 * srcSize.x()) + x2];
         }
     }
-}
-
-bool RocketsPlugin::_requestImageJPEG()
-{
-    auto image = _createJPEG();
-    if (image.size == 0)
-        return false;
-
-    _remoteImageJPEG.setData(image.data.get(), image.size);
-    return true;
 }
 
 bool RocketsPlugin::_requestFrame()
@@ -662,11 +672,9 @@ std::future<rockets::http::Response> RocketsPlugin::_handleCircuitConfigBuilder(
     return make_ready_response(Code::SERVICE_UNAVAILABLE);
 }
 
-RocketsPlugin::JpegData RocketsPlugin::_encodeJpeg(const uint32_t width,
-                                                   const uint32_t height,
-                                                   const uint8_t* rawData,
-                                                   const int32_t pixelFormat,
-                                                   unsigned long& dataSize)
+ImageGenerator::ImageJPEG::JpegData ImageGenerator::_encodeJpeg(
+    const uint32_t width, const uint32_t height, const uint8_t* rawData,
+    const int32_t pixelFormat, unsigned long& dataSize)
 {
     uint8_t* tjSrcBuffer = const_cast<uint8_t*>(rawData);
     const int32_t color_components = 4; // Color Depth
@@ -677,28 +685,29 @@ RocketsPlugin::JpegData RocketsPlugin::_encodeJpeg(const uint32_t width,
     const int32_t tjJpegSubsamp = TJSAMP_444;
     const int32_t tjFlags = TJXOP_ROT180;
 
-    const int32_t success = tjCompress2(
-        _compressor, tjSrcBuffer, width, tjPitch, height, tjPixelFormat,
-        &tjJpegBuf, &dataSize, tjJpegSubsamp,
-        _parametersManager.getApplicationParameters().getJpegCompression(),
-        tjFlags);
+    const int32_t success =
+        tjCompress2(_compressor, tjSrcBuffer, width, tjPitch, height,
+                    tjPixelFormat, &tjJpegBuf, &dataSize, tjJpegSubsamp,
+                    _parent._parametersManager.getApplicationParameters()
+                        .getJpegCompression(),
+                    tjFlags);
 
     if (success != 0)
     {
         BRAYNS_ERROR << "libjpeg-turbo image conversion failure" << std::endl;
         return 0;
     }
-    return JpegData{tjJpegBuf};
+    return ImageJPEG::JpegData{tjJpegBuf};
 }
 
-RocketsPlugin::ImageJPEG RocketsPlugin::_createJPEG()
+ImageGenerator::ImageJPEG ImageGenerator::createJPEG()
 {
     if (_processingImageJpeg)
         return ImageJPEG();
 
     _processingImageJpeg = true;
     const auto& newFrameSize =
-        _parametersManager.getApplicationParameters().getJpegSize();
+        _parent._parametersManager.getApplicationParameters().getJpegSize();
     if (newFrameSize.x() == 0 || newFrameSize.y() == 0)
     {
         BRAYNS_ERROR << "Encountered invalid size of image JPEG: "
@@ -707,7 +716,7 @@ RocketsPlugin::ImageJPEG RocketsPlugin::_createJPEG()
         return ImageJPEG();
     }
 
-    FrameBuffer& frameBuffer = _engine->getFrameBuffer();
+    FrameBuffer& frameBuffer = _parent._engine->getFrameBuffer();
     const auto& frameSize = frameBuffer.getSize();
     unsigned int* colorBuffer = (unsigned int*)frameBuffer.getColorBuffer();
     if (!colorBuffer)

@@ -30,6 +30,7 @@
 #include <brayns/parameters/RenderingParameters.h>
 #include <brayns/parameters/SceneParameters.h>
 #include <brayns/parameters/VolumeParameters.h>
+#include <plugins/extensions/plugins/RocketsPlugin.h>
 
 #include "base64/base64.h"
 
@@ -168,6 +169,14 @@ void init(brayns::FrameBuffer* f, ObjectHandler* h)
     h->add_property("height", &frameSize[1]);
     h->add_property("diffuse", &diffuse);
     h->add_property("depth", &depth, Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+void init(brayns::ImageGenerator::ImageJPEG* i, ObjectHandler* h)
+{
+    static std::string data;
+    data = base64_encode(i->data.get(), i->size);
+    h->add_property("data", &data);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

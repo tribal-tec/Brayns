@@ -31,6 +31,27 @@ SERIALIZATION_ACCESS(ApplicationParameters)
 
 namespace brayns
 {
+class ApplicationParameters;
+struct StreamParameters
+{
+    StreamParameters(ApplicationParameters* parent)
+        : _parent(parent)
+    {
+    }
+
+    std::string host;
+    bool enabled{true};
+    std::string id;
+    unsigned port{1701};
+    bool compression{true};
+    unsigned quality{80};
+
+    void markModified();
+
+private:
+    ApplicationParameters* _parent;
+};
+
 /** Manages application parameters
  */
 class ApplicationParameters : public AbstractParameters
@@ -73,40 +94,47 @@ public:
         _updateValue(_frameExportFolder, folder);
     }
     std::string getFrameExportFolder() const { return _frameExportFolder; }
+    StreamParameters& getStreamParameters() { return _streamParams; }
     /** Streaming enabled */
-    bool getStreamingEnabled() const { return _streamingEnabled; }
+    bool getStreamingEnabled() const { return _streamParams.enabled; }
     void setStreamingEnabled(const bool enabled)
     {
-        _updateValue(_streamingEnabled, enabled);
+        _updateValue(_streamParams.enabled, enabled);
     }
 
     /** Stream compression enabled */
-    bool getStreamCompression() const { return _streamCompression; }
+    bool getStreamCompression() const { return _streamParams.compression; }
     void setStreamCompression(const bool enabled)
     {
-        _updateValue(_streamCompression, enabled);
+        _updateValue(_streamParams.compression, enabled);
     }
 
     /** Stream compression quality, 1 (worst) to 100 (best) */
-    unsigned int getStreamQuality() const { return _streamQuality; }
-    void setStreamQuality(const unsigned int quality)
+    unsigned getStreamQuality() const { return _streamParams.quality; }
+    void setStreamQuality(const unsigned quality)
     {
-        _updateValue(_streamQuality, quality);
+        _updateValue(_streamParams.quality, quality);
     }
 
     /** Stream ID; defaults to DEFLECT_ID if empty */
-    const std::string& getStreamId() const { return _streamId; }
-    void setStreamId(const std::string& id) { _updateValue(_streamId, id); }
+    const std::string& getStreamId() const { return _streamParams.id; }
+    void setStreamId(const std::string& id)
+    {
+        _updateValue(_streamParams.id, id);
+    }
     /** Stream hostname; defaults to DEFLECT_HOST if empty */
-    const std::string& getStreamHostname() const { return _streamHostname; }
+    const std::string& getStreamHostname() const { return _streamParams.host; }
     void setStreamHost(const std::string& host)
     {
-        _updateValue(_streamHostname, host);
+        _updateValue(_streamParams.host, host);
     }
 
     /** Stream port; defaults to 1701 if empty */
-    uint16_t getStreamPort() const { return _streamPort; }
-    void setStreamPort(const uint16_t port) { _updateValue(_streamPort, port); }
+    unsigned getStreamPort() const { return _streamParams.port; }
+    void setStreamPort(const unsigned port)
+    {
+        _updateValue(_streamParams.port, port);
+    }
     /** Folder used by the application to store temporary files */
     std::string getTmpFolder() const { return _tmpFolder; }
     /** @return true if synchronous mode is enabled, aka rendering waits for
@@ -127,12 +155,7 @@ protected:
     Vector2ui _jpegSize;
     strings _filters;
     std::string _frameExportFolder;
-    bool _streamingEnabled{false};
-    bool _streamCompression{true};
-    unsigned int _streamQuality{80};
-    uint16_t _streamPort{1701};
-    std::string _streamHostname;
-    std::string _streamId;
+    StreamParameters _streamParams{this};
     std::string _tmpFolder;
     bool _synchronousMode{false};
     size_t _imageStreamFPS{60};

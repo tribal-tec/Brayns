@@ -282,6 +282,17 @@ void init(brayns::ConnectivityConfiguration* c, ObjectHandler* h)
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
+void init(brayns::StreamParameters* s, ObjectHandler* h)
+{
+    h->add_property("host", &s->host, Flags::Optional);
+    h->add_property("enabled", &s->enabled, Flags::Optional);
+    h->add_property("id", &s->id, Flags::Optional);
+    h->add_property("port", &s->port, Flags::Optional);
+    h->add_property("compression", &s->compression, Flags::Optional);
+    h->add_property("quality", &s->quality, Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
 void init(brayns::ApplicationParameters* a, ObjectHandler* h)
 {
     h->add_property("jpeg_compression", &a->_jpegCompression, Flags::Optional);

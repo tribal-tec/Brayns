@@ -30,7 +30,6 @@
 #include <lexis/render/Histogram.h>
 #include <lexis/render/frame.h>
 #include <lexis/render/imageJPEG.h>
-#include <lexis/render/stream.h>
 
 namespace brayns
 {
@@ -96,9 +95,6 @@ private:
 
     bool _requestVolumeHistogram();
 
-    void _streamParamsUpdated();
-    bool _requestStreamParams();
-
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
 
@@ -163,7 +159,6 @@ private:
     ::lexis::render::ImageJPEG _remoteImageJPEG;
     ::lexis::render::Histogram _remoteSimulationHistogram;
     ::lexis::render::Histogram _remoteVolumeHistogram;
-    ::lexis::render::Stream _streamParams;
 
     class Timer
     {

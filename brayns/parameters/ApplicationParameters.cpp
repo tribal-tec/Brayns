@@ -48,6 +48,11 @@ const std::string DEFAULT_TMP_FOLDER = "/tmp";
 
 namespace brayns
 {
+void StreamParameters::markModified()
+{
+    _parent->markModified();
+}
+
 ApplicationParameters::ApplicationParameters()
     : AbstractParameters("Application")
     , _camera(DEFAULT_CAMERA)

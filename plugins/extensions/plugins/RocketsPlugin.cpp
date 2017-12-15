@@ -541,13 +541,14 @@ void RocketsPlugin::_handleVersion()
 void RocketsPlugin::_handleStreaming()
 {
 #if BRAYNS_USE_DEFLECT
-    _handle(ENDPOINT_STREAM, _streamParams);
-    _handlePUT(ENDPOINT_STREAM_TO, _streamParams);
-    _streamParams.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_streamParamsUpdated, this));
-    _streamParams.registerSerializeCallback([this] { _requestStreamParams(); });
+    _handle2(ENDPOINT_STREAM, _parametersManager.getApplicationParameters()
+                                  .getStreamParameters());
+    _handlePUT2(
+        ENDPOINT_STREAM_TO,
+        _parametersManager.getApplicationParameters().getStreamParameters());
 #else
-    _handleGET(ENDPOINT_STREAM, _streamParams);
+    _handleGET2(ENDPOINT_STREAM, _parametersManager.getApplicationParameters()
+                                     .getStreamParameters());
     using namespace rockets::http;
     auto respondNotImplemented = [](const Request&) {
         const auto message = "Brayns was not compiled with streaming support";
@@ -659,29 +660,6 @@ bool RocketsPlugin::_requestVolumeHistogram()
     _remoteVolumeHistogram.setMin(histogram.range.x());
     _remoteVolumeHistogram.setMax(histogram.range.y());
     _remoteVolumeHistogram.setBins(histogram.values);
-    return true;
-}
-
-void RocketsPlugin::_streamParamsUpdated()
-{
-    auto& params = _parametersManager.getApplicationParameters();
-    params.setStreamingEnabled(_streamParams.getEnabled());
-    params.setStreamCompression(_streamParams.getCompression());
-    params.setStreamQuality(_streamParams.getQuality());
-    params.setStreamHost(_streamParams.getHostString());
-    params.setStreamPort(_streamParams.getPort());
-    params.setStreamId(_streamParams.getIdString());
-}
-
-bool RocketsPlugin::_requestStreamParams()
-{
-    auto& params = _parametersManager.getApplicationParameters();
-    _streamParams.setEnabled(params.getStreamingEnabled());
-    _streamParams.setCompression(params.getStreamCompression());
-    _streamParams.setQuality(params.getStreamQuality());
-    _streamParams.setHost(params.getStreamHostname());
-    _streamParams.setPort(params.getStreamPort());
-    _streamParams.setId(params.getStreamId());
     return true;
 }
 

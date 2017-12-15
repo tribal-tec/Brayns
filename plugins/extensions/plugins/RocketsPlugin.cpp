@@ -192,6 +192,19 @@ void RocketsPlugin::_onNewEngine()
                      scene.markModified();
                      scene.commitMaterials(Action::update);
                  }));
+
+        if (auto simulationHandler = _engine->getScene().getSimulationHandler())
+            _handleGET2(
+                ENDPOINT_SIMULATION_HISTOGRAM,
+                simulationHandler->getHistogram(), [&] {
+                    _engine->getScene().getSimulationHandler()->getHistogram();
+                });
+
+        if (auto volumeHandler = _engine->getScene().getVolumeHandler())
+            _handleGET2(
+                ENDPOINT_VOLUME_HISTOGRAM, volumeHandler->getHistogram(), [&] {
+                    _engine->getScene().getVolumeHandler()->getHistogram();
+                });
     }
 
     _engine->extensionInit(*this);
@@ -207,6 +220,8 @@ void RocketsPlugin::_onChangeEngine()
         _remove(ENDPOINT_FRAME_BUFFERS);
         _remove(ENDPOINT_MATERIAL_LUT);
         _remove(ENDPOINT_SCENE);
+        _remove(ENDPOINT_SIMULATION_HISTOGRAM);
+        _remove(ENDPOINT_VOLUME_HISTOGRAM);
     }
 
     try
@@ -370,14 +385,6 @@ void RocketsPlugin::_setupHTTPServer()
                         ENDPOINT_API_VERSION + ENDPOINT_CIRCUIT_CONFIG_BUILDER,
                         std::bind(&RocketsPlugin::_handleCircuitConfigBuilder,
                                   this, std::placeholders::_1));
-
-    _handleGET(ENDPOINT_SIMULATION_HISTOGRAM, _remoteSimulationHistogram);
-    _remoteSimulationHistogram.registerSerializeCallback(
-        [this] { _requestSimulationHistogram(); });
-
-    _handleGET(ENDPOINT_VOLUME_HISTOGRAM, _remoteVolumeHistogram);
-    _remoteVolumeHistogram.registerSerializeCallback(
-        [this] { _requestVolumeHistogram(); });
 }
 
 void RocketsPlugin::_setupWebsocket()
@@ -423,12 +430,15 @@ void RocketsPlugin::_handle2(const std::string& endpoint, T& obj,
 }
 
 template <class T>
-void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj)
+void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj,
+                                std::function<void()> pre)
 {
     using namespace rockets::http;
 
     _httpServer->handle(Method::GET, ENDPOINT_API_VERSION + endpoint,
-                        [&obj](const Request&) {
+                        [&obj, pre](const Request&) {
+                            if (pre)
+                                pre();
                             return make_ready_response(Code::OK, to_json(obj),
                                                        JSON_TYPE);
                         });
@@ -635,32 +645,6 @@ void RocketsPlugin::_frameUpdated()
         scene.serializeGeometry();
         scene.commit();
     }
-}
-
-bool RocketsPlugin::_requestSimulationHistogram()
-{
-    auto simulationHandler = _engine->getScene().getSimulationHandler();
-    if (!simulationHandler || !simulationHandler->histogramChanged())
-        return false;
-
-    const auto& histogram = simulationHandler->getHistogram();
-    _remoteSimulationHistogram.setMin(histogram.range.x());
-    _remoteSimulationHistogram.setMax(histogram.range.y());
-    _remoteSimulationHistogram.setBins(histogram.values);
-    return true;
-}
-
-bool RocketsPlugin::_requestVolumeHistogram()
-{
-    auto volumeHandler = _engine->getScene().getVolumeHandler();
-    if (!volumeHandler)
-        return false;
-
-    const auto& histogram = volumeHandler->getHistogram();
-    _remoteVolumeHistogram.setMin(histogram.range.x());
-    _remoteVolumeHistogram.setMax(histogram.range.y());
-    _remoteVolumeHistogram.setBins(histogram.values);
-    return true;
 }
 
 std::future<rockets::http::Response> RocketsPlugin::_handleCircuitConfigBuilder(

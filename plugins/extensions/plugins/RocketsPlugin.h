@@ -27,7 +27,6 @@
 #include <rockets/server.h>
 #include <turbojpeg.h>
 
-#include <lexis/render/Histogram.h>
 #include <lexis/render/frame.h>
 #include <lexis/render/imageJPEG.h>
 
@@ -69,7 +68,8 @@ private:
                       obj.markModified();
                   });
     template <class T>
-    void _handleGET2(const std::string& endpoint, T& obj);
+    void _handleGET2(const std::string& endpoint, T& obj,
+                     std::function<void()> pre = std::function<void()>());
     template <class T>
     void _handlePUT2(const std::string& endpoint, T& obj,
                      std::function<void(T&)> updateFunc = [](T& obj) {
@@ -90,10 +90,6 @@ private:
 
     bool _requestFrame();
     void _frameUpdated();
-
-    bool _requestSimulationHistogram();
-
-    bool _requestVolumeHistogram();
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
@@ -157,8 +153,6 @@ private:
 
     ::lexis::render::Frame _remoteFrame;
     ::lexis::render::ImageJPEG _remoteImageJPEG;
-    ::lexis::render::Histogram _remoteSimulationHistogram;
-    ::lexis::render::Histogram _remoteVolumeHistogram;
 
     class Timer
     {

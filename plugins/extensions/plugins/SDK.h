@@ -398,4 +398,11 @@ void init(brayns::VolumeParameters* v, ObjectHandler* h)
                     Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
+
+void init(brayns::Histogram* hi, ObjectHandler* h)
+{
+    h->add_property("values", &hi->values);
+    h->add_property("range", Vector2fArray(hi->range));
+    h->set_flags(Flags::DisallowUnknownKey);
+}
 }

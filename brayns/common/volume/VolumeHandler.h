@@ -129,7 +129,7 @@ public:
         _histograms[_currentIndex] = histogram;
     }
     /** @return the histogram of the currently loaded volume. */
-    const Histogram& getHistogram();
+    Histogram& getHistogram();
     /** @return the number of frames of the current volume. */
     uint64_t getNbFrames() const { return _nbFrames; }
     /** Sets the number of frames for the current volume. */

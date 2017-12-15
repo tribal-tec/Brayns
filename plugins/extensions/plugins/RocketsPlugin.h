@@ -92,18 +92,20 @@ private:
     std::string _getHttpInterface() const;
 
     template <class T>
-    void _handle(const std::string& endpoint, T& obj,
-                 std::function<void(T& obj)> updateFunc = [](T& obj) {
-                     obj.markModified();
-                 });
-    template <class T>
+    void _handle(const std::string& endpoint, T& obj);
+
+    template <class T, class F = std::function<bool(const T&)>>
     void _handleGET(const std::string& endpoint, T& obj,
-                    std::function<void()> pre = std::function<void()>());
-    template <class T>
-    void _handlePUT(const std::string& endpoint, T& obj,
-                    std::function<void(T&)> updateFunc = [](T& obj) {
-                        obj.markModified();
+                    F modifiedFunc = [](const T& obj) {
+                        return obj.getModified();
                     });
+
+    template <class T>
+    void _handlePUT(const std::string& endpoint, T& obj);
+
+    template <class T, class F>
+    void _handlePUT(const std::string& endpoint, T& obj, F postUpdateFunc);
+
     template <class T>
     void _handleSchema(const std::string& endpoint, T& obj);
 
@@ -115,6 +117,11 @@ private:
     void _handleVersion();
     void _handleStreaming();
     void _handleImageJPEG();
+    void _handleApplicationParams();
+    void _handleGeometryParams();
+    void _handleRenderingParams();
+    void _handleSimulationHistogram();
+    void _handleVolumeHistogram();
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
@@ -128,6 +135,9 @@ private:
 
     using WsOutgoingMap = std::map<std::string, std::function<std::string()>>;
     WsOutgoingMap _wsOutgoing;
+
+    using WsBroadcastMap = std::map<std::string, std::function<void()>>;
+    WsBroadcastMap _wsBroadcasts;
 
     Engine* _engine = nullptr;
     ParametersManager& _parametersManager;

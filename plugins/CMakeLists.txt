@@ -46,7 +46,7 @@ if(BRAYNS_NETWORKING_ENABLED)
     PROPERTIES COMPILE_FLAGS -Wno-shadow)
   list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS extensions/plugins/RocketsPlugin.h)
   list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Lexis Rockets
-    BraynsZeroBufRender ${LibJpegTurbo_LIBRARIES})
+    ${LibJpegTurbo_LIBRARIES})
 endif()
 
 if(BRAYNS_OSPRAY_ENABLED)

@@ -30,7 +30,6 @@
 #include <brayns/io/simulation/CADiffusionSimulationHandler.h>
 #include <brayns/parameters/ParametersManager.h>
 #include <brayns/version.h>
-#include <zerobuf/render/camera.h>
 
 #include <fstream>
 
@@ -56,7 +55,6 @@ namespace
 const std::string ENDPOINT_API_VERSION = "v1/";
 const std::string ENDPOINT_CAMERA = "camera";
 const std::string ENDPOINT_DATA_SOURCE = "data-source";
-const std::string ENDPOINT_FORCE_RENDERING = "force-rendering";
 const std::string ENDPOINT_FRAME_BUFFERS = "frame-buffers";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_APP_PARAMS = "application-parameters";
@@ -163,7 +161,7 @@ inline bool from_json(T& obj, const std::string& json,
 {
     const auto success =
         staticjson::from_json_string(json.c_str(), &obj, nullptr);
-    if (success)
+    if (updateFunc && success)
         updateFunc(obj);
     return success;
 }
@@ -220,8 +218,6 @@ void RocketsPlugin::_onChangeEngine()
     catch (const std::runtime_error&)
     {
     }
-
-    _forceRendering = true;
 }
 
 bool RocketsPlugin::run(EngineWeakPtr engine_, KeyboardHandler&,
@@ -248,11 +244,8 @@ bool RocketsPlugin::run(EngineWeakPtr engine_, KeyboardHandler&,
         // subscriber never has more than one message in its queue. In other
         // words, only one message is processed between each rendering loop. The
         // following code allows the processing of several messages and performs
-        // rendering after NB_MAX_MESSAGES reads, or if one of the messages
-        // forces rendering by setting the _forceRedering boolean variable to
-        // true.
-        _forceRendering = false;
-        for (size_t i = 0; i < NB_MAX_MESSAGES && !_forceRendering; ++i)
+        // rendering after NB_MAX_MESSAGES reads.
+        for (size_t i = 0; i < NB_MAX_MESSAGES; ++i)
             _httpServer->process(0);
     }
     catch (const std::exception& exc)
@@ -397,10 +390,6 @@ void RocketsPlugin::_setupHTTPServer()
     _handleGET(ENDPOINT_VOLUME_HISTOGRAM, _remoteVolumeHistogram);
     _remoteVolumeHistogram.registerSerializeCallback(
         [this] { _requestVolumeHistogram(); });
-
-    _handle(ENDPOINT_FORCE_RENDERING, _remoteForceRendering);
-    _remoteForceRendering.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_forceRenderingUpdated, this));
 }
 
 void RocketsPlugin::_setupWebsocket()
@@ -756,11 +745,6 @@ bool RocketsPlugin::_requestStreamParams()
     _streamParams.setPort(params.getStreamPort());
     _streamParams.setId(params.getStreamId());
     return true;
-}
-
-void RocketsPlugin::_forceRenderingUpdated()
-{
-    _forceRendering = true;
 }
 
 std::future<rockets::http::Response> RocketsPlugin::_handleCircuitConfigBuilder(

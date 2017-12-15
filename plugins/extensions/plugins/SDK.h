@@ -108,6 +108,7 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
                         {"optix", brayns::EngineType::optix},
                         {"livre", brayns::EngineType::livre});
 
+// thx for the hack: https://stackoverflow.com/questions/11205186
 #define Vector2uiArray(vec) \
     reinterpret_cast<std::array<unsigned, 2>*>(&vec.array[0])
 #define Vector3uiArray(vec) \
@@ -121,7 +122,6 @@ namespace staticjson
 {
 void init(brayns::Camera* c, ObjectHandler* h)
 {
-    // thx for the hack: https://stackoverflow.com/questions/11205186
     h->add_property("origin", Vector3fArray(c->_position), Flags::Optional);
     h->add_property("look_at", Vector3fArray(c->_target), Flags::Optional);
     h->add_property("up", Vector3fArray(c->_up), Flags::Optional);

@@ -34,8 +34,6 @@
 #include <lexis/render/stream.h>
 #include <lexis/render/viewport.h>
 
-#include <zerobuf/render/parameters.h>
-
 namespace brayns
 {
 /**
@@ -109,8 +107,6 @@ private:
     void _streamParamsUpdated();
     bool _requestStreamParams();
 
-    void _forceRenderingUpdated();
-
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
 
@@ -169,7 +165,6 @@ private:
     tjhandle _compressor;
 
     bool _processingImageJpeg = false;
-    bool _forceRendering = false;
     bool _dirtyEngine = false;
 
     ::lexis::render::Frame _remoteFrame;
@@ -179,9 +174,6 @@ private:
     ::lexis::render::Histogram _remoteSimulationHistogram;
     ::lexis::render::Histogram _remoteVolumeHistogram;
     ::lexis::render::Stream _streamParams;
-
-    ::brayns::v1::ForceRendering _remoteForceRendering;
-    ::brayns::v1::CircuitConfigurationBuilder _remoteCircuitConfigBuilder;
 
     class Timer
     {

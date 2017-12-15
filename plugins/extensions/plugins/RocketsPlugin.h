@@ -27,8 +27,6 @@
 #include <rockets/server.h>
 #include <turbojpeg.h>
 
-#include <lexis/render/frame.h>
-
 namespace brayns
 {
 class ImageGenerator
@@ -92,41 +90,31 @@ private:
     void _setupHTTPServer();
     void _setupWebsocket();
     std::string _getHttpInterface() const;
-    void _handle(const std::string& endpoint, servus::Serializable& obj);
-    void _handleGET(const std::string& endpoint,
-                    const servus::Serializable& obj);
-    void _handlePUT(const std::string& endpoint, servus::Serializable& obj);
-    void _handleSchema(const std::string& endpoint,
-                       const servus::Serializable& obj);
-    void _remove(const std::string& endpoint);
 
     template <class T>
-    void _handle2(const std::string& endpoint, T& obj,
-                  std::function<void(T& obj)> updateFunc = [](T& obj) {
-                      obj.markModified();
-                  });
+    void _handle(const std::string& endpoint, T& obj,
+                 std::function<void(T& obj)> updateFunc = [](T& obj) {
+                     obj.markModified();
+                 });
     template <class T>
-    void _handleGET2(const std::string& endpoint, T& obj,
-                     std::function<void()> pre = std::function<void()>());
+    void _handleGET(const std::string& endpoint, T& obj,
+                    std::function<void()> pre = std::function<void()>());
     template <class T>
-    void _handlePUT2(const std::string& endpoint, T& obj,
-                     std::function<void(T&)> updateFunc = [](T& obj) {
-                         obj.markModified();
-                     });
+    void _handlePUT(const std::string& endpoint, T& obj,
+                    std::function<void(T&)> updateFunc = [](T& obj) {
+                        obj.markModified();
+                    });
     template <class T>
-    void _handleSchema2(const std::string& endpoint, T& obj);
+    void _handleSchema(const std::string& endpoint, T& obj);
+
+    void _remove(const std::string& endpoint);
 
     void _broadcastWebsocketMessages();
     rockets::ws::Response _processWebsocketMessage(const std::string& message);
-    void _handleWebsocketEvent(const std::string& endpoint,
-                               servus::Serializable& obj);
 
     void _handleVersion();
     void _handleStreaming();
     void _handleImageJPEG();
-
-    bool _requestFrame();
-    void _frameUpdated();
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request&);
@@ -147,8 +135,6 @@ private:
     std::unique_ptr<rockets::Server> _httpServer;
 
     bool _dirtyEngine = false;
-
-    ::lexis::render::Frame _remoteFrame;
 
     friend class ImageGenerator;
     ImageGenerator _imageGenerator{*this};

@@ -37,7 +37,7 @@ void BraynsViewer::display()
     std::stringstream ss;
     ss << "Brayns Viewer [" << rp.getEngineAsString(rp.getEngine()) << "] ";
     auto animationFrame =
-        _brayns.getParametersManager().getSceneParameters().getAnimationFrame();
+        _brayns.getParametersManager().getAnimationParameters().getFrame();
     if (animationFrame != std::numeric_limits<uint32_t>::max())
         ss << " (frame " << animationFrame << ")";
     if (_brayns.getParametersManager()

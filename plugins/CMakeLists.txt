@@ -45,7 +45,7 @@ if(BRAYNS_NETWORKING_ENABLED)
   set_source_files_properties(extensions/plugins/staticjson/staticjson.cpp
     PROPERTIES COMPILE_FLAGS -Wno-shadow)
   list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS extensions/plugins/RocketsPlugin.h)
-  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Lexis Rockets
+  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Rockets
     ${LibJpegTurbo_LIBRARIES})
 endif()
 

@@ -38,18 +38,6 @@
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 
-namespace servus
-{
-inline std::string to_json(const Serializable& obj)
-{
-    return obj.toJSON();
-}
-inline bool from_json(Serializable& obj, const std::string& json)
-{
-    return obj.fromJSON(json);
-}
-}
-
 namespace
 {
 const std::string ENDPOINT_API_VERSION = "v1/";
@@ -179,26 +167,26 @@ void RocketsPlugin::_onNewEngine()
 {
     if (_httpServer)
     {
-        _handle2(ENDPOINT_CAMERA, _engine->getCamera());
-        _handleGET2(ENDPOINT_PROGRESS, _engine->getProgress());
-        _handleGET2(ENDPOINT_FRAME_BUFFERS, _engine->getFrameBuffer());
-        _handle2(ENDPOINT_MATERIAL_LUT,
-                 _engine->getScene().getTransferFunction());
-        _handle2(ENDPOINT_SCENE, _engine->getScene(),
-                 std::function<void(Scene&)>([](Scene& scene) {
-                     scene.markModified();
-                     scene.commitMaterials(Action::update);
-                 }));
+        _handle(ENDPOINT_CAMERA, _engine->getCamera());
+        _handleGET(ENDPOINT_PROGRESS, _engine->getProgress());
+        _handleGET(ENDPOINT_FRAME_BUFFERS, _engine->getFrameBuffer());
+        _handle(ENDPOINT_MATERIAL_LUT,
+                _engine->getScene().getTransferFunction());
+        _handle(ENDPOINT_SCENE, _engine->getScene(),
+                std::function<void(Scene&)>([](Scene& scene) {
+                    scene.markModified();
+                    scene.commitMaterials(Action::update);
+                }));
 
         if (auto simulationHandler = _engine->getScene().getSimulationHandler())
-            _handleGET2(
+            _handleGET(
                 ENDPOINT_SIMULATION_HISTOGRAM,
                 simulationHandler->getHistogram(), [&] {
                     _engine->getScene().getSimulationHandler()->getHistogram();
                 });
 
         if (auto volumeHandler = _engine->getScene().getVolumeHandler())
-            _handleGET2(
+            _handleGET(
                 ENDPOINT_VOLUME_HISTOGRAM, volumeHandler->getHistogram(), [&] {
                     _engine->getScene().getVolumeHandler()->getHistogram();
                 });
@@ -345,36 +333,32 @@ void RocketsPlugin::_setupHTTPServer()
     _handleStreaming();
     _handleImageJPEG();
 
-    _handle2(ENDPOINT_APP_PARAMS, _parametersManager.getApplicationParameters(),
-             std::function<void(ApplicationParameters&)>(
-                 [this](ApplicationParameters& params) {
-                     params.markModified();
-                     if (params.getFrameExportFolder().empty())
-                         _engine->resetFrameNumber();
-                 }));
-    _handle2(ENDPOINT_GEOMETRY_PARAMS,
-             _parametersManager.getGeometryParameters(),
-             std::function<void(GeometryParameters&)>(
-                 [this](GeometryParameters& params) {
-                     params.markModified();
-                     if (_engine->isReady())
-                         _engine->buildScene();
-                 }));
-    _handle2(ENDPOINT_RENDERING_PARAMS,
-             _parametersManager.getRenderingParameters(),
-             std::function<void(RenderingParameters&)>(
-                 [this](RenderingParameters& params) {
-                     params.markModified();
-                     if (_engine->name() != params.getEngine())
-                         _onChangeEngine();
-                 }));
-    _handle2(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
-    _handle2(ENDPOINT_VOLUME_PARAMS, _parametersManager.getVolumeParameters());
-
-    _handle(ENDPOINT_FRAME, _remoteFrame);
-    _remoteFrame.registerSerializeCallback([this] { _requestFrame(); });
-    _remoteFrame.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_frameUpdated, this));
+    _handle(ENDPOINT_APP_PARAMS, _parametersManager.getApplicationParameters(),
+            std::function<void(ApplicationParameters&)>(
+                [this](ApplicationParameters& params) {
+                    params.markModified();
+                    if (params.getFrameExportFolder().empty())
+                        _engine->resetFrameNumber();
+                }));
+    _handle(ENDPOINT_GEOMETRY_PARAMS,
+            _parametersManager.getGeometryParameters(),
+            std::function<void(GeometryParameters&)>(
+                [this](GeometryParameters& params) {
+                    params.markModified();
+                    if (_engine->isReady())
+                        _engine->buildScene();
+                }));
+    _handle(ENDPOINT_RENDERING_PARAMS,
+            _parametersManager.getRenderingParameters(),
+            std::function<void(RenderingParameters&)>(
+                [this](RenderingParameters& params) {
+                    params.markModified();
+                    if (_engine->name() != params.getEngine())
+                        _onChangeEngine();
+                }));
+    _handle(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
+    _handle(ENDPOINT_VOLUME_PARAMS, _parametersManager.getVolumeParameters());
+    _handle(ENDPOINT_FRAME, _parametersManager.getAnimationParameters());
 
     _httpServer->handle(rockets::http::Method::GET,
                         ENDPOINT_API_VERSION + ENDPOINT_CIRCUIT_CONFIG_BUILDER,
@@ -417,16 +401,16 @@ std::string RocketsPlugin::_getHttpInterface() const
 }
 
 template <class T>
-void RocketsPlugin::_handle2(const std::string& endpoint, T& obj,
-                             std::function<void(T&)> updateFunc)
+void RocketsPlugin::_handle(const std::string& endpoint, T& obj,
+                            std::function<void(T&)> updateFunc)
 {
-    _handleGET2(endpoint, obj);
-    _handlePUT2(endpoint, obj, updateFunc);
+    _handleGET(endpoint, obj);
+    _handlePUT(endpoint, obj, updateFunc);
 }
 
 template <class T>
-void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj,
-                                std::function<void()> pre)
+void RocketsPlugin::_handleGET(const std::string& endpoint, T& obj,
+                               std::function<void()> pre)
 {
     using namespace rockets::http;
 
@@ -438,7 +422,7 @@ void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj,
                                                        JSON_TYPE);
                         });
 
-    _handleSchema2(endpoint, obj);
+    _handleSchema(endpoint, obj);
 
     _wsOutgoing[endpoint] = [&obj, endpoint] {
         return buildJsonMessage(endpoint, to_json(obj));
@@ -446,8 +430,8 @@ void RocketsPlugin::_handleGET2(const std::string& endpoint, T& obj,
 }
 
 template <class T>
-void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj,
-                                std::function<void(T&)> updateFunc)
+void RocketsPlugin::_handlePUT(const std::string& endpoint, T& obj,
+                               std::function<void(T&)> updateFunc)
 {
     using namespace rockets::http;
     _httpServer->handle(Method::PUT, ENDPOINT_API_VERSION + endpoint,
@@ -458,7 +442,7 @@ void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj,
                                     : Code::BAD_REQUEST);
                         });
 
-    _handleSchema2(endpoint, obj);
+    _handleSchema(endpoint, obj);
 
     _wsIncoming[endpoint] = [&obj, updateFunc](const std::string& data) {
         return from_json(obj, data, updateFunc);
@@ -466,7 +450,7 @@ void RocketsPlugin::_handlePUT2(const std::string& endpoint, T& obj,
 }
 
 template <class T>
-void RocketsPlugin::_handleSchema2(const std::string& endpoint, T& obj)
+void RocketsPlugin::_handleSchema(const std::string& endpoint, T& obj)
 {
     using namespace rockets::http;
     _httpServer->handle(Method::GET,
@@ -479,54 +463,10 @@ void RocketsPlugin::_handleSchema2(const std::string& endpoint, T& obj)
                         });
 }
 
-void RocketsPlugin::_handle(const std::string& endpoint,
-                            servus::Serializable& obj)
-{
-    _httpServer->handle(ENDPOINT_API_VERSION + endpoint, obj);
-    _handleSchema(endpoint, obj);
-    _handleWebsocketEvent(endpoint, obj);
-}
-
-void RocketsPlugin::_handleGET(const std::string& endpoint,
-                               const servus::Serializable& obj)
-{
-    _httpServer->handleGET(ENDPOINT_API_VERSION + endpoint, obj);
-    _handleSchema(endpoint, obj);
-}
-
-void RocketsPlugin::_handlePUT(const std::string& endpoint,
-                               servus::Serializable& obj)
-{
-    _httpServer->handlePUT(ENDPOINT_API_VERSION + endpoint, obj);
-    _handleSchema(endpoint, obj);
-    _handleWebsocketEvent(endpoint, obj);
-}
-
-void RocketsPlugin::_handleSchema(const std::string& endpoint,
-                                  const servus::Serializable& obj)
-{
-    using namespace rockets::http;
-    _httpServer->handle(Method::GET,
-                        ENDPOINT_API_VERSION + endpoint + "/schema",
-                        [&obj](const Request&) {
-                            return make_ready_response(Code::OK,
-                                                       obj.getSchema(),
-                                                       JSON_TYPE);
-                        });
-}
-
 void RocketsPlugin::_remove(const std::string& endpoint)
 {
     _httpServer->remove(ENDPOINT_API_VERSION + endpoint);
     _httpServer->remove(ENDPOINT_API_VERSION + endpoint + "/schema");
-}
-
-void RocketsPlugin::_handleWebsocketEvent(const std::string& endpoint,
-                                          servus::Serializable& obj)
-{
-    _wsIncoming[endpoint] = [&obj](const std::string& data) {
-        return obj.fromJSON(data);
-    };
 }
 
 void RocketsPlugin::_handleVersion()
@@ -546,11 +486,10 @@ void RocketsPlugin::_handleVersion()
 void RocketsPlugin::_handleStreaming()
 {
 #if BRAYNS_USE_DEFLECT
-    _handle2(ENDPOINT_STREAM, _parametersManager.getApplicationParameters()
-                                  .getStreamParameters());
-    _handlePUT2(
-        ENDPOINT_STREAM_TO,
-        _parametersManager.getApplicationParameters().getStreamParameters());
+    _handle(ENDPOINT_STREAM, _parametersManager.getApplicationParameters()
+                                 .getStreamParameters());
+    _handlePUT(ENDPOINT_STREAM_TO, _parametersManager.getApplicationParameters()
+                                       .getStreamParameters());
 #else
     _handleGET2(ENDPOINT_STREAM, _parametersManager.getApplicationParameters()
                                      .getStreamParameters());
@@ -606,54 +545,6 @@ void ImageGenerator::_resizeImage(unsigned int* srcData,
             const size_t y2 = ((y * y_ratio) >> 16);
             dstData[(y * dstSize.x()) + x] = srcData[(y2 * srcSize.x()) + x2];
         }
-    }
-}
-
-bool RocketsPlugin::_requestFrame()
-{
-    auto caSimHandler = _engine->getScene().getCADiffusionSimulationHandler();
-    auto simHandler = _engine->getScene().getSimulationHandler();
-    auto volHandler = _engine->getScene().getVolumeHandler();
-    uint64_t nbFrames = simHandler
-                            ? simHandler->getNbFrames()
-                            : (volHandler ? volHandler->getNbFrames() : 0);
-    nbFrames =
-        std::max(nbFrames, caSimHandler ? caSimHandler->getNbFrames() : 0);
-
-    const auto& sceneParams = _parametersManager.getSceneParameters();
-    const auto current =
-        nbFrames == 0 ? 0 : (sceneParams.getAnimationFrame() % nbFrames);
-    const auto animationDelta = sceneParams.getAnimationDelta();
-
-    if (current == _remoteFrame.getCurrent() &&
-        nbFrames == _remoteFrame.getEnd() &&
-        animationDelta == _remoteFrame.getDelta())
-    {
-        return false;
-    }
-
-    _remoteFrame.setCurrent(current);
-    _remoteFrame.setDelta(animationDelta);
-    _remoteFrame.setEnd(nbFrames);
-    _remoteFrame.setStart(0);
-    return true;
-}
-
-void RocketsPlugin::_frameUpdated()
-{
-    auto& sceneParams = _parametersManager.getSceneParameters();
-    sceneParams.setAnimationFrame(_remoteFrame.getCurrent());
-    sceneParams.setAnimationDelta(_remoteFrame.getDelta());
-
-    CADiffusionSimulationHandlerPtr handler =
-        _engine->getScene().getCADiffusionSimulationHandler();
-    if (handler && _engine->isReady())
-    {
-        auto& scene = _engine->getScene();
-        handler->setFrame(scene, _remoteFrame.getCurrent());
-        scene.setSpheresDirty(true);
-        scene.serializeGeometry();
-        scene.commit();
     }
 }
 

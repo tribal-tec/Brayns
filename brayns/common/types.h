@@ -172,6 +172,7 @@ class VolumeHandler;
 typedef std::shared_ptr<VolumeHandler> VolumeHandlerPtr;
 
 class AbstractParameters;
+class AnimationParameters;
 class ApplicationParameters;
 class GeometryParameters;
 class ParametersManager;

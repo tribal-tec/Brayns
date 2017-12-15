@@ -50,7 +50,7 @@ namespace brayns
 {
 void StreamParameters::markModified()
 {
-    _parent->markModified();
+    _parent.markModified();
 }
 
 ApplicationParameters::ApplicationParameters()

@@ -226,7 +226,7 @@ private:
             return;
         char str[7];
         const auto frame =
-            _parametersManager.getSceneParameters().getAnimationFrame();
+            _parametersManager.getAnimationParameters().getFrame();
         snprintf(str, 7, "%06d", int(frame));
         const auto filename = frameExportFolder + "/" + str + ".png";
         FrameBuffer& frameBuffer = _engine->getFrameBuffer();
@@ -312,10 +312,26 @@ private:
     void _executePlugins(const Vector2ui&) {}
 #endif
 
+    void _updateAnimation()
+    {
+        if (!isLoadingFinished())
+            return;
+
+        auto simHandler = _engine->getScene().getSimulationHandler();
+        auto& animParams = _parametersManager.getAnimationParameters();
+        if ((animParams.getModified() || animParams.getDelta() != 0) &&
+            simHandler && simHandler->isReady())
+        {
+            animParams.setFrame(animParams.getFrame() + animParams.getDelta());
+        }
+    }
+
     bool _render(const Vector2ui& windowSize)
     {
         _engine->reshape(windowSize);
         _engine->preRender();
+
+        _updateAnimation();
 
 #if (BRAYNS_USE_DEFLECT || BRAYNS_USE_NETWORKING)
         _executePlugins(windowSize);
@@ -981,9 +997,9 @@ private:
             return;
         }
 
-        SceneParameters& sceneParams = _parametersManager.getSceneParameters();
-        const auto animationFrame = sceneParams.getAnimationFrame();
-        sceneParams.setAnimationFrame(animationFrame + 1);
+        auto& animParams = _parametersManager.getAnimationParameters();
+        const auto animationFrame = animParams.getFrame();
+        animParams.setFrame(animationFrame + 1);
     }
 
     void _decreaseAnimationFrame()
@@ -994,10 +1010,10 @@ private:
             return;
         }
 
-        SceneParameters& sceneParams = _parametersManager.getSceneParameters();
-        const auto animationFrame = sceneParams.getAnimationFrame();
+        auto& animParams = _parametersManager.getAnimationParameters();
+        const auto animationFrame = animParams.getFrame();
         if (animationFrame > 0)
-            sceneParams.setAnimationFrame(animationFrame - 1);
+            animParams.setFrame(animationFrame - 1);
     }
 
     void _diffuseShading()
@@ -1045,14 +1061,14 @@ private:
 
     void _resetAnimationFrame()
     {
-        SceneParameters& sceneParams = _parametersManager.getSceneParameters();
-        sceneParams.setAnimationFrame(0);
+        auto& animParams = _parametersManager.getAnimationParameters();
+        animParams.setFrame(0);
     }
 
     void _infiniteAnimationFrame()
     {
-        SceneParameters& sceneParams = _parametersManager.getSceneParameters();
-        sceneParams.setAnimationFrame(std::numeric_limits<uint32_t>::max());
+        auto& animParams = _parametersManager.getAnimationParameters();
+        animParams.setFrame(std::numeric_limits<uint32_t>::max());
     }
 
     void _toggleShadows()
@@ -1152,15 +1168,14 @@ private:
 
     void _toggleAnimationPlayback()
     {
-        auto& sceneParams = _parametersManager.getSceneParameters();
-        sceneParams.setAnimationDelta(sceneParams.getAnimationDelta() == 0 ? 1
-                                                                           : 0);
+        auto& animParams = _parametersManager.getAnimationParameters();
+        animParams.setDelta(animParams.getDelta() == 0 ? 1 : 0);
     }
 
     void _defaultAnimationFrame()
     {
-        auto& sceneParams = _parametersManager.getSceneParameters();
-        sceneParams.setAnimationFrame(DEFAULT_TEST_ANIMATION_FRAME);
+        auto& animParams = _parametersManager.getAnimationParameters();
+        animParams.setFrame(DEFAULT_TEST_ANIMATION_FRAME);
     }
 
     void _saveSceneToCacheFile()

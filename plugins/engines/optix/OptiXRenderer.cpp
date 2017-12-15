@@ -58,9 +58,9 @@ void OptiXRenderer::render(FrameBufferPtr frameBuffer)
 
 void OptiXRenderer::commit()
 {
-    const auto& sp = _parametersManager.getSceneParameters();
+    const auto& ap = _parametersManager.getAnimationParameters();
 
-    _context["timestamp"]->setFloat(sp.getAnimationFrame());
+    _context["timestamp"]->setFloat(ap.getFrame());
 
     const auto& rp = _parametersManager.getRenderingParameters();
 

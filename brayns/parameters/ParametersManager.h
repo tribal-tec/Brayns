@@ -24,6 +24,7 @@
 #include <boost/program_options.hpp>
 #include <brayns/api.h>
 #include <brayns/common/types.h>
+#include <brayns/parameters/AnimationParameters.h>
 #include <brayns/parameters/ApplicationParameters.h>
 #include <brayns/parameters/GeometryParameters.h>
 #include <brayns/parameters/RenderingParameters.h>
@@ -66,6 +67,12 @@ public:
        @param argv actual command line parameters
      */
     BRAYNS_API void parse(int argc, const char** argv);
+
+    /**
+       Gets animation parameters
+       @return Animation parameters for the current scene
+    */
+    BRAYNS_API AnimationParameters& getAnimationParameters();
 
     /**
        Gets rendering parameters
@@ -116,6 +123,7 @@ public:
 private:
     std::vector<AbstractParameters*> _parameterSets;
     po::options_description _parameters;
+    AnimationParameters _animationParameters;
     ApplicationParameters _applicationParameters;
     RenderingParameters _renderingParameters;
     GeometryParameters _geometryParameters;

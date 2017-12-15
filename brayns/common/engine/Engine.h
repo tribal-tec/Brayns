@@ -54,7 +54,7 @@ public:
        Commits changes to the engine. This include scene and camera
        modifications
     */
-    virtual void commit();
+    virtual void commit() = 0;
 
     /**
      * Called after the given extension plugin was created to perform

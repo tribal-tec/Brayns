@@ -18,41 +18,33 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "SceneParameters.h"
+#include "AnimationParameters.h"
 
 namespace
 {
-const std::string PARAM_COLOR_MAP_FILE = "color-map-file";
-const std::string PARAM_ENVIRONMENT_MAP = "environment-map";
+const std::string PARAM_ANIMATION_FRAME = "animation-frame";
 }
 
 namespace brayns
 {
-SceneParameters::SceneParameters()
-    : AbstractParameters("Scene")
+AnimationParameters::AnimationParameters()
+    : AbstractParameters("Animation")
 {
-    _parameters.add_options()(PARAM_COLOR_MAP_FILE.c_str(),
-                              po::value<std::string>(),
-                              "Color map filename [string]")(
-        PARAM_ENVIRONMENT_MAP.c_str(), po::value<std::string>(),
-        "Environment map filename [string]");
+    _parameters.add_options()(PARAM_ANIMATION_FRAME.c_str(),
+                              po::value<uint32_t>(),
+                              "Scene animation frame [float]");
 }
 
-bool SceneParameters::_parse(const po::variables_map& vm)
+bool AnimationParameters::_parse(const po::variables_map& vm)
 {
-    if (vm.count(PARAM_COLOR_MAP_FILE))
-        _colorMapFilename = vm[PARAM_COLOR_MAP_FILE].as<std::string>();
-    if (vm.count(PARAM_ENVIRONMENT_MAP))
-        _environmentMap = vm[PARAM_ENVIRONMENT_MAP].as<std::string>();
+    if (vm.count(PARAM_ANIMATION_FRAME))
+        _current = vm[PARAM_ANIMATION_FRAME].as<uint32_t>();
     return true;
 }
 
-void SceneParameters::print()
+void AnimationParameters::print()
 {
     AbstractParameters::print();
-    BRAYNS_INFO << "Color Map filename       :" << _colorMapFilename
-                << std::endl;
-    BRAYNS_INFO << "Environment map filename : " << _environmentMap
-                << std::endl;
+    BRAYNS_INFO << "Animation frame          :" << _current << std::endl;
 }
 }

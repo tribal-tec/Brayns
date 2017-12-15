@@ -414,4 +414,13 @@ void init(brayns::Histogram* hi, ObjectHandler* h)
     h->add_property("range", Vector2fArray(hi->range));
     h->set_flags(Flags::DisallowUnknownKey);
 }
+
+void init(brayns::AnimationParameters* a, ObjectHandler* h)
+{
+    h->add_property("start", &a->_start);
+    h->add_property("end", &a->_end);
+    h->add_property("current", &a->_current);
+    h->add_property("delta", &a->_delta);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
 }

@@ -605,7 +605,7 @@ void OSPRayScene::commitVolumeData()
         return;
 
     const auto animationFrame =
-        _parametersManager.getSceneParameters().getAnimationFrame();
+        _parametersManager.getAnimationParameters().getFrame();
     volumeHandler->setCurrentIndex(animationFrame);
     void* data = volumeHandler->getData();
     if (data)
@@ -654,7 +654,7 @@ void OSPRayScene::commitSimulationData()
     }
 
     const auto animationFrame =
-        _parametersManager.getSceneParameters().getAnimationFrame();
+        _parametersManager.getAnimationParameters().getFrame();
 
     if (_simulationHandler->getCurrentFrame() == animationFrame)
         return;

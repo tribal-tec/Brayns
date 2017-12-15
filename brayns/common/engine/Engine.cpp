@@ -60,20 +60,6 @@ void Engine::reshape(const Vector2ui& frameSize)
                             static_cast<float>(size.y()));
 }
 
-void Engine::commit()
-{
-    auto& sceneParams = _parametersManager.getSceneParameters();
-    if ((sceneParams.getModified() || sceneParams.getAnimationDelta() != 0) &&
-        getScene().getSimulationHandler() &&
-        getScene().getSimulationHandler()->isReady())
-    {
-        sceneParams.setAnimationFrame(sceneParams.getAnimationFrame() +
-                                      sceneParams.getAnimationDelta());
-
-        _frameBuffer->clear();
-    }
-}
-
 void Engine::setDefaultCamera()
 {
     const Vector2i& frameSize = _frameBuffer->getSize();

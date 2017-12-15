@@ -35,18 +35,6 @@ public:
     /** @copydoc AbstractParameters::print */
     void print() final;
 
-    uint32_t getAnimationFrame() const { return _animationFrame; }
-    void setAnimationFrame(const uint32_t value)
-    {
-        _updateValue(_animationFrame, value);
-    }
-
-    /** The (frame) delta to apply for animations to select the next frame. */
-    void setAnimationDelta(const int32_t animation)
-    {
-        _updateValue(_animationDelta, animation);
-    }
-    int32_t getAnimationDelta() const { return _animationDelta; }
     const std::string& getColorMapFilename() const { return _colorMapFilename; }
     /**
        file name of the environment map
@@ -55,8 +43,6 @@ public:
 protected:
     bool _parse(const po::variables_map& vm) final;
 
-    uint32_t _animationFrame{std::numeric_limits<uint32_t>::max()};
-    int32_t _animationDelta{0};
     std::string _colorMapFilename;
     std::string _environmentMap;
 

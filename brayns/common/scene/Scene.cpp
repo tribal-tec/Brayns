@@ -25,6 +25,7 @@
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/io/NESTLoader.h>
 #include <brayns/io/TransferFunctionLoader.h>
+#include <brayns/io/simulation/CADiffusionSimulationHandler.h>
 #include <brayns/parameters/ParametersManager.h>
 
 #include <boost/filesystem.hpp>
@@ -498,6 +499,11 @@ void Scene::clearLights()
 void Scene::setSimulationHandler(AbstractSimulationHandlerPtr handler)
 {
     _simulationHandler = handler;
+    if (_simulationHandler)
+        _parametersManager.getAnimationParameters().setEnd(
+            _simulationHandler->getNbFrames());
+    else
+        _parametersManager.getAnimationParameters().reset();
 }
 
 AbstractSimulationHandlerPtr Scene::getSimulationHandler() const
@@ -509,6 +515,11 @@ void Scene::setCADiffusionSimulationHandler(
     CADiffusionSimulationHandlerPtr handler)
 {
     _caDiffusionSimulationHandler = handler;
+    if (_caDiffusionSimulationHandler)
+        _parametersManager.getAnimationParameters().setEnd(
+            _caDiffusionSimulationHandler->getNbFrames());
+    else
+        _parametersManager.getAnimationParameters().reset();
 }
 
 CADiffusionSimulationHandlerPtr Scene::getCADiffusionSimulationHandler() const
@@ -580,6 +591,12 @@ VolumeHandlerPtr Scene::getVolumeHandler()
     {
         BRAYNS_ERROR << e.what() << std::endl;
     }
+
+    if (_volumeHandler)
+        _parametersManager.getAnimationParameters().setEnd(
+            _volumeHandler->getNbFrames());
+    else
+        _parametersManager.getAnimationParameters().reset();
 
     return _volumeHandler;
 }

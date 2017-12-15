@@ -139,8 +139,6 @@ EngineType OSPRayEngine::name() const
 
 void OSPRayEngine::commit()
 {
-    Engine::commit();
-
     auto device = ospGetCurrentDevice();
     if (device && _parametersManager.getRenderingParameters().getModified())
     {

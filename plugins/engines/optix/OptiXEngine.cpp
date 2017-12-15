@@ -151,7 +151,6 @@ EngineType OptiXEngine::name() const
 
 void OptiXEngine::commit()
 {
-    Engine::commit();
     for (const auto& renderer : _renderers)
     {
         _renderers[renderer.first]->setScene(_scene);

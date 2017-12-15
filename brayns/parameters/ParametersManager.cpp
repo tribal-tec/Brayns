@@ -26,6 +26,7 @@ namespace brayns
 {
 ParametersManager::ParametersManager()
 {
+    registerParameters(&_animationParameters);
     registerParameters(&_sceneParameters);
     registerParameters(&_applicationParameters);
     registerParameters(&_geometryParameters);
@@ -81,6 +82,11 @@ bool ParametersManager::isAnyModified() const
             return true;
     }
     return false;
+}
+
+AnimationParameters& ParametersManager::getAnimationParameters()
+{
+    return _animationParameters;
 }
 
 ApplicationParameters& ParametersManager::getApplicationParameters()

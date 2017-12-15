@@ -34,7 +34,7 @@ namespace brayns
 class ApplicationParameters;
 struct StreamParameters
 {
-    StreamParameters(ApplicationParameters* parent)
+    StreamParameters(ApplicationParameters& parent)
         : _parent(parent)
     {
     }
@@ -49,7 +49,7 @@ struct StreamParameters
     void markModified();
 
 private:
-    ApplicationParameters* _parent;
+    ApplicationParameters& _parent;
 };
 
 /** Manages application parameters
@@ -155,7 +155,7 @@ protected:
     Vector2ui _jpegSize;
     strings _filters;
     std::string _frameExportFolder;
-    StreamParameters _streamParams{this};
+    StreamParameters _streamParams{*this};
     std::string _tmpFolder;
     bool _synchronousMode{false};
     size_t _imageStreamFPS{60};

@@ -69,7 +69,6 @@ const std::string ENDPOINT_PROGRESS = "progress";
 const std::string ENDPOINT_FRAME = "frame";
 const std::string ENDPOINT_IMAGE_JPEG = "image-jpeg";
 const std::string ENDPOINT_MATERIAL_LUT = "material-lut";
-const std::string ENDPOINT_VIEWPORT = "viewport";
 const std::string ENDPOINT_CIRCUIT_CONFIG_BUILDER = "circuit-config-builder";
 const std::string ENDPOINT_STREAM = "stream";
 const std::string ENDPOINT_STREAM_TO = "stream-to";
@@ -367,11 +366,6 @@ void RocketsPlugin::_setupHTTPServer()
     _remoteFrame.registerDeserializedCallback(
         std::bind(&RocketsPlugin::_frameUpdated, this));
 
-    _handle(ENDPOINT_VIEWPORT, _remoteViewport);
-    _remoteViewport.registerSerializeCallback([this] { _requestViewport(); });
-    _remoteViewport.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_viewportUpdated, this));
-
     _httpServer->handle(rockets::http::Method::GET,
                         ENDPOINT_API_VERSION + ENDPOINT_CIRCUIT_CONFIG_BUILDER,
                         std::bind(&RocketsPlugin::_handleCircuitConfigBuilder,
@@ -640,20 +634,6 @@ void RocketsPlugin::_frameUpdated()
         scene.serializeGeometry();
         scene.commit();
     }
-}
-
-bool RocketsPlugin::_requestViewport()
-{
-    const auto& windowSize =
-        _parametersManager.getApplicationParameters().getWindowSize();
-    _remoteViewport.setSize({windowSize[0], windowSize[1]});
-    return true;
-}
-
-void RocketsPlugin::_viewportUpdated()
-{
-    _parametersManager.getApplicationParameters().setWindowSize(
-        Vector2ui{_remoteViewport.getSize()});
 }
 
 bool RocketsPlugin::_requestSimulationHistogram()

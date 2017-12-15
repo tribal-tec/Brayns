@@ -31,7 +31,6 @@
 #include <lexis/render/frame.h>
 #include <lexis/render/imageJPEG.h>
 #include <lexis/render/stream.h>
-#include <lexis/render/viewport.h>
 
 namespace brayns
 {
@@ -92,9 +91,6 @@ private:
 
     bool _requestFrame();
     void _frameUpdated();
-
-    bool _requestViewport();
-    void _viewportUpdated();
 
     bool _requestSimulationHistogram();
 
@@ -165,7 +161,6 @@ private:
 
     ::lexis::render::Frame _remoteFrame;
     ::lexis::render::ImageJPEG _remoteImageJPEG;
-    ::lexis::render::Viewport _remoteViewport;
     ::lexis::render::Histogram _remoteSimulationHistogram;
     ::lexis::render::Histogram _remoteVolumeHistogram;
     ::lexis::render::Stream _streamParams;

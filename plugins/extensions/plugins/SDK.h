@@ -290,6 +290,8 @@ void init(brayns::ApplicationParameters* a, ObjectHandler* h)
                     Flags::Optional);
     h->add_property("synchronous_mode", &a->_synchronousMode, Flags::Optional);
     h->add_property("image_stream_fps", &a->_imageStreamFPS, Flags::Optional);
+    h->add_property("viewport", Vector2uiArray(a->_windowSize),
+                    Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

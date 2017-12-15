@@ -66,7 +66,6 @@ const std::string ENDPOINT_SIMULATION_HISTOGRAM = "simulation-histogram";
 const std::string ENDPOINT_VOLUME_HISTOGRAM = "volume-histogram";
 const std::string ENDPOINT_VERSION = "version";
 const std::string ENDPOINT_PROGRESS = "progress";
-const std::string ENDPOINT_CLIP_PLANES = "clip-planes";
 const std::string ENDPOINT_FRAME = "frame";
 const std::string ENDPOINT_IMAGE_JPEG = "image-jpeg";
 const std::string ENDPOINT_MATERIAL_LUT = "material-lut";
@@ -378,11 +377,6 @@ void RocketsPlugin::_setupHTTPServer()
                         std::bind(&RocketsPlugin::_handleCircuitConfigBuilder,
                                   this, std::placeholders::_1));
 
-    _handle(ENDPOINT_CLIP_PLANES, _clipPlanes);
-    _clipPlanes.registerDeserializedCallback(
-        std::bind(&RocketsPlugin::_clipPlanesUpdated, this));
-    _clipPlanes.registerSerializeCallback([this] { _requestClipPlanes(); });
-
     _handleGET(ENDPOINT_SIMULATION_HISTOGRAM, _remoteSimulationHistogram);
     _remoteSimulationHistogram.registerSerializeCallback(
         [this] { _requestSimulationHistogram(); });
@@ -685,42 +679,6 @@ bool RocketsPlugin::_requestVolumeHistogram()
     _remoteVolumeHistogram.setMin(histogram.range.x());
     _remoteVolumeHistogram.setMax(histogram.range.y());
     _remoteVolumeHistogram.setBins(histogram.values);
-    return true;
-}
-
-void RocketsPlugin::_clipPlanesUpdated()
-{
-    const auto& bounds = _engine->getScene().getWorldBounds();
-    const auto& size = bounds.getSize();
-    ClipPlanes clipPlanes;
-
-    for (const auto& plane : _clipPlanes.getPlanes())
-    {
-        const auto& normal = plane.getNormal();
-        const auto distance = plane.getD() * size.find_max();
-        clipPlanes.push_back(
-            Vector4f(normal[0], normal[1], normal[2], distance));
-    }
-    if (clipPlanes.size() == 6)
-        _engine->getCamera().setClipPlanes(clipPlanes);
-    else
-        BRAYNS_ERROR << "Invalid number of clip planes. Expected 6, received "
-                     << clipPlanes.size() << std::endl;
-}
-
-bool RocketsPlugin::_requestClipPlanes()
-{
-    std::vector<::lexis::render::detail::Plane> planes;
-    const auto& clipPlanes = _engine->getCamera().getClipPlanes();
-    for (const auto& clipPlane : clipPlanes)
-    {
-        ::lexis::render::detail::Plane plane;
-        float normal[3] = {clipPlane.x(), clipPlane.y(), clipPlane.z()};
-        plane.setNormal(normal);
-        plane.setD(clipPlane.w());
-        planes.push_back(plane);
-    }
-    _clipPlanes.setPlanes(planes);
     return true;
 }
 

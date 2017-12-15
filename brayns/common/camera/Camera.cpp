@@ -29,15 +29,6 @@ Camera::Camera(const CameraType cameraType)
 {
     if (_type == CameraType::stereo)
         setStereoMode(CameraStereoMode::side_by_side);
-
-    // Initial clip planes
-    const float inf = std::numeric_limits<float>::max();
-    _clipPlanes.push_back(Vector4f(-1.f, 0.f, 0.f, inf));
-    _clipPlanes.push_back(Vector4f(1.f, 0.f, 0.f, inf));
-    _clipPlanes.push_back(Vector4f(0.f, -1.f, 0.f, inf));
-    _clipPlanes.push_back(Vector4f(0.f, 1.f, 0.f, inf));
-    _clipPlanes.push_back(Vector4f(0.f, 0.f, -1.f, inf));
-    _clipPlanes.push_back(Vector4f(0.f, 0.f, 1.f, inf));
 }
 
 Camera::~Camera()

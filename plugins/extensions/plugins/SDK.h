@@ -110,16 +110,23 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
 
 // thx for the hack: https://stackoverflow.com/questions/11205186
 #define Vector2uiArray(vec) \
-    reinterpret_cast<std::array<unsigned, 2>*>(&vec.array[0])
+    reinterpret_cast<std::array<unsigned, 2>*>(&(vec).array[0])
 #define Vector3uiArray(vec) \
-    reinterpret_cast<std::array<unsigned, 3>*>(&vec.array[0])
+    reinterpret_cast<std::array<unsigned, 3>*>(&(vec).array[0])
 #define Vector2fArray(vec) \
-    reinterpret_cast<std::array<float, 2>*>(&vec.array[0])
+    reinterpret_cast<std::array<float, 2>*>(&(vec).array[0])
 #define Vector3fArray(vec) \
-    reinterpret_cast<std::array<float, 3>*>(&vec.array[0])
+    reinterpret_cast<std::array<float, 3>*>(&(vec).array[0])
 
 namespace staticjson
 {
+void init(brayns::ClipPlane* c, ObjectHandler* h)
+{
+    h->add_property("normal", Vector3fArray(*c));
+    h->add_property("d", &c->array[3]);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
 void init(brayns::Camera* c, ObjectHandler* h)
 {
     h->add_property("origin", Vector3fArray(c->_position), Flags::Optional);
@@ -130,6 +137,7 @@ void init(brayns::Camera* c, ObjectHandler* h)
     h->add_property("focal_length", &c->_focalLength, Flags::Optional);
     h->add_property("stereo_mode", &c->_stereoMode, Flags::Optional);
     h->add_property("eye_separation", &c->_eyeSeparation, Flags::Optional);
+    h->add_property("clip_planes", &c->_clipPlanes, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

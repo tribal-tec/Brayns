@@ -27,7 +27,6 @@
 #include <rockets/server.h>
 #include <turbojpeg.h>
 
-#include <lexis/render/ClipPlanes.h>
 #include <lexis/render/Histogram.h>
 #include <lexis/render/frame.h>
 #include <lexis/render/imageJPEG.h>
@@ -101,9 +100,6 @@ private:
 
     bool _requestVolumeHistogram();
 
-    void _clipPlanesUpdated();
-    bool _requestClipPlanes();
-
     void _streamParamsUpdated();
     bool _requestStreamParams();
 
@@ -170,7 +166,6 @@ private:
     ::lexis::render::Frame _remoteFrame;
     ::lexis::render::ImageJPEG _remoteImageJPEG;
     ::lexis::render::Viewport _remoteViewport;
-    ::lexis::render::ClipPlanes _clipPlanes;
     ::lexis::render::Histogram _remoteSimulationHistogram;
     ::lexis::render::Histogram _remoteVolumeHistogram;
     ::lexis::render::Stream _streamParams;

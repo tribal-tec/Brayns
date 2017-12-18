@@ -160,11 +160,11 @@ void OSPRayEngine::commit()
 
     auto osprayFrameBuffer =
         std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer);
-    const auto& appParams = _parametersManager.getApplicationParameters();
-    if (appParams.getModified() || _camera->getModified())
+    const auto& streamParams = _parametersManager.getStreamParameters();
+    if (streamParams.getModified() || _camera->getModified())
     {
         const bool isStereo = _camera->getType() == CameraType::stereo;
-        osprayFrameBuffer->setStreamingParams(appParams, isStereo);
+        osprayFrameBuffer->setStreamingParams(streamParams, isStereo);
     }
 }
 

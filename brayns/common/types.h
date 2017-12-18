@@ -81,7 +81,6 @@ namespace brayns
 {
 // Forward declarations
 class Brayns;
-typedef std::shared_ptr<Brayns> BraynsPtr;
 
 class Engine;
 typedef std::shared_ptr<Engine> EnginePtr;
@@ -97,8 +96,6 @@ class Camera;
 typedef std::shared_ptr<Camera> CameraPtr;
 
 class TransferFunction;
-typedef std::shared_ptr<TransferFunction> TransferFunctionPtr;
-
 class Renderer;
 typedef std::shared_ptr<Renderer> RendererPtr;
 typedef std::vector<RendererPtr> Renderers;
@@ -107,19 +104,12 @@ class FrameBuffer;
 typedef std::shared_ptr<FrameBuffer> FrameBufferPtr;
 
 class ApplicationParameters;
-typedef std::shared_ptr<ApplicationParameters> ApplicationParametersPtr;
 
 class GeometryParameters;
-typedef std::shared_ptr<GeometryParameters> GeometryParametersPtr;
 
 class RenderingParameters;
-typedef std::shared_ptr<RenderingParameters> RenderingParametersPtr;
 
 class VolumeParameters;
-typedef std::shared_ptr<VolumeParameters> VolumeParametersPtr;
-
-class ExtensionController;
-typedef std::shared_ptr<ExtensionController> ExtensionControllerPtr;
 
 struct Sphere;
 typedef std::vector<Sphere> Spheres;
@@ -146,13 +136,11 @@ typedef std::map<std::string, Texture2DPtr> TexturesMap;
 class Light;
 typedef std::shared_ptr<Light> LightPtr;
 typedef std::vector<LightPtr> Lights;
-typedef std::map<size_t, LightPtr> LightsMap;
 
 class DirectionalLight;
 typedef std::shared_ptr<DirectionalLight> DirectionalLightPtr;
 
 class PointLight;
-typedef std::shared_ptr<PointLight> PointLightPtr;
 
 class AbstractSimulationHandler;
 typedef std::shared_ptr<AbstractSimulationHandler> AbstractSimulationHandlerPtr;
@@ -160,7 +148,6 @@ typedef std::shared_ptr<AbstractSimulationHandler> AbstractSimulationHandlerPtr;
 class CircuitSimulationHandler;
 typedef std::shared_ptr<CircuitSimulationHandler> CircuitSimulationHandlerPtr;
 
-class Brayns;
 class SpikeSimulationHandler;
 typedef std::shared_ptr<SpikeSimulationHandler> SpikeSimulationHandlerPtr;
 
@@ -178,6 +165,7 @@ class GeometryParameters;
 class ParametersManager;
 class RenderingParameters;
 class SceneParameters;
+class StreamParameters;
 
 class ExtensionPlugin;
 typedef std::shared_ptr<ExtensionPlugin> ExtensionPluginPtr;
@@ -187,13 +175,10 @@ class ExtensionPluginFactory;
 typedef std::unique_ptr<ExtensionPluginFactory> ExtensionPluginFactoryPtr;
 
 class RocketsPlugin;
-typedef std::shared_ptr<RocketsPlugin> RocketsPluginPtr;
 
 class DeflectPlugin;
-typedef std::shared_ptr<DeflectPlugin> DeflectPluginPtr;
 
 class KeyboardHandler;
-typedef std::shared_ptr<KeyboardHandler> KeyboardHandlerPtr;
 
 class MeshLoader;
 

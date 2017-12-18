@@ -18,37 +18,22 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef OSPRAYFRAMEBUFFER_H
-#define OSPRAYFRAMEBUFFER_H
-
-#include <brayns/common/renderer/FrameBuffer.h>
-#include <ospray.h>
+#include "StreamParameters.h"
 
 namespace brayns
 {
-class OSPRayFrameBuffer : public brayns::FrameBuffer
+StreamParameters::StreamParameters()
+    : AbstractParameters("Stream")
 {
-public:
-    OSPRayFrameBuffer(const Vector2ui& frameSize, FrameBufferFormat colorDepth,
-                      bool accumulation = true);
-    ~OSPRayFrameBuffer();
-
-    void clear() final;
-    void resize(const Vector2ui& frameSize) final;
-    void map() final;
-    void unmap() final;
-
-    uint8_t* getColorBuffer() final { return _colorBuffer; }
-    float* getDepthBuffer() final { return _depthBuffer; }
-    OSPFrameBuffer impl() { return _frameBuffer; }
-    void enableDeflectPixelOp();
-    void setStreamingParams(const StreamParameters& params, bool stereo);
-
-private:
-    OSPFrameBuffer _frameBuffer;
-    uint8_t* _colorBuffer;
-    float* _depthBuffer;
-    OSPPixelOp _pixelOp{nullptr};
-};
 }
-#endif // OSPRAYFRAMEBUFFER_H
+
+bool StreamParameters::_parse(const po::variables_map&)
+{
+    return true;
+}
+
+void StreamParameters::print()
+{
+    AbstractParameters::print();
+}
+}

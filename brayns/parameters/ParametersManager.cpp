@@ -28,6 +28,7 @@ ParametersManager::ParametersManager()
 {
     registerParameters(&_animationParameters);
     registerParameters(&_sceneParameters);
+    registerParameters(&_streamParameters);
     registerParameters(&_applicationParameters);
     registerParameters(&_geometryParameters);
     registerParameters(&_renderingParameters);
@@ -112,6 +113,11 @@ GeometryParameters& ParametersManager::getGeometryParameters()
 SceneParameters& ParametersManager::getSceneParameters()
 {
     return _sceneParameters;
+}
+
+StreamParameters& ParametersManager::getStreamParameters()
+{
+    return _streamParameters;
 }
 
 VolumeParameters& ParametersManager::getVolumeParameters()

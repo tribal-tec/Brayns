@@ -139,7 +139,7 @@ inline std::string to_json(const Version& obj)
 {
     return obj.toJSON();
 }
-template <class T, class F = std::function<void(T&)>>
+template <class T, class F>
 inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
 {
     const auto success =
@@ -147,7 +147,8 @@ inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
     if (success)
     {
         obj.markModified();
-        postUpdateFunc(obj);
+        if (std::function<void(T&)>(postUpdateFunc))
+            postUpdateFunc(obj);
     }
     return success;
 }
@@ -326,13 +327,14 @@ void RocketsPlugin::_handleSimulationHistogram()
     Histogram tmp;
     _handleSchema(ENDPOINT_SIMULATION_HISTOGRAM, tmp);
 
-    auto simulationHandler = _engine->getScene().getSimulationHandler();
     using namespace rockets::http;
     _httpServer->handle(Method::GET,
                         ENDPOINT_API_VERSION + ENDPOINT_SIMULATION_HISTOGRAM,
-                        [simulationHandler](const Request&) {
+                        [this](const Request&) {
+                            auto simulationHandler =
+                                _engine->getScene().getSimulationHandler();
                             if (!simulationHandler)
-                                return make_ready_response(Code::BAD_REQUEST);
+                                return make_ready_response(Code::NOT_SUPPORTED);
                             auto histo = simulationHandler->getHistogram();
                             return make_ready_response(Code::OK, to_json(histo),
                                                        JSON_TYPE);
@@ -344,13 +346,14 @@ void RocketsPlugin::_handleVolumeHistogram()
     Histogram tmp;
     _handleSchema(ENDPOINT_VOLUME_HISTOGRAM, tmp);
 
-    auto volumeHandler = _engine->getScene().getVolumeHandler();
     using namespace rockets::http;
     _httpServer->handle(Method::GET,
                         ENDPOINT_API_VERSION + ENDPOINT_VOLUME_HISTOGRAM,
-                        [volumeHandler](const Request&) {
+                        [this](const Request&) {
+                            auto volumeHandler =
+                                _engine->getScene().getVolumeHandler();
                             if (!volumeHandler)
-                                return make_ready_response(Code::BAD_REQUEST);
+                                return make_ready_response(Code::NOT_SUPPORTED);
                             auto histo = volumeHandler->getHistogram();
                             return make_ready_response(Code::OK, to_json(histo),
                                                        JSON_TYPE);
@@ -561,7 +564,7 @@ void RocketsPlugin::_handleImageJPEG()
     _httpServer->handle(Method::GET, ENDPOINT_API_VERSION + ENDPOINT_IMAGE_JPEG,
                         [&](const Request&) {
                             if (!_engine->isReady())
-                                return make_ready_response(Code::BAD_REQUEST);
+                                return make_ready_response(Code::NOT_SUPPORTED);
                             auto obj = _imageGenerator.createJPEG(
                                 _engine->getFrameBuffer());
                             if (obj.size == 0)

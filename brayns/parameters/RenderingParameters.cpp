@@ -49,7 +49,7 @@ const std::string PARAM_CAMERA_TYPE = "camera-type";
 const std::string PARAM_HEAD_LIGHT = "head-light";
 const std::string PARAM_VARIANCE_THRESHOLD = "variance-threshold";
 
-const std::string ENGINES[3] = {"ospray", "optix", "livre"};
+const std::string ENGINES[2] = {"ospray", "optix"};
 const std::string RENDERERS[7] = {"basic",
                                   "proximity",
                                   "simulation",

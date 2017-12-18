@@ -108,8 +108,7 @@ STATICJSON_DECLARE_ENUM(brayns::ShadingType,
 
 STATICJSON_DECLARE_ENUM(brayns::EngineType,
                         {"ospray", brayns::EngineType::ospray},
-                        {"optix", brayns::EngineType::optix},
-                        {"livre", brayns::EngineType::livre});
+                        {"optix", brayns::EngineType::optix});
 
 // c-array to std.array: https://stackoverflow.com/questions/11205186
 #define Vector2uiArray(vec) \
@@ -227,18 +226,9 @@ void init(brayns::Material* m, ObjectHandler* h)
 
 void init(brayns::Scene* s, ObjectHandler* h)
 {
-    // FIXME: expose materials as vector directly from scene
-    static std::vector<brayns::Material> materials;
-    materials.clear();
-    materials.reserve(s->getMaterials().size());
-    for (size_t materialId = brayns::NB_SYSTEM_MATERIALS;
-         materialId < s->getMaterials().size(); ++materialId)
-    {
-        materials.push_back(s->getMaterial(materialId));
-    }
     h->add_property("bounds", &s->getWorldBounds(),
                     Flags::IgnoreWrite | Flags::Optional);
-    h->add_property("materials", &materials);
+    // h->add_property("materials", &s->_materials);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
@@ -419,10 +409,10 @@ void init(brayns::Histogram* hi, ObjectHandler* h)
 
 void init(brayns::AnimationParameters* a, ObjectHandler* h)
 {
-    h->add_property("start", &a->_start);
-    h->add_property("end", &a->_end);
-    h->add_property("current", &a->_current);
-    h->add_property("delta", &a->_delta);
+    h->add_property("start", &a->_start, Flags::Optional);
+    h->add_property("end", &a->_end, Flags::Optional);
+    h->add_property("current", &a->_current, Flags::Optional);
+    h->add_property("delta", &a->_delta, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 }

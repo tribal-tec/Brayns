@@ -199,8 +199,7 @@ typedef std::map<RendererType, RendererPtr> RendererMap;
 enum class EngineType
 {
     ospray,
-    optix,
-    livre
+    optix
 };
 
 /** Define the frame buffer format */

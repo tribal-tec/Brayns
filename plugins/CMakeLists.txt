@@ -35,9 +35,11 @@ if(BRAYNS_NETWORKING_ENABLED)
   list(APPEND CPPCHECK_EXTRA_ARGS
     --suppress=*:${CMAKE_CURRENT_SOURCE_DIR}/extensions/plugins/json.hpp)
   list(APPEND BRAYNSPLUGINS_HEADERS
+    extensions/plugins/ImageGenerator.h
     extensions/plugins/SDK.h
   )
   list(APPEND BRAYNSPLUGINS_SOURCES
+    extensions/plugins/ImageGenerator.cpp
     extensions/plugins/RocketsPlugin.cpp
     extensions/plugins/staticjson/staticjson.cpp
     extensions/plugins/base64/base64.cpp

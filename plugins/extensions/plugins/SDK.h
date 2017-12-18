@@ -25,12 +25,14 @@
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/transferFunction/TransferFunction.h>
+#include <brayns/parameters/AnimationParameters.h>
 #include <brayns/parameters/ApplicationParameters.h>
 #include <brayns/parameters/GeometryParameters.h>
 #include <brayns/parameters/RenderingParameters.h>
 #include <brayns/parameters/SceneParameters.h>
+#include <brayns/parameters/StreamParameters.h>
 #include <brayns/parameters/VolumeParameters.h>
-#include <plugins/extensions/plugins/RocketsPlugin.h>
+#include <plugins/extensions/plugins/ImageGenerator.h>
 
 #include "base64/base64.h"
 
@@ -109,7 +111,7 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
                         {"optix", brayns::EngineType::optix},
                         {"livre", brayns::EngineType::livre});
 
-// thx for the hack: https://stackoverflow.com/questions/11205186
+// c-array to std.array: https://stackoverflow.com/questions/11205186
 #define Vector2uiArray(vec) \
     reinterpret_cast<std::array<unsigned, 2>*>(&(vec).array[0])
 #define Vector3uiArray(vec) \

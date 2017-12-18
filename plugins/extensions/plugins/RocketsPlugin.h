@@ -22,52 +22,13 @@
 #define ROCKETSPLUGIN_H
 
 #include "ExtensionPlugin.h"
+#include "ImageGenerator.h"
 
 #include <brayns/api.h>
 #include <rockets/server.h>
-#include <turbojpeg.h>
 
 namespace brayns
 {
-class ImageGenerator
-{
-public:
-    ImageGenerator(RocketsPlugin& parent)
-        : _parent(parent)
-    {
-    }
-    ~ImageGenerator()
-    {
-        if (_compressor)
-            tjDestroy(_compressor);
-    }
-
-    struct ImageJPEG
-    {
-        struct tjDeleter
-        {
-            void operator()(uint8_t* ptr) { tjFree(ptr); }
-        };
-        using JpegData = std::unique_ptr<uint8_t, tjDeleter>;
-        JpegData data;
-        unsigned long size{0};
-    };
-
-    ImageJPEG createJPEG();
-
-private:
-    RocketsPlugin& _parent;
-    bool _processingImageJpeg = false;
-    tjhandle _compressor{tjInitCompress()};
-
-    void _resizeImage(unsigned int* srcData, const Vector2i& srcSize,
-                      const Vector2i& dstSize, uints& dstData);
-    ImageJPEG::JpegData _encodeJpeg(const uint32_t width, const uint32_t height,
-                                    const uint8_t* rawData,
-                                    const int32_t pixelFormat,
-                                    unsigned long& dataSize);
-};
-
 /**
    The RocketsPlugin is in charge of exposing a both an http/REST interface to
    the outside world. The http server is configured according
@@ -146,8 +107,7 @@ private:
 
     bool _dirtyEngine = false;
 
-    friend class ImageGenerator;
-    ImageGenerator _imageGenerator{*this};
+    ImageGenerator _imageGenerator;
 
     class Timer
     {

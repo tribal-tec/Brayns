@@ -114,8 +114,6 @@ template <class T>
 std::string getSchema(T& obj, const std::string& title)
 {
     rapidjson::StringBuffer buffer;
-    buffer.Clear();
-
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
     auto schema = staticjson::export_json_schema(&obj);
     schema.AddMember(rapidjson::StringRef("title"),
@@ -177,7 +175,9 @@ void RocketsPlugin::_onNewEngine()
                 _engine->getScene().getTransferFunction());
 
         _handleGET(ENDPOINT_SCENE, _engine->getScene(),
-                   [&](const Scene&) { return _engine->isReady(); });
+                   [&](const Scene& scene) {
+                       return _engine->isReady() && scene.getModified();
+                   });
         _handlePUT(ENDPOINT_SCENE, _engine->getScene(),
                    [](Scene& scene) { scene.commitMaterials(Action::update); });
 

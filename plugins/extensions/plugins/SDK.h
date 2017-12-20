@@ -228,7 +228,7 @@ void init(brayns::Scene* s, ObjectHandler* h)
 {
     h->add_property("bounds", &s->getWorldBounds(),
                     Flags::IgnoreWrite | Flags::Optional);
-    // h->add_property("materials", &s->_materials);
+    h->add_property("materials", &s->getMaterials());
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

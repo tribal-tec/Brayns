@@ -24,6 +24,8 @@
 #include <brayns/common/BaseObject.h>
 #include <brayns/common/types.h>
 
+#include <mutex>
+
 namespace brayns
 {
 /**
@@ -144,6 +146,7 @@ public:
     {
         std::string operation;
         float amount{0.f};
+        std::mutex mutex;
     };
 
     /** @return the current progress of the engine */

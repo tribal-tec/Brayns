@@ -175,7 +175,9 @@ void RocketsPlugin::_onNewEngine()
                    [](const FrameBuffer&) { return false; });
         _handle(ENDPOINT_MATERIAL_LUT,
                 _engine->getScene().getTransferFunction());
-        _handleGET(ENDPOINT_SCENE, _engine->getScene());
+
+        _handleGET(ENDPOINT_SCENE, _engine->getScene(),
+                   [&](const Scene&) { return _engine->isReady(); });
         _handlePUT(ENDPOINT_SCENE, _engine->getScene(),
                    [](Scene& scene) { scene.commitMaterials(Action::update); });
 
@@ -226,6 +228,8 @@ bool RocketsPlugin::run(EngineWeakPtr engine_, KeyboardHandler&,
 
     try
     {
+        std::lock_guard<std::mutex> lock(_engine->getProgress().mutex);
+
         _broadcastWebsocketMessages();
 
         // In the case of interactions with Jupyter notebooks, HTTP messages are

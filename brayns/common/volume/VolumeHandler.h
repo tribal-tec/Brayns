@@ -206,7 +206,7 @@ public:
 private:
     uint32_t _getBoundedIndex(const uint32_t index) const;
 
-    const VolumeParameters _volumeParameters;
+    const VolumeParameters& _volumeParameters;
     std::map<uint32_t, VolumeDescriptorPtr> _volumeDescriptors;
     uint32_t _currentIndex;
     IndexMode _indexMode;

@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <atomic>
+
 namespace brayns
 {
 class BaseObject
@@ -53,6 +55,6 @@ public:
     }
 
 private:
-    bool _modified{true};
+    std::atomic_bool _modified{true};
 };
 }

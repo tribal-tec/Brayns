@@ -235,14 +235,17 @@ private:
 
     void _loadScene()
     {
-        Progress loadingProgress("Loading scene ...",
-                                 LOADING_PROGRESS_DATA +
-                                     3 * LOADING_PROGRESS_STEP,
-                                 [this](const std::string& msg,
-                                        const float progress) {
-                                     _engine->setLastOperation(msg);
-                                     _engine->setLastProgress(progress);
-                                 });
+        while (_rendering)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+        Progress loadingProgress(
+            "Loading scene ...",
+            LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
+            [this](const std::string& msg, const float progress) {
+                std::lock_guard<std::mutex> lock(_engine->getProgress().mutex);
+                _engine->setLastOperation(msg);
+                _engine->setLastProgress(progress);
+            });
 
         loadingProgress.setMessage("Unloading ...");
         _engine->getScene().unload();
@@ -280,15 +283,18 @@ private:
         scene.commit();
         loadingProgress += LOADING_PROGRESS_STEP;
 
+        loadingProgress.setMessage("Done");
+        _engine->setReady(true);
+        BRAYNS_INFO << "Now rendering ..." << std::endl;
+    }
+
+    void _postLoadScene()
+    {
         // Set default camera according to scene bounding box
         _engine->setDefaultCamera();
 
         // Set default epsilon according to scene bounding box
         _engine->setDefaultEpsilon();
-
-        loadingProgress.setMessage("Done");
-        _engine->setReady(true);
-        BRAYNS_INFO << "Now rendering ..." << std::endl;
     }
 
 #if (BRAYNS_USE_DEFLECT || BRAYNS_USE_NETWORKING)
@@ -347,7 +353,15 @@ private:
             }
 #endif
             _dataLoadingFuture.get();
+            _postLoadScene();
         }
+        else if (_dataLoadingFuture.valid())
+        {
+            _dataLoadingFuture.get();
+            _postLoadScene();
+        }
+
+        _rendering = true;
 
         _engine->commit();
 
@@ -398,6 +412,8 @@ private:
         camera.resetModified();
         scene.resetModified();
         _engine->getProgress().resetModified();
+
+        _rendering = false;
 
         return true;
     }
@@ -1223,6 +1239,7 @@ private:
     float _eyeSeparation{0.0635f};
 
     std::future<void> _dataLoadingFuture;
+    std::atomic_bool _rendering{false};
 #ifdef BRAYNS_USE_LUNCHBOX
     // it is important to perform loading and unloading in the same thread,
     // otherwise we leak memory from within ospray/embree. So we don't use

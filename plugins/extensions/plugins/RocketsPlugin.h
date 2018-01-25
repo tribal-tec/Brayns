@@ -104,6 +104,7 @@ private:
     ParametersManager& _parametersManager;
 
     std::unique_ptr<rockets::Server> _httpServer;
+    std::unique_ptr<rockets::Server> _imageServer;
 
     ImageGenerator _imageGenerator;
 

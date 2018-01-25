@@ -225,6 +225,8 @@ bool RocketsPlugin::run(EnginePtr engine, KeyboardHandler&,
         // rendering after NB_MAX_MESSAGES reads.
         for (size_t i = 0; i < NB_MAX_MESSAGES; ++i)
             _httpServer->process(0);
+        if (_imageServer)
+            _imageServer->process(0);
     }
     catch (const std::exception& exc)
     {
@@ -237,7 +239,8 @@ bool RocketsPlugin::run(EnginePtr engine, KeyboardHandler&,
 
 void RocketsPlugin::_broadcastWebsocketMessages()
 {
-    if (_httpServer->getConnectionCount() == 0)
+    if (_httpServer->getConnectionCount() == 0 ||
+        _imageServer->getConnectionCount() == 0)
         return;
 
     for (auto& message : _wsBroadcasts)
@@ -363,6 +366,11 @@ void RocketsPlugin::_setupHTTPServer()
             new rockets::Server{_getHttpInterface(), "rockets", 0});
         BRAYNS_INFO << "Registering http handlers on " << _httpServer->getURI()
                     << std::endl;
+
+        _imageServer.reset(new rockets::Server{
+            ":" + std::to_string(_httpServer->getPort() + 1), "rockets", 0});
+        BRAYNS_INFO << "Registering image server on " << _imageServer->getURI()
+                    << std::endl;
     }
     catch (const std::runtime_error& e)
     {
@@ -400,7 +408,13 @@ void RocketsPlugin::_setupWebsocket()
         for (auto& i : _wsOutgoing)
             responses.push_back({i.second(), rockets::ws::Recipient::sender,
                                  rockets::ws::Format::text});
+        return responses;
+    });
+    _httpServer->handleText(std::bind(&RocketsPlugin::_processWebsocketMessage,
+                                      this, std::placeholders::_1));
 
+    _imageServer->handleOpen([this]() {
+        std::vector<rockets::ws::Response> responses;
         if (_engine->isReady())
         {
             const auto image =
@@ -415,8 +429,6 @@ void RocketsPlugin::_setupWebsocket()
         }
         return responses;
     });
-    _httpServer->handleText(std::bind(&RocketsPlugin::_processWebsocketMessage,
-                                      this, std::placeholders::_1));
 }
 
 std::string RocketsPlugin::_getHttpInterface() const
@@ -589,8 +601,8 @@ void RocketsPlugin::_handleImageJPEG()
             const auto image =
                 _imageGenerator.createJPEG(_engine->getFrameBuffer());
             if (image.size > 0)
-                _httpServer->broadcastBinary((const char*)image.data.get(),
-                                             image.size);
+                _imageServer->broadcastBinary((const char*)image.data.get(),
+                                              image.size);
         }
     };
 }

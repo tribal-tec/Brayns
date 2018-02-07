@@ -98,6 +98,7 @@ RocketsPlugin::RocketsPlugin(ParametersManager& parametersManager)
 
 RocketsPlugin::~RocketsPlugin()
 {
+    _rocketsServer->setSocketListener(nullptr);
 }
 
 bool RocketsPlugin::run(EnginePtr engine, KeyboardHandler&,
@@ -156,6 +157,9 @@ void RocketsPlugin::_setupRocketsServer()
                     << std::endl;
 
         _jsonrpcServer.reset(new JsonRpcServer(*_rocketsServer));
+
+        _socketListener = std::make_unique<SocketListener>(*_rocketsServer);
+        _rocketsServer->setSocketListener(_socketListener.get());
 
         _parametersManager.getApplicationParameters().setHttpServerURI(
             _rocketsServer->getURI());

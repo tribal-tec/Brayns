@@ -38,6 +38,11 @@ common_find_package(vmmlib REQUIRED)
 common_find_package(OpenMP)
 common_find_package(libuv REQUIRED)
 
+if(libuv_VERSION VERSION_LESS 1.9.0)
+  add_definitions(-DUV_DISCONNECT=4)
+endif()
+include_directories(SYSTEM uvw/src)
+
 # HTTP messaging
 common_find_package(LibJpegTurbo)
 common_find_package(Rockets)

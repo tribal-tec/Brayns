@@ -36,19 +36,21 @@ if(BRAYNS_NETWORKING_ENABLED)
     --suppress=*:${CMAKE_CURRENT_SOURCE_DIR}/extensions/plugins/json.hpp)
   list(APPEND BRAYNSPLUGINS_HEADERS
     extensions/plugins/ImageGenerator.h
+    extensions/plugins/SocketListener.h
     extensions/plugins/jsonSerialization.h
     extensions/plugins/jsonUtils.h
   )
   list(APPEND BRAYNSPLUGINS_SOURCES
     extensions/plugins/ImageGenerator.cpp
     extensions/plugins/RocketsPlugin.cpp
-    extensions/plugins/staticjson/staticjson.cpp
+    extensions/plugins/SocketListener.cpp
     extensions/plugins/base64/base64.cpp
+    extensions/plugins/staticjson/staticjson.cpp
   )
   set_source_files_properties(extensions/plugins/staticjson/staticjson.cpp
     PROPERTIES COMPILE_FLAGS -Wno-shadow)
   list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS extensions/plugins/RocketsPlugin.h)
-  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Rockets
+  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Rockets uv
     ${LibJpegTurbo_LIBRARIES})
 endif()
 

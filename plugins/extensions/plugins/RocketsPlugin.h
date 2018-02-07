@@ -23,6 +23,7 @@
 
 #include "ExtensionPlugin.h"
 #include "ImageGenerator.h"
+#include "SocketListener.h"
 
 #include <brayns/api.h>
 #include <brayns/common/Timer.h>
@@ -117,6 +118,7 @@ private:
     std::unique_ptr<rockets::Server> _rocketsServer;
     using JsonRpcServer = rockets::jsonrpc::Server<rockets::Server>;
     std::unique_ptr<JsonRpcServer> _jsonrpcServer;
+    std::unique_ptr<SocketListener> _socketListener;
 
     ImageGenerator _imageGenerator;
 

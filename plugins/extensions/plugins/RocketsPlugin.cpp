@@ -89,11 +89,13 @@ std::string hyphenatedToCamelCase(const std::string& hyphenated)
 
 namespace brayns
 {
-RocketsPlugin::RocketsPlugin(ParametersManager& parametersManager)
-    : ExtensionPlugin()
+RocketsPlugin::RocketsPlugin(EnginePtr engine,
+                             ParametersManager& parametersManager)
+    : ExtensionPlugin(engine)
     , _parametersManager(parametersManager)
 {
     _setupRocketsServer();
+    _registerEndpoints();
 }
 
 RocketsPlugin::~RocketsPlugin()
@@ -101,17 +103,10 @@ RocketsPlugin::~RocketsPlugin()
     _rocketsServer->setSocketListener(nullptr);
 }
 
-bool RocketsPlugin::run(EnginePtr engine, KeyboardHandler&,
-                        AbstractManipulator&)
+bool RocketsPlugin::run(KeyboardHandler&, AbstractManipulator&)
 {
     if (!_rocketsServer)
         return true;
-
-    if (_engine != engine)
-    {
-        _engine = engine;
-        _registerEndpoints();
-    }
 
     try
     {

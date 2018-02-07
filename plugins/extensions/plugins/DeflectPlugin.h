@@ -31,10 +31,10 @@ namespace brayns
 class DeflectPlugin : public ExtensionPlugin
 {
 public:
-    DeflectPlugin(ParametersManager& parametersManager);
+    DeflectPlugin(EnginePtr engine, ParametersManager& parametersManager);
 
     /** @copydoc ExtensionPlugin::run */
-    BRAYNS_API bool run(EnginePtr engine, KeyboardHandler& keyboardHandler,
+    BRAYNS_API bool run(KeyboardHandler& keyboardHandler,
                         AbstractManipulator& cameraManipulator) final;
 
 private:

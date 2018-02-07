@@ -42,11 +42,11 @@ struct RpcDocumentation;
 class RocketsPlugin : public ExtensionPlugin
 {
 public:
-    RocketsPlugin(ParametersManager& parametersManager);
+    RocketsPlugin(EnginePtr engine, ParametersManager& parametersManager);
     ~RocketsPlugin();
 
     /** @copydoc ExtensionPlugin::run */
-    BRAYNS_API bool run(EnginePtr engine, KeyboardHandler& keyboardHandler,
+    BRAYNS_API bool run(KeyboardHandler& keyboardHandler,
                         AbstractManipulator& cameraManipulator) final;
 
 private:
@@ -112,7 +112,6 @@ private:
     using WsBroadcastOperations = std::map<std::string, std::function<void()>>;
     WsBroadcastOperations _wsBroadcastOperations;
 
-    EnginePtr _engine;
     ParametersManager& _parametersManager;
 
     std::unique_ptr<rockets::Server> _rocketsServer;

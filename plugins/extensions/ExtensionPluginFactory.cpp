@@ -31,14 +31,15 @@
 namespace brayns
 {
 ExtensionPluginFactory::ExtensionPluginFactory(
+    EnginePtr engine BRAYNS_UNUSED,
     ParametersManager& parametersManager BRAYNS_UNUSED)
 {
 #if (BRAYNS_USE_NETWORKING)
-    add(std::make_shared<RocketsPlugin>(parametersManager));
+    add(std::make_shared<RocketsPlugin>(engine, parametersManager));
 #endif
 
 #ifdef BRAYNS_USE_DEFLECT
-    add(std::make_shared<DeflectPlugin>(parametersManager));
+    add(std::make_shared<DeflectPlugin>(engine, parametersManager));
 #endif
 }
 
@@ -66,12 +67,11 @@ void ExtensionPluginFactory::clear()
     _plugins.clear();
 }
 
-void ExtensionPluginFactory::execute(EnginePtr engine,
-                                     KeyboardHandler& keyboardHandler,
+void ExtensionPluginFactory::execute(KeyboardHandler& keyboardHandler,
                                      AbstractManipulator& cameraManipulator)
 {
     for (ExtensionPluginPtr plugin : _plugins)
-        if (!plugin->run(engine, keyboardHandler, cameraManipulator))
+        if (!plugin->run(keyboardHandler, cameraManipulator))
             break;
 }
 }

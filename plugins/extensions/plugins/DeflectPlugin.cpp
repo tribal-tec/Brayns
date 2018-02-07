@@ -47,8 +47,9 @@ std::future<T> make_ready_future(const T value)
 
 namespace brayns
 {
-DeflectPlugin::DeflectPlugin(ParametersManager& parametersManager)
-    : ExtensionPlugin()
+DeflectPlugin::DeflectPlugin(EnginePtr engine,
+                             ParametersManager& parametersManager)
+    : ExtensionPlugin(engine)
     , _appParams{parametersManager.getApplicationParameters()}
     , _params{parametersManager.getStreamParameters()}
     , _sendFuture{make_ready_future(true)}
@@ -57,7 +58,7 @@ DeflectPlugin::DeflectPlugin(ParametersManager& parametersManager)
                               // DEFLECT_HOST environment variable is defined
 }
 
-bool DeflectPlugin::run(EnginePtr engine, KeyboardHandler& keyboardHandler,
+bool DeflectPlugin::run(KeyboardHandler& keyboardHandler,
                         AbstractManipulator& cameraManipulator)
 {
     if (_stream)
@@ -79,16 +80,16 @@ bool DeflectPlugin::run(EnginePtr engine, KeyboardHandler& keyboardHandler,
     if (_stream && _stream->isConnected() && !deflectEnabled)
         _closeStream();
 
-    const bool observerOnly = engine->haveDeflectPixelOp();
+    const bool observerOnly = _engine->haveDeflectPixelOp();
     if (deflectEnabled && !_stream && _startStream(observerOnly))
-        _sendSizeHints(*engine);
+        _sendSizeHints(*_engine);
 
     if (deflectEnabled && _stream && _stream->isConnected())
     {
         if (!observerOnly)
-            _sendDeflectFrame(*engine);
+            _sendDeflectFrame(*_engine);
 
-        _handleDeflectEvents(*engine, keyboardHandler, cameraManipulator);
+        _handleDeflectEvents(*_engine, keyboardHandler, cameraManipulator);
     }
 
     return true;

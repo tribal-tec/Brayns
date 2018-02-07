@@ -99,7 +99,7 @@ struct Brayns::Impl
 #if (BRAYNS_USE_DEFLECT || BRAYNS_USE_NETWORKING)
         // after createEngine() to execute in parallel to scene loading
         _extensionPluginFactory.reset(
-            new ExtensionPluginFactory(_parametersManager));
+            new ExtensionPluginFactory(_engine, _parametersManager));
 #endif
 
         if (!isAsyncMode())
@@ -312,8 +312,7 @@ private:
     {
         _updateAnimation();
 
-        _extensionPluginFactory->execute(_engine, _keyboardHandler,
-                                         *_cameraManipulator);
+        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
 
         _engine->getStatistics().resetModified();
 

@@ -53,7 +53,7 @@ void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,
 void SocketListener::onUpdateSocket(const rockets::SocketDescriptor /*fd*/,
                                     const int /*mode*/)
 {
-    std::cerr << "Unimplemented" << std::endl;
+    // std::cerr << "Unimplemented " << mode << std::endl;
 }
 
 void SocketListener::onDeleteSocket(const rockets::SocketDescriptor fd)

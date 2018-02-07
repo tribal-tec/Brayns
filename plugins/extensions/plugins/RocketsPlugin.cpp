@@ -118,8 +118,8 @@ bool RocketsPlugin::run(KeyboardHandler&, AbstractManipulator&)
         // words, only one message is processed between each rendering loop. The
         // following code allows the processing of several messages and performs
         // rendering after NB_MAX_MESSAGES reads.
-        for (size_t i = 0; i < NB_MAX_MESSAGES; ++i)
-            _rocketsServer->process(0);
+        //        for (size_t i = 0; i < NB_MAX_MESSAGES; ++i)
+        _rocketsServer->process(0);
     }
     catch (const std::exception& exc)
     {
@@ -154,6 +154,7 @@ void RocketsPlugin::_setupRocketsServer()
         _jsonrpcServer.reset(new JsonRpcServer(*_rocketsServer));
 
         _socketListener = std::make_unique<SocketListener>(*_rocketsServer);
+        _socketListener->postReceive = _engine->triggerRender;
         _rocketsServer->setSocketListener(_socketListener.get());
 
         _parametersManager.getApplicationParameters().setHttpServerURI(

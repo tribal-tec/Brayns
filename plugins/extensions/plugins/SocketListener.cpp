@@ -44,17 +44,32 @@ void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,
         flags = flags | uvw::Flags<uvw::PollHandle::Event>(
                             uvw::PollHandle::Event::WRITABLE);
     handle->on<uvw::PollEvent>(
-        [this, fd, mode](const uvw::PollEvent&, uvw::PollHandle&) {
-            _iface.processSocket(fd, mode);
+        [this, fd](const uvw::PollEvent& event, uvw::PollHandle&) {
+            int flags_ = 0;
+            if (event.flags() & uvw::PollHandle::Event::READABLE)
+                flags_ |= POLLIN;
+            if (event.flags() & uvw::PollHandle::Event::WRITABLE)
+                flags_ |= POLLOUT;
+            _iface.processSocket(fd, flags_);
+
+            if (event.flags() & uvw::PollHandle::Event::READABLE && postReceive)
+                postReceive();
         });
 
     handle->start(flags);
 }
 
-void SocketListener::onUpdateSocket(const rockets::SocketDescriptor /*fd*/,
-                                    const int /*mode*/)
+void SocketListener::onUpdateSocket(const rockets::SocketDescriptor fd,
+                                    const int mode)
 {
-    // std::cerr << "Unimplemented " << mode << std::endl;
+    uvw::Flags<uvw::PollHandle::Event> flags;
+    if (mode & POLLIN)
+        flags = flags | uvw::Flags<uvw::PollHandle::Event>(
+                            uvw::PollHandle::Event::READABLE);
+    if (mode & POLLOUT)
+        flags = flags | uvw::Flags<uvw::PollHandle::Event>(
+                            uvw::PollHandle::Event::WRITABLE);
+    _handles[fd]->start(flags);
 }
 
 void SocketListener::onDeleteSocket(const rockets::SocketDescriptor fd)

@@ -115,6 +115,8 @@ public:
      */
     std::function<void()> buildScene;
 
+    std::function<void()> triggerRender;
+
     /**
      * @brief resets frame number
      */

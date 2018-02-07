@@ -38,6 +38,8 @@ public:
 
     void onDeleteSocket(const rockets::SocketDescriptor fd) final;
 
+    std::function<void()> postReceive;
+
 private:
     std::map<rockets::SocketDescriptor, std::shared_ptr<uvw::PollHandle>>
         _handles;

@@ -96,14 +96,17 @@ struct Brayns::Impl
 
         createEngine();
 
+        if (!isAsyncMode())
+            _finishLoadScene();
+    }
+
+    void init()
+    {
 #if (BRAYNS_USE_DEFLECT || BRAYNS_USE_NETWORKING)
         // after createEngine() to execute in parallel to scene loading
         _extensionPluginFactory.reset(
             new ExtensionPluginFactory(_engine, _parametersManager));
 #endif
-
-        if (!isAsyncMode())
-            _finishLoadScene();
     }
 
     void createEngine()
@@ -1264,7 +1267,10 @@ void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 {
     _impl->render(renderInput, renderOutput);
 }
-
+void Brayns::init()
+{
+    _impl->init();
+}
 bool Brayns::render()
 {
     return _impl->render();

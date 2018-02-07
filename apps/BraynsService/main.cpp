@@ -20,12 +20,14 @@
 
 #include <brayns/Brayns.h>
 #include <brayns/common/Timer.h>
+#include <brayns/common/engine/Engine.h>
 #include <brayns/common/log.h>
+#include <brayns/common/renderer/Renderer.h>
 #include <brayns/common/types.h>
 
 #include <uvw.hpp>
 
-//#include <thread>
+#include <thread>
 //#include <uv.h>
 
 // size_t nTimes = 2;
@@ -107,21 +109,48 @@ int main(int argc, const char** argv)
         BRAYNS_INFO << "Initializing Service..." << std::endl;
         auto loop = uvw::Loop::getDefault();
         brayns::Brayns brayns(argc, argv);
-        brayns.render();
+        // brayns.render();
+
+        auto renderLoop = uvw::Loop::create();
+        auto asyncHandle = renderLoop->resource<uvw::AsyncHandle>();
+        asyncHandle->on<uvw::AsyncEvent>(
+            [&](const uvw::AsyncEvent&, uvw::AsyncHandle& /*handle*/) {
+                if (!brayns.getEngine().getKeepRunning() || !brayns.render())
+                {
+                    renderLoop->stop();
+                    loop->stop();
+                }
+            });
+
+        brayns.getEngine().triggerRender = [&] { asyncHandle->send(); };
+        brayns.init();
+
+        std::thread render_thread([&] { renderLoop->run(); });
+
+        //        auto idle = loop->resource<uvw::IdleHandle>();
+        //        idle->on<uvw::IdleEvent>([&](const uvw::IdleEvent&,
+        //        uvw::IdleHandle& ){
+        //            if(brayns.getEngine().getRenderer().hasNewImage())
+        //                asyncHandle->send();
+        //        });
+        //        idle->start();
 
         brayns::Timer timer;
         timer.start();
 
-        auto timerHandle = loop->resource<uvw::TimerHandle>();
-        timerHandle->on<uvw::TimerEvent>(
-            [&](const uvw::TimerEvent&, uvw::TimerHandle&) {
-                if (!brayns.render())
-                    loop->stop();
-            });
-        timerHandle->start(std::chrono::milliseconds(0),
-                           std::chrono::milliseconds(16));
+        //        auto timerHandle = loop->resource<uvw::TimerHandle>();
+        //        timerHandle->on<uvw::TimerEvent>(
+        //            [&](const uvw::TimerEvent&, uvw::TimerHandle&) {
+        ////                if (!brayns.render())
+        ////                    loop->stop();
+        //            asyncHandle->send();
+        //            });
+        //        timerHandle->start(std::chrono::milliseconds(0),
+        //                           std::chrono::milliseconds(100));
 
         loop->run();
+
+        render_thread.join();
 
         //        bool keepRunning = true;
         //        while (keepRunning)

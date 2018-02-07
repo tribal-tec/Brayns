@@ -53,6 +53,8 @@ public:
     BRAYNS_API Brayns(int argc, const char** argv);
     BRAYNS_API ~Brayns();
 
+    void init();
+
     /**
        Renders color and depth buffers of the current scene, according to
        specified parameters

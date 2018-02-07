@@ -32,7 +32,8 @@ SocketListener::SocketListener(rockets::SocketBasedInterface& interface)
 void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,
                                  const int mode)
 {
-    auto handle = uvw::Loop::getDefault()->resource<uvw::PollHandle>(fd);
+    auto loop = uvw::Loop::getDefault();
+    auto handle = loop->resource<uvw::PollHandle>(fd);
     _handles.emplace(fd, handle);
 
     uvw::Flags<uvw::PollHandle::Event> flags;
@@ -42,12 +43,12 @@ void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,
     if (mode & POLLOUT)
         flags = flags | uvw::Flags<uvw::PollHandle::Event>(
                             uvw::PollHandle::Event::WRITABLE);
-    handle->start(flags);
-
     handle->on<uvw::PollEvent>(
         [this, fd, mode](const uvw::PollEvent&, uvw::PollHandle&) {
             _iface.processSocket(fd, mode);
         });
+
+    handle->start(flags);
 }
 
 void SocketListener::onUpdateSocket(const rockets::SocketDescriptor /*fd*/,
@@ -58,6 +59,7 @@ void SocketListener::onUpdateSocket(const rockets::SocketDescriptor /*fd*/,
 
 void SocketListener::onDeleteSocket(const rockets::SocketDescriptor fd)
 {
+    _handles[fd]->stop();
     _handles.erase(fd);
 }
 }

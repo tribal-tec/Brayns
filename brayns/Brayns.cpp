@@ -312,7 +312,8 @@ private:
     {
         _updateAnimation();
 
-        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+        //_extensionPluginFactory->execute(_keyboardHandler,
+        //*_cameraManipulator);
 
         _engine->getStatistics().resetModified();
 
@@ -400,6 +401,9 @@ private:
             _engine->getStatistics().setFPS(_renderTimer.perSecondSmoothed());
             _fpsUpdateElapsed = 0;
         }
+
+        // broadcast for now
+        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
 
         return true;
     }

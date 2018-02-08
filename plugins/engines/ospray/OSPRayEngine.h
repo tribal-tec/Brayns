@@ -42,9 +42,6 @@ public:
     /** @copydoc Engine::commit */
     void commit() final;
 
-    /** @copydoc Engine::render */
-    void render() final;
-
     /** @copydoc Engine::preRender */
     void preRender() final;
 

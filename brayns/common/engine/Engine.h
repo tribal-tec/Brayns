@@ -66,7 +66,7 @@ public:
     virtual void commit() = 0;
 
     /** Renders the current scene and populates the frame buffer accordingly */
-    virtual void render();
+    void render();
     /** Executes engine specific pre-render operations */
     virtual void preRender() {}
     /** Executes engine specific post-render operations */
@@ -203,6 +203,8 @@ public:
      */
     void snapshot(const SnapshotParams& params);
 
+    bool continueRendering() const;
+
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
@@ -220,6 +222,7 @@ protected:
     Progress _progress;
     bool _keepRunning{true};
     bool _isReady{false};
+    float _lastVariance{std::numeric_limits<float>::infinity()};
 };
 }
 

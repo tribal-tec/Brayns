@@ -54,6 +54,7 @@ public:
     BRAYNS_API ~Brayns();
 
     void init();
+    void postRender();
 
     /**
        Renders color and depth buffers of the current scene, according to

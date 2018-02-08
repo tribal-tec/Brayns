@@ -112,6 +112,7 @@ void OSPRayFrameBuffer::setStreamingParams(const StreamParameters& params,
 
 void OSPRayFrameBuffer::clear()
 {
+    FrameBuffer::clear();
     size_t attributes = OSP_FB_COLOR | OSP_FB_DEPTH;
     if (_accumulation)
         attributes |= OSP_FB_ACCUM | OSP_FB_VARIANCE;

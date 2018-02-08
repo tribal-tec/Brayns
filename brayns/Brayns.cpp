@@ -109,6 +109,24 @@ struct Brayns::Impl
 #endif
     }
 
+    void postRender()
+    {
+        _fpsUpdateElapsed += _renderTimer.milliseconds();
+        if (_fpsUpdateElapsed > 750)
+        {
+            _engine->getStatistics().setFPS(_renderTimer.perSecondSmoothed());
+            _fpsUpdateElapsed = 0;
+        }
+
+        // broadcast for now
+        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+
+        _parametersManager.resetModified();
+        _engine->getCamera().resetModified();
+        _engine->getScene().resetModified();
+        _engine->getProgress().resetModified();
+    }
+
     void createEngine()
     {
         _engine.reset(); // Free resources before creating a new engine
@@ -315,9 +333,6 @@ private:
     {
         _updateAnimation();
 
-        //_extensionPluginFactory->execute(_keyboardHandler,
-        //*_cameraManipulator);
-
         _engine->getStatistics().resetModified();
 
         _engine->reshape(windowSize);
@@ -378,35 +393,15 @@ private:
         if (_parametersManager.isAnyModified() || camera.getModified() ||
             scene.getModified())
         {
-            _engine->getRenderer().hasNewImage(true);
             _engine->getFrameBuffer().clear();
         }
-        else
-            // we assume no new image here, but accumulation inside the renderer
-            // might decide otherwise
-            _engine->getRenderer().hasNewImage(false);
 
         _engine->render();
 
         _writeFrameToFile();
 
-        _parametersManager.resetModified();
-        camera.resetModified();
-        scene.resetModified();
-        _engine->getProgress().resetModified();
-
         _rendering = false;
         _renderTimer.stop();
-
-        _fpsUpdateElapsed += _renderTimer.milliseconds();
-        if (_fpsUpdateElapsed > 750)
-        {
-            _engine->getStatistics().setFPS(_renderTimer.perSecondSmoothed());
-            _fpsUpdateElapsed = 0;
-        }
-
-        // broadcast for now
-        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
 
         return true;
     }
@@ -1270,6 +1265,11 @@ void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 void Brayns::init()
 {
     _impl->init();
+}
+
+void Brayns::postRender()
+{
+    _impl->postRender();
 }
 bool Brayns::render()
 {

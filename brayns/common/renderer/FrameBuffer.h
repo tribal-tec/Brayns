@@ -33,7 +33,7 @@ public:
                            FrameBufferFormat frameBufferFormat,
                            bool accumulation = true);
     virtual ~FrameBuffer() {}
-    virtual void clear() = 0;
+    virtual void clear() { _accumFrames = 0; }
     virtual void map() = 0;
     virtual void unmap() = 0;
 
@@ -54,10 +54,13 @@ public:
         return _frameBufferFormat;
     }
 
+    void incrementAccumFrames() { ++_accumFrames; }
+    size_t numAccumFrames() const { return _accumFrames; }
 protected:
     Vector2ui _frameSize;
     FrameBufferFormat _frameBufferFormat;
     bool _accumulation;
+    size_t _accumFrames{0};
 };
 }
 #endif // FRAMEBUFFER_H

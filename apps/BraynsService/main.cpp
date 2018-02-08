@@ -28,79 +28,6 @@
 #include <uvw.hpp>
 
 #include <thread>
-//#include <uv.h>
-
-// size_t nTimes = 2;
-
-// void timer_callback(uv_timer_t *handle)
-//{
-//    uv_async_t *other_thread_notifier = (uv_async_t *)handle->data;
-
-//    fprintf(stderr, "Timer expired, notifying other thread\n");
-
-//    if (--nTimes == 0)
-//        uv_stop(uv_default_loop());
-
-//    // Notify the other thread
-//    uv_async_send(other_thread_notifier);
-//}
-
-// void render_loop(uv_loop_t *thread_loop)
-//{
-//    fprintf(stderr, "Consumer thread will start event loop\n");
-
-//    // Start this loop
-//    uv_run(thread_loop, UV_RUN_DEFAULT);
-//}
-
-// void consumer_notify(uv_async_t *handle)
-//{
-//    fprintf(stderr, "Hello from the other thread\n",
-//    handle->loop->backend_fd);
-//    if (nTimes == 0)
-//        uv_stop(handle->loop);
-//}
-
-// int main(int argc, char *argv[])
-//{
-//    uv_async_t async;
-
-//    /* Create and set up the consumer thread */
-//    uv_loop_t *thread_loop = uv_loop_new();
-//    uv_async_init(thread_loop, &async, consumer_notify);
-//    std::thread render_thread(std::bind(&render_loop, thread_loop));
-
-//    /* Main thread will run default loop */
-//    uv_loop_t *main_loop = uv_default_loop();
-//    uv_timer_t timer_req;
-//    uv_timer_init(main_loop, &timer_req);
-
-//    /* Timer callback needs async so it knows where to send messages */
-//    timer_req.data = &async;
-//    uv_timer_start(&timer_req, timer_callback, 0, 500);
-
-//    fprintf(stderr, "Starting main loop\n");
-//    uv_run(main_loop, UV_RUN_DEFAULT);
-
-//    render_thread.join();
-
-//    return 0;
-//}
-
-// struct Work
-//{
-//    size_t n{42};
-//};
-
-// void do_work(uv_work_t *req) {
-//    Work n = *(Work *) req->data;
-//    std::cout << std::this_thread::get_id() << std::endl;
-//    fprintf(stderr, "%dth fibonacci\n", n.n);
-//}
-
-// void work_cb(uv_work_t *req, int status) {
-//    fprintf(stderr, "Done calculating %dth fibonacci\n", *(int *) req->data);
-//}
 
 int main(int argc, const char** argv)
 {
@@ -109,52 +36,46 @@ int main(int argc, const char** argv)
         BRAYNS_INFO << "Initializing Service..." << std::endl;
         auto loop = uvw::Loop::getDefault();
         brayns::Brayns brayns(argc, argv);
-        // brayns.render();
 
         auto renderLoop = uvw::Loop::create();
-        auto asyncHandle = renderLoop->resource<uvw::AsyncHandle>();
-        asyncHandle->on<uvw::AsyncEvent>(
+        auto triggerRendering = renderLoop->resource<uvw::AsyncHandle>();
+        auto renderingDone = loop->resource<uvw::AsyncHandle>();
+
+        std::mutex mutex;
+        renderingDone->on<uvw::AsyncEvent>(
             [&](const uvw::AsyncEvent&, uvw::AsyncHandle& /*handle*/) {
+                std::lock_guard<std::mutex> lock{mutex};
+                brayns.postRender();
+                if (brayns.getEngine().continueRendering())
+                    triggerRendering->send();
+            });
+
+        triggerRendering->on<uvw::AsyncEvent>(
+            [&](const uvw::AsyncEvent&, uvw::AsyncHandle& /*handle*/) {
+                std::lock_guard<std::mutex> lock{mutex};
                 if (!brayns.getEngine().getKeepRunning() || !brayns.render())
                 {
                     renderLoop->stop();
                     loop->stop();
                 }
+                else
+                    renderingDone->send();
             });
 
-        brayns.getEngine().triggerRender = [&] { asyncHandle->send(); };
+        brayns.getEngine().triggerRender = [&] {
+            std::lock_guard<std::mutex> lock{mutex};
+            triggerRendering->send();
+        };
         brayns.init();
 
         std::thread render_thread([&] { renderLoop->run(); });
 
-        //        auto idle = loop->resource<uvw::IdleHandle>();
-        //        idle->on<uvw::IdleEvent>([&](const uvw::IdleEvent&,
-        //        uvw::IdleHandle& ){
-        //            if(brayns.getEngine().getRenderer().hasNewImage())
-        //                asyncHandle->send();
-        //        });
-        //        idle->start();
-
         brayns::Timer timer;
         timer.start();
 
-        //        auto timerHandle = loop->resource<uvw::TimerHandle>();
-        //        timerHandle->on<uvw::TimerEvent>(
-        //            [&](const uvw::TimerEvent&, uvw::TimerHandle&) {
-        ////                if (!brayns.render())
-        ////                    loop->stop();
-        //            asyncHandle->send();
-        //            });
-        //        timerHandle->start(std::chrono::milliseconds(0),
-        //                           std::chrono::milliseconds(100));
-
         loop->run();
-
         render_thread.join();
 
-        //        bool keepRunning = true;
-        //        while (keepRunning)
-        //            keepRunning = brayns.render();
         timer.stop();
         BRAYNS_INFO << "Service was running for " << timer.seconds()
                     << " seconds" << std::endl;
@@ -165,22 +86,4 @@ int main(int argc, const char** argv)
         return 1;
     }
     return 0;
-
-    //    uv_loop_t *loop = (uv_loop_t *)malloc(sizeof(uv_loop_t));
-    //    uv_loop_init(loop);
-
-    //    uv_work_t req, req1, req2;
-    //    Work work;
-    //    req.data = (void *) &work;
-    //    req1.data = (void *) &work;
-    //    req2.data = (void *) &work;
-    //    uv_queue_work(loop, &req, do_work, work_cb);
-    //    uv_queue_work(loop, &req1, do_work, work_cb);
-    //    uv_queue_work(loop, &req2, do_work, work_cb);
-
-    //    uv_run(loop, UV_RUN_DEFAULT);
-
-    //    uv_loop_close(loop);
-    //    free(loop);
-    //    return 0;
 }

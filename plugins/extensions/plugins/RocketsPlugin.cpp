@@ -95,7 +95,6 @@ RocketsPlugin::RocketsPlugin(EnginePtr engine,
     , _parametersManager(parametersManager)
 {
     _setupRocketsServer();
-    _registerEndpoints();
 }
 
 RocketsPlugin::~RocketsPlugin()
@@ -168,6 +167,7 @@ void RocketsPlugin::_setupRocketsServer()
     }
 
     _setupWebsocket();
+    _registerEndpoints();
     _timer.start();
 }
 
@@ -417,7 +417,7 @@ void RocketsPlugin::_handleImageJPEG()
         });
 
     _wsBroadcastOperations[ENDPOINT_IMAGE_JPEG] = [this] {
-        if (_engine->isReady() && _engine->getRenderer().hasNewImage())
+        if (_engine->isReady())
         {
             const auto& params = _parametersManager.getApplicationParameters();
             const auto fps = params.getImageStreamFPS();

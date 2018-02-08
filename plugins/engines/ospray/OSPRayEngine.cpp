@@ -191,15 +191,6 @@ void OSPRayEngine::commit()
     }
 }
 
-void OSPRayEngine::render()
-{
-    Engine::render();
-    _scene->commitVolumeData();
-    _scene->commitSimulationData();
-    _renderers[_activeRenderer]->commit();
-    _renderers[_activeRenderer]->render(_frameBuffer);
-}
-
 void OSPRayEngine::preRender()
 {
     const auto& renderParams = _parametersManager.getRenderingParameters();

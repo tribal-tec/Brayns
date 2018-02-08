@@ -102,6 +102,12 @@ void Engine::initializeMaterials(const MaterialsColorMap colorMap)
 void Engine::render()
 {
     ++_frameNumber;
+
+    _scene->commitVolumeData();
+    _scene->commitSimulationData();
+    _renderers[_activeRenderer]->commit();
+    _lastVariance = _renderers[_activeRenderer]->render(_frameBuffer);
+    _frameBuffer->incrementAccumFrames();
 }
 
 Renderer& Engine::getRenderer()
@@ -141,5 +147,11 @@ void Engine::snapshot(const SnapshotParams& params)
     rp.setSamplesPerPixel(oldSpp);
     // reshape() is always done with current windowsize from app params, so no
     // need to reshape back
+}
+
+bool Engine::continueRendering() const
+{
+    return _lastVariance > 1 && _frameBuffer->getAccumulation() &&
+           (_frameBuffer->numAccumFrames() < 100);
 }
 }

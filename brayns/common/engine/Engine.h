@@ -63,7 +63,7 @@ public:
        Commits changes to the engine. This include scene and camera
        modifications
     */
-    virtual void commit() = 0;
+    virtual void commit();
 
     /** Renders the current scene and populates the frame buffer accordingly */
     void render();

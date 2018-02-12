@@ -99,13 +99,16 @@ void Engine::initializeMaterials(const MaterialsColorMap colorMap)
     _scene->commit();
 }
 
-void Engine::render()
+void Engine::commit()
 {
-    ++_frameNumber;
-
     _scene->commitVolumeData();
     _scene->commitSimulationData();
     _renderers[_activeRenderer]->commit();
+}
+
+void Engine::render()
+{
+    ++_frameNumber;
     _lastVariance = _renderers[_activeRenderer]->render(_frameBuffer);
     _frameBuffer->incrementAccumFrames();
 }

@@ -33,46 +33,107 @@ int main(int argc, const char** argv)
 {
     try
     {
+        brayns::Timer timer;
+        timer.start();
+
         BRAYNS_INFO << "Initializing Service..." << std::endl;
         auto loop = uvw::Loop::getDefault();
         brayns::Brayns brayns(argc, argv);
 
         auto renderLoop = uvw::Loop::create();
         auto triggerRendering = renderLoop->resource<uvw::AsyncHandle>();
+        auto stopRenderThread = renderLoop->resource<uvw::AsyncHandle>();
         auto renderingDone = loop->resource<uvw::AsyncHandle>();
+        auto checkIdleRendering = loop->resource<uvw::CheckHandle>();
+        checkIdleRendering->start();
 
+        auto eventRendering = loop->resource<uvw::IdleHandle>();
+        auto accumRendering = loop->resource<uvw::IdleHandle>();
+
+        // image jpeg creation is not threadsafe (yet), move that to render
+        // thread?
+        // also data loading and maybe more things used by render() are not safe
+        // yet
         std::mutex mutex;
-        renderingDone->on<uvw::AsyncEvent>(
-            [&](const uvw::AsyncEvent&, uvw::AsyncHandle& /*handle*/) {
-                std::lock_guard<std::mutex> lock{mutex};
-                brayns.postRender();
-                if (brayns.getEngine().continueRendering())
+
+        // main thread
+        {
+            brayns::Timer timeSinceLastEvent;
+            const float idleRenderingDelay = 0.1f;
+
+            // triggered after rendering, send events to rockets
+            renderingDone->on<uvw::AsyncEvent>(
+                [&](const uvw::AsyncEvent&, uvw::AsyncHandle&) {
+                    std::lock_guard<std::mutex> lock{mutex};
+                    brayns.postRender();
+                });
+
+            // events from rockets
+            brayns.getEngine().triggerRender = [&] { eventRendering->start(); };
+
+            // render trigger from events
+            eventRendering->on<uvw::IdleEvent>(
+                [&](const uvw::IdleEvent&, uvw::IdleHandle&) {
+                    eventRendering->stop();
+                    accumRendering->stop();
+                    timeSinceLastEvent.start();
+
+                    std::lock_guard<std::mutex> lock{mutex};
+                    if (!brayns.getEngine().getKeepRunning())
+                    {
+                        stopRenderThread->send();
+                        loop->stop();
+                        return;
+                    }
+
+                    brayns.preRender();
                     triggerRendering->send();
-            });
+                });
 
-        triggerRendering->on<uvw::AsyncEvent>(
-            [&](const uvw::AsyncEvent&, uvw::AsyncHandle& /*handle*/) {
-                std::lock_guard<std::mutex> lock{mutex};
-                if (!brayns.getEngine().getKeepRunning() || !brayns.render())
-                {
-                    renderLoop->stop();
-                    loop->stop();
-                }
-                else
+            // start accum rendering when we have no more other events
+            checkIdleRendering->on<uvw::CheckEvent>(
+                [&](const uvw::CheckEvent&, uvw::CheckHandle&) {
+                    accumRendering->start();
+                });
+
+            // render trigger from going into idle
+            accumRendering->on<uvw::IdleEvent>(
+                [&, idleRenderingDelay](const uvw::IdleEvent&,
+                                        uvw::IdleHandle&) {
+                    if (timeSinceLastEvent.elapsed() < idleRenderingDelay)
+                        return;
+
+                    std::lock_guard<std::mutex> lock{mutex};
+                    if (brayns.getEngine().continueRendering())
+                    {
+                        brayns.preRender();
+                        triggerRendering->send();
+                    }
+
+                    accumRendering->stop();
+                });
+        }
+
+        // render thread
+        {
+            // rendering
+            triggerRendering->on<uvw::AsyncEvent>(
+                [&](const uvw::AsyncEvent&, uvw::AsyncHandle&) {
+                    std::lock_guard<std::mutex> lock{mutex};
+                    brayns.render();
                     renderingDone->send();
-            });
+                });
 
-        brayns.getEngine().triggerRender = [&] {
-            std::lock_guard<std::mutex> lock{mutex};
-            triggerRendering->send();
-        };
+            // stop render loop
+            stopRenderThread->on<uvw::AsyncEvent>(
+                [&](const uvw::AsyncEvent&, uvw::AsyncHandle&) {
+                    renderLoop->stop();
+                });
+        }
+
         brayns.init();
 
         std::thread render_thread([&] { renderLoop->run(); });
-
-        brayns::Timer timer;
-        timer.start();
-
         loop->run();
         render_thread.join();
 

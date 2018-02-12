@@ -54,6 +54,7 @@ public:
     BRAYNS_API ~Brayns();
 
     void init();
+    void preRender();
     void postRender();
 
     /**

@@ -109,8 +109,86 @@ struct Brayns::Impl
 #endif
     }
 
+    void preRender()
+    {
+        if (!isLoadingFinished())
+        {
+#ifdef BRAYNS_USE_LUNCHBOX
+            if (isAsyncMode())
+            {
+                _parametersManager.resetModified();
+                _engine->getProgress().resetModified();
+
+                // limit any updates (Deflect, Rockets) to a reasonable number
+                // while we are loading (and not rendering).
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                return false;
+            }
+#endif
+            _finishLoadScene();
+        }
+        else if (_dataLoadingFuture.valid())
+            _finishLoadScene();
+
+        _rendering = true;
+
+        _updateAnimation();
+
+        _engine->getStatistics().resetModified();
+
+        _engine->setActiveRenderer(
+            _parametersManager.getRenderingParameters().getRenderer());
+
+        const Vector2ui windowSize =
+            _parametersManager.getApplicationParameters().getWindowSize();
+
+        _engine->reshape(windowSize);
+        _engine->preRender();
+
+        _engine->commit();
+
+        Camera& camera = _engine->getCamera();
+        camera.commit();
+
+        Scene& scene = _engine->getScene();
+
+        if (scene.getTransferFunction().getModified())
+            scene.commitTransferFunctionData();
+
+        // XXX lights need modified state too, move update to main thread
+        if (_parametersManager.getRenderingParameters().getHeadLight())
+        {
+            LightPtr sunLight = scene.getLight(0);
+            DirectionalLight* sun =
+                dynamic_cast<DirectionalLight*>(sunLight.get());
+            if (sun &&
+                (camera.getModified() ||
+                 _parametersManager.getRenderingParameters().getModified()))
+            {
+                sun->setDirection(camera.getTarget() - camera.getPosition());
+                scene.commitLights();
+            }
+        }
+
+        if (_parametersManager.isAnyModified() || camera.getModified() ||
+            scene.getModified())
+        {
+            _engine->getFrameBuffer().clear();
+        }
+
+        _engine->getScene().getTransferFunction().resetModified();
+        _parametersManager.resetModified();
+        _engine->getCamera().resetModified();
+        _engine->getScene().resetModified();
+        _engine->getProgress().resetModified();
+
+        _renderTimer.start();
+    }
+
     void postRender()
     {
+        _renderTimer.stop();
+
         _fpsUpdateElapsed += _renderTimer.milliseconds();
         if (_fpsUpdateElapsed > 750)
         {
@@ -121,10 +199,7 @@ struct Brayns::Impl
         // broadcast for now
         _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
 
-        _parametersManager.resetModified();
-        _engine->getCamera().resetModified();
-        _engine->getScene().resetModified();
-        _engine->getProgress().resetModified();
+        _rendering = false;
     }
 
     void createEngine()
@@ -329,79 +404,11 @@ private:
         }
     }
 
-    bool _render(const Vector2ui& windowSize)
+    bool _render(const Vector2ui& /*windowSize*/)
     {
-        _updateAnimation();
-
-        _engine->getStatistics().resetModified();
-
-        _engine->reshape(windowSize);
-        _engine->preRender();
-
-        if (!isLoadingFinished())
-        {
-#ifdef BRAYNS_USE_LUNCHBOX
-            if (isAsyncMode())
-            {
-                _parametersManager.resetModified();
-                _engine->getProgress().resetModified();
-
-                // limit any updates (Deflect, Rockets) to a reasonable number
-                // while we are loading (and not rendering).
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                return false;
-            }
-#endif
-            _finishLoadScene();
-        }
-        else if (_dataLoadingFuture.valid())
-            _finishLoadScene();
-
-        _rendering = true;
-        _renderTimer.start();
-
-        _engine->commit();
-
-        Camera& camera = _engine->getCamera();
-        camera.commit();
-
-        Scene& scene = _engine->getScene();
-
-        if (scene.getTransferFunction().getModified())
-        {
-            scene.commitTransferFunctionData();
-            scene.getTransferFunction().resetModified();
-        }
-
-        if (_parametersManager.getRenderingParameters().getHeadLight())
-        {
-            LightPtr sunLight = scene.getLight(0);
-            DirectionalLight* sun =
-                dynamic_cast<DirectionalLight*>(sunLight.get());
-            if (sun &&
-                (camera.getModified() ||
-                 _parametersManager.getRenderingParameters().getModified()))
-            {
-                sun->setDirection(camera.getTarget() - camera.getPosition());
-                scene.commitLights();
-            }
-        }
-
-        _engine->setActiveRenderer(
-            _parametersManager.getRenderingParameters().getRenderer());
-
-        if (_parametersManager.isAnyModified() || camera.getModified() ||
-            scene.getModified())
-        {
-            _engine->getFrameBuffer().clear();
-        }
-
         _engine->render();
 
         _writeFrameToFile();
-
-        _rendering = false;
-        _renderTimer.stop();
 
         return true;
     }
@@ -1265,6 +1272,11 @@ void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 void Brayns::init()
 {
     _impl->init();
+}
+
+void Brayns::preRender()
+{
+    _impl->preRender();
 }
 
 void Brayns::postRender()

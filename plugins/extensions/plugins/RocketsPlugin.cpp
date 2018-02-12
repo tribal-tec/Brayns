@@ -62,9 +62,6 @@ const std::string METHOD_SNAPSHOT = "snapshot";
 
 const std::string JSON_TYPE = "application/json";
 
-const size_t NB_MAX_MESSAGES = 20; // Maximum number of network messages to read
-                                   // between each rendering loop
-
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
     std::string camel = hyphenated;
@@ -110,14 +107,6 @@ bool RocketsPlugin::run(KeyboardHandler&, AbstractManipulator&)
     try
     {
         _broadcastWebsocketMessages();
-
-        // In the case of interactions with Jupyter notebooks, HTTP messages are
-        // received in a blocking and sequential manner, meaning that the
-        // subscriber never has more than one message in its queue. In other
-        // words, only one message is processed between each rendering loop. The
-        // following code allows the processing of several messages and performs
-        // rendering after NB_MAX_MESSAGES reads.
-        //        for (size_t i = 0; i < NB_MAX_MESSAGES; ++i)
         _rocketsServer->process(0);
     }
     catch (const std::exception& exc)

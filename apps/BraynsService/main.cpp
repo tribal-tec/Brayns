@@ -37,23 +37,23 @@ int main(int argc, const char** argv)
         timer.start();
 
         BRAYNS_INFO << "Initializing Service..." << std::endl;
-        auto loop = uvw::Loop::getDefault();
+
         brayns::Brayns brayns(argc, argv);
+
+        auto loop = uvw::Loop::getDefault();
+        auto renderingDone = loop->resource<uvw::AsyncHandle>();
+        auto eventRendering = loop->resource<uvw::IdleHandle>();
+        auto accumRendering = loop->resource<uvw::IdleHandle>();
+        auto checkIdleRendering = loop->resource<uvw::CheckHandle>();
+        checkIdleRendering->start();
 
         auto renderLoop = uvw::Loop::create();
         auto triggerRendering = renderLoop->resource<uvw::AsyncHandle>();
         auto stopRenderThread = renderLoop->resource<uvw::AsyncHandle>();
-        auto renderingDone = loop->resource<uvw::AsyncHandle>();
-        auto checkIdleRendering = loop->resource<uvw::CheckHandle>();
-        checkIdleRendering->start();
-
-        auto eventRendering = loop->resource<uvw::IdleHandle>();
-        auto accumRendering = loop->resource<uvw::IdleHandle>();
 
         // image jpeg creation is not threadsafe (yet), move that to render
-        // thread?
-        // also data loading and maybe more things used by render() are not safe
-        // yet
+        // thread? also data loading and maybe more things used by render() are
+        // not safe yet.
         std::mutex mutex;
 
         // main thread
@@ -86,8 +86,8 @@ int main(int argc, const char** argv)
                         return;
                     }
 
-                    brayns.preRender();
-                    triggerRendering->send();
+                    if (brayns.preRender())
+                        triggerRendering->send();
                 });
 
             // start accum rendering when we have no more other events
@@ -106,8 +106,8 @@ int main(int argc, const char** argv)
                     std::lock_guard<std::mutex> lock{mutex};
                     if (brayns.getEngine().continueRendering())
                     {
-                        brayns.preRender();
-                        triggerRendering->send();
+                        if (brayns.preRender())
+                            triggerRendering->send();
                     }
 
                     accumRendering->stop();

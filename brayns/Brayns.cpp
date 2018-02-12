@@ -109,7 +109,7 @@ struct Brayns::Impl
 #endif
     }
 
-    void preRender()
+    bool preRender()
     {
         if (!isLoadingFinished())
         {
@@ -133,8 +133,6 @@ struct Brayns::Impl
         _rendering = true;
 
         _updateAnimation();
-
-        _engine->getStatistics().resetModified();
 
         _engine->setActiveRenderer(
             _parametersManager.getRenderingParameters().getRenderer());
@@ -182,13 +180,11 @@ struct Brayns::Impl
         _engine->getScene().resetModified();
         _engine->getProgress().resetModified();
 
-        _renderTimer.start();
+        return true;
     }
 
     void postRender()
     {
-        _renderTimer.stop();
-
         _fpsUpdateElapsed += _renderTimer.milliseconds();
         if (_fpsUpdateElapsed > 750)
         {
@@ -198,6 +194,8 @@ struct Brayns::Impl
 
         // broadcast for now
         _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+
+        _engine->getStatistics().resetModified();
 
         _rendering = false;
     }
@@ -406,7 +404,9 @@ private:
 
     bool _render(const Vector2ui& /*windowSize*/)
     {
+        _renderTimer.start();
         _engine->render();
+        _renderTimer.stop();
 
         _writeFrameToFile();
 
@@ -1274,9 +1274,9 @@ void Brayns::init()
     _impl->init();
 }
 
-void Brayns::preRender()
+bool Brayns::preRender()
 {
-    _impl->preRender();
+    return _impl->preRender();
 }
 
 void Brayns::postRender()

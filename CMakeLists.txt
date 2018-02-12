@@ -75,7 +75,7 @@ endif()
 
 # Data access unit tests
 common_find_package(BBPTestData)
-#common_find_package(Lunchbox)
+common_find_package(Lunchbox)
 
 # OSPRay rendering engine
 common_find_package(ospray SYSTEM)

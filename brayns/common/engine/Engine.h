@@ -108,13 +108,11 @@ public:
     void initializeMaterials(
         MaterialsColorMap colorMap = MaterialsColorMap::none);
 
-    /**
-     * Unloads the current scene and loads and builds a new scene according to
-     * datasource parameters. The execution will be asynchronous if
-     * getSynchronousMode() is false.
-     */
-    std::function<void()> buildScene;
-
+    void markRebuildScene(const bool rebuild = true)
+    {
+        _rebuildScene = rebuild;
+    }
+    bool rebuildScene() const { return _rebuildScene; }
     std::function<void()> triggerRender;
 
     /**
@@ -223,6 +221,7 @@ protected:
     bool _keepRunning{true};
     bool _isReady{false};
     float _lastVariance{std::numeric_limits<float>::infinity()};
+    bool _rebuildScene{false};
 };
 }
 

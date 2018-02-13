@@ -69,34 +69,9 @@ int main(int argc, const char** argv)
             });
 
             // events from rockets
-            brayns.getEngine().triggerRender = [&] {
-                if (!isLoading)
-                    eventRendering->start();
-            };
+            brayns.getEngine().triggerRender = [&] { eventRendering->start(); };
 
-            brayns.getEngine().buildScene = [&] {
-                eventRendering->stop();
-                checkIdleRendering->stop();
-                isLoading = true;
-
-                progressUpdate->start(std::chrono::milliseconds(0),
-                                      std::chrono::milliseconds(100));
-                auto work =
-                    loop->resource<uvw::WorkReq>([&] { brayns.buildScene(); });
-
-                work->on<uvw::WorkEvent>([&](const auto&, auto&) {
-                    progressUpdate->stop();
-                    progressUpdate->close();
-
-                    eventRendering->start();
-                    checkIdleRendering->start();
-                    isLoading = false;
-                });
-
-                work->queue();
-            };
-
-            // render trigger from events
+            // render or data load trigger from events
             eventRendering->on<uvw::IdleEvent>([&](const auto&, auto&) {
                 eventRendering->stop();
                 accumRendering->stop();
@@ -107,6 +82,35 @@ int main(int argc, const char** argv)
                 {
                     stopRenderThread->send();
                     loop->stop();
+                    return;
+                }
+
+                if (brayns.getEngine().rebuildScene())
+                {
+                    if (isLoading)
+                        return;
+
+                    isLoading = true;
+
+                    checkIdleRendering->stop();
+
+                    progressUpdate->start(std::chrono::milliseconds(0),
+                                          std::chrono::milliseconds(100));
+                    auto work = loop->resource<uvw::WorkReq>(
+                        [&] { brayns.buildScene(); });
+
+                    work->template on<uvw::WorkEvent>([&](const auto&, auto&) {
+                        brayns.getEngine().markRebuildScene(false);
+                        progressUpdate->stop();
+                        progressUpdate->close();
+                        isLoading = false;
+
+                        eventRendering->start();
+                        checkIdleRendering->start();
+                        accumRendering->start();
+                    });
+
+                    work->queue();
                     return;
                 }
 

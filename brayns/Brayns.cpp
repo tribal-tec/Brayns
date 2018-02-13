@@ -118,8 +118,6 @@ struct Brayns::Impl
             {
                 sendMessages();
 
-                _parametersManager.resetModified();
-                _engine->getProgress().resetModified();
                 return false;
             }
 #endif
@@ -188,7 +186,8 @@ struct Brayns::Impl
             _fpsUpdateElapsed = 0;
         }
 
-        sendMessages();
+        // broadcast for now
+        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
 
         _engine->getStatistics().resetModified();
     }
@@ -197,6 +196,9 @@ struct Brayns::Impl
     {
         // broadcast for now
         _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+
+        _parametersManager.resetModified();
+        _engine->getProgress().resetModified();
     }
 
     void createEngine()
@@ -286,13 +288,11 @@ struct Brayns::Impl
     bool render()
     {
         _rendering = true;
-        std::cout << "render start" << std::endl;
         const Vector2ui windowSize =
             _parametersManager.getApplicationParameters().getWindowSize();
         _render(windowSize);
 
         _engine->postRender();
-        std::cout << "render end" << std::endl;
         _rendering = false;
         return _engine->getKeepRunning();
     }
@@ -335,7 +335,7 @@ private:
         // fix race condition: we have to wait until rendering is finished
         while (_rendering)
         {
-            std::cout << "Waiting" << std::endl;
+            std::cout << "Waiting (shall not happen)" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
@@ -350,7 +350,6 @@ private:
 
         loadingProgress.setMessage("Unloading ...");
         _engine->getScene().unload();
-        std::cout << "Unloaded" << std::endl;
         loadingProgress += LOADING_PROGRESS_STEP;
 
         loadingProgress.setMessage("Loading data ...");
@@ -378,7 +377,6 @@ private:
 
         loadingProgress.setMessage("Building acceleration structure ...");
         scene.commit();
-        std::cout << "BVH'd" << std::endl;
         loadingProgress += LOADING_PROGRESS_STEP;
 
         loadingProgress.setMessage("Done");
@@ -400,7 +398,8 @@ private:
         _engine->getStatistics().setSceneSizeInBytes(
             _engine->getScene().getSizeInBytes());
 
-        sendMessages();
+        // broadcast for now
+        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
     }
 
     void _updateAnimation()

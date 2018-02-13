@@ -364,8 +364,7 @@ void RocketsPlugin::_handleGeometryParams()
 {
     auto& params = _parametersManager.getGeometryParameters();
     auto postUpdate = [this](GeometryParameters&) {
-        if (_engine->isReady())
-            _engine->buildScene();
+        _engine->markRebuildScene();
     };
     _handleGET(ENDPOINT_GEOMETRY_PARAMS, params);
     _handlePUT(ENDPOINT_GEOMETRY_PARAMS, params, postUpdate);
@@ -503,8 +502,7 @@ void RocketsPlugin::_handleVolumeParams()
 {
     auto& params = _parametersManager.getVolumeParameters();
     auto postUpdate = [this](VolumeParameters&) {
-        if (_engine->isReady())
-            _engine->buildScene();
+        _engine->markRebuildScene();
     };
     _handleGET(ENDPOINT_VOLUME_PARAMS, params);
     _handlePUT(ENDPOINT_VOLUME_PARAMS, params, postUpdate);

@@ -56,6 +56,8 @@ public:
     void init();
     bool preRender();
     void postRender();
+    void buildScene();
+    void sendMessages();
 
     /**
        Renders color and depth buffers of the current scene, according to

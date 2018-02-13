@@ -116,12 +116,10 @@ struct Brayns::Impl
 #ifdef BRAYNS_USE_LUNCHBOX
             if (isAsyncMode())
             {
+                sendMessages();
+
                 _parametersManager.resetModified();
                 _engine->getProgress().resetModified();
-
-                // limit any updates (Deflect, Rockets) to a reasonable number
-                // while we are loading (and not rendering).
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 return false;
             }
 #endif
@@ -129,8 +127,6 @@ struct Brayns::Impl
         }
         else if (_dataLoadingFuture.valid())
             _finishLoadScene();
-
-        _rendering = true;
 
         _updateAnimation();
 
@@ -192,12 +188,15 @@ struct Brayns::Impl
             _fpsUpdateElapsed = 0;
         }
 
-        // broadcast for now
-        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+        sendMessages();
 
         _engine->getStatistics().resetModified();
+    }
 
-        _rendering = false;
+    void sendMessages()
+    {
+        // broadcast for now
+        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
     }
 
     void createEngine()
@@ -213,7 +212,6 @@ struct Brayns::Impl
                 _parametersManager.getRenderingParameters().getEngineAsString(
                     engineName));
 
-        _engine->buildScene = std::bind(&Impl::buildScene, this);
         _setupCameraManipulator(CameraMode::inspect);
 
         // Default sun light
@@ -233,17 +231,24 @@ struct Brayns::Impl
         _engine->setLastOperation("");
         _engine->setLastProgress(0);
 
+        std::promise<void> promise;
+        _dataLoadingFuture = promise.get_future();
+//        _loadScene();
+
 #ifdef BRAYNS_USE_LUNCHBOX
         if (isAsyncMode())
         {
-            _dataLoadingFuture =
-                _loadingThread.post(std::bind(&Brayns::Impl::_loadScene, this));
+            //_dataLoadingFuture =
+            _loadingThread.post(std::bind(&Brayns::Impl::_loadScene, this))
+                .get();
         }
         else
 #endif
             _dataLoadingFuture =
                 std::async(std::launch::deferred,
                            std::bind(&Brayns::Impl::_loadScene, this));
+
+        promise.set_value();
     }
 
     void render(const RenderInput& renderInput, RenderOutput& renderOutput)
@@ -280,12 +285,15 @@ struct Brayns::Impl
 
     bool render()
     {
+        _rendering = true;
+        std::cout << "render start" << std::endl;
         const Vector2ui windowSize =
             _parametersManager.getApplicationParameters().getWindowSize();
         _render(windowSize);
 
         _engine->postRender();
-
+        std::cout << "render end" << std::endl;
+        _rendering = false;
         return _engine->getKeepRunning();
     }
 
@@ -326,7 +334,10 @@ private:
     {
         // fix race condition: we have to wait until rendering is finished
         while (_rendering)
+        {
+            std::cout << "Waiting" << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
 
         Progress loadingProgress(
             "Loading scene ...",
@@ -339,6 +350,7 @@ private:
 
         loadingProgress.setMessage("Unloading ...");
         _engine->getScene().unload();
+        std::cout << "Unloaded" << std::endl;
         loadingProgress += LOADING_PROGRESS_STEP;
 
         loadingProgress.setMessage("Loading data ...");
@@ -366,6 +378,7 @@ private:
 
         loadingProgress.setMessage("Building acceleration structure ...");
         scene.commit();
+        std::cout << "BVH'd" << std::endl;
         loadingProgress += LOADING_PROGRESS_STEP;
 
         loadingProgress.setMessage("Done");
@@ -386,6 +399,8 @@ private:
 
         _engine->getStatistics().setSceneSizeInBytes(
             _engine->getScene().getSizeInBytes());
+
+        sendMessages();
     }
 
     void _updateAnimation()
@@ -1282,6 +1297,16 @@ bool Brayns::preRender()
 void Brayns::postRender()
 {
     _impl->postRender();
+}
+
+void Brayns::buildScene()
+{
+    _impl->buildScene();
+}
+
+void Brayns::sendMessages()
+{
+    _impl->sendMessages();
 }
 bool Brayns::render()
 {

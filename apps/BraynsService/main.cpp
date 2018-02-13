@@ -44,6 +44,7 @@ int main(int argc, const char** argv)
         auto renderingDone = loop->resource<uvw::AsyncHandle>();
         auto eventRendering = loop->resource<uvw::IdleHandle>();
         auto accumRendering = loop->resource<uvw::IdleHandle>();
+        auto progressUpdate = loop->resource<uvw::TimerHandle>();
         auto checkIdleRendering = loop->resource<uvw::CheckHandle>();
         checkIdleRendering->start();
 
@@ -57,78 +58,100 @@ int main(int argc, const char** argv)
         std::mutex mutex;
 
         // main thread
+        const float idleRenderingDelay = 0.1f;
+        bool isLoading = false;
+        brayns::Timer timeSinceLastEvent;
         {
-            brayns::Timer timeSinceLastEvent;
-            const float idleRenderingDelay = 0.1f;
-
             // triggered after rendering, send events to rockets
-            renderingDone->on<uvw::AsyncEvent>(
-                [&](const uvw::AsyncEvent&, uvw::AsyncHandle&) {
-                    std::lock_guard<std::mutex> lock{mutex};
-                    brayns.postRender();
-                });
+            renderingDone->on<uvw::AsyncEvent>([&](const auto&, auto&) {
+                std::lock_guard<std::mutex> lock{mutex};
+                brayns.postRender();
+            });
 
             // events from rockets
-            brayns.getEngine().triggerRender = [&] { eventRendering->start(); };
+            brayns.getEngine().triggerRender = [&] {
+                if (!isLoading)
+                    eventRendering->start();
+            };
+
+            brayns.getEngine().buildScene = [&] {
+                eventRendering->stop();
+                checkIdleRendering->stop();
+                isLoading = true;
+
+                progressUpdate->start(std::chrono::milliseconds(0),
+                                      std::chrono::milliseconds(100));
+                auto work =
+                    loop->resource<uvw::WorkReq>([&] { brayns.buildScene(); });
+
+                work->on<uvw::WorkEvent>([&](const auto&, auto&) {
+                    progressUpdate->stop();
+                    progressUpdate->close();
+
+                    eventRendering->start();
+                    checkIdleRendering->start();
+                    isLoading = false;
+                });
+
+                work->queue();
+            };
 
             // render trigger from events
-            eventRendering->on<uvw::IdleEvent>(
-                [&](const uvw::IdleEvent&, uvw::IdleHandle&) {
-                    eventRendering->stop();
-                    accumRendering->stop();
-                    timeSinceLastEvent.start();
+            eventRendering->on<uvw::IdleEvent>([&](const auto&, auto&) {
+                eventRendering->stop();
+                accumRendering->stop();
+                timeSinceLastEvent.start();
 
-                    std::lock_guard<std::mutex> lock{mutex};
-                    if (!brayns.getEngine().getKeepRunning())
-                    {
-                        stopRenderThread->send();
-                        loop->stop();
-                        return;
-                    }
+                std::lock_guard<std::mutex> lock{mutex};
+                if (!brayns.getEngine().getKeepRunning())
+                {
+                    stopRenderThread->send();
+                    loop->stop();
+                    return;
+                }
 
-                    if (brayns.preRender())
-                        triggerRendering->send();
-                });
+                if (brayns.preRender())
+                    triggerRendering->send();
+            });
+
+            progressUpdate->on<uvw::TimerEvent>(
+                [&](const auto&, auto&) { brayns.sendMessages(); });
+
+            progressUpdate->on<uvw::CloseEvent>(
+                [&](const auto&, auto&) { brayns.sendMessages(); });
 
             // start accum rendering when we have no more other events
             checkIdleRendering->on<uvw::CheckEvent>(
-                [&](const uvw::CheckEvent&, uvw::CheckHandle&) {
-                    accumRendering->start();
-                });
+                [&](const auto&, auto&) { accumRendering->start(); });
 
             // render trigger from going into idle
-            accumRendering->on<uvw::IdleEvent>(
-                [&, idleRenderingDelay](const uvw::IdleEvent&,
-                                        uvw::IdleHandle&) {
-                    if (timeSinceLastEvent.elapsed() < idleRenderingDelay)
-                        return;
+            accumRendering->on<uvw::IdleEvent>([&](const auto&, auto&) {
+                if (timeSinceLastEvent.elapsed() < idleRenderingDelay)
+                    return;
 
-                    std::lock_guard<std::mutex> lock{mutex};
-                    if (brayns.getEngine().continueRendering())
-                    {
-                        if (brayns.preRender())
-                            triggerRendering->send();
-                    }
+                std::lock_guard<std::mutex> lock{mutex};
+                if (brayns.getEngine().continueRendering())
+                {
+                    if (brayns.preRender())
+                        triggerRendering->send();
+                }
 
-                    accumRendering->stop();
-                });
+                accumRendering->stop();
+            });
         }
 
         // render thread
         {
             // rendering
-            triggerRendering->on<uvw::AsyncEvent>(
-                [&](const uvw::AsyncEvent&, uvw::AsyncHandle&) {
-                    std::lock_guard<std::mutex> lock{mutex};
-                    brayns.render();
-                    renderingDone->send();
-                });
+            triggerRendering->on<uvw::AsyncEvent>([&](const auto&, auto&) {
+                std::lock_guard<std::mutex> lock{mutex};
+                brayns.render();
+                renderingDone->send();
+            });
 
             // stop render loop
-            stopRenderThread->on<uvw::AsyncEvent>(
-                [&](const uvw::AsyncEvent&, uvw::AsyncHandle&) {
-                    renderLoop->stop();
-                });
+            stopRenderThread->once<uvw::AsyncEvent>(
+                [&](const auto&, auto&) { renderLoop->stop(); });
         }
 
         brayns.init();

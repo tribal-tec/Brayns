@@ -43,18 +43,17 @@ void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,
     if (mode & POLLOUT)
         flags = flags | uvw::Flags<uvw::PollHandle::Event>(
                             uvw::PollHandle::Event::WRITABLE);
-    handle->on<uvw::PollEvent>(
-        [this, fd](const uvw::PollEvent& event, uvw::PollHandle&) {
-            int flags_ = 0;
-            if (event.flags() & uvw::PollHandle::Event::READABLE)
-                flags_ |= POLLIN;
-            if (event.flags() & uvw::PollHandle::Event::WRITABLE)
-                flags_ |= POLLOUT;
-            _iface.processSocket(fd, flags_);
+    handle->on<uvw::PollEvent>([this, fd](const auto& event, auto&) {
+        int flags_ = 0;
+        if (event.flags() & uvw::PollHandle::Event::READABLE)
+            flags_ |= POLLIN;
+        if (event.flags() & uvw::PollHandle::Event::WRITABLE)
+            flags_ |= POLLOUT;
+        _iface.processSocket(fd, flags_);
 
-            if (event.flags() & uvw::PollHandle::Event::READABLE && postReceive)
-                postReceive();
-        });
+        if (event.flags() & uvw::PollHandle::Event::READABLE && postReceive)
+            postReceive();
+    });
 
     handle->start(flags);
 }

@@ -5,34 +5,32 @@
 # See: https://docs.docker.com/engine/userguide/eng-image/multistage-build/#use-multi-stage-builds
 
 # Image where Brayns is built
-FROM debian:9.3-slim as builder
+FROM alpine:3.7 as builder
 LABEL maintainer="bbp-svc-viz@groupes.epfl.ch"
 ARG DIST_PATH=/app/dist
 
 # Install packages
-RUN apt-get update \
- && apt-get -y --no-install-recommends install \
-    build-essential \
+RUN echo "http://dl-2.alpinelinux.org/alpine/edge/main" > /etc/apk/repositories && \
+    echo "http://dl-2.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    echo "http://dl-2.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache \
+    build-base \
     cmake \
     git \
-    ninja-build \
-    libassimp-dev \
-    libboost-date-time-dev \
-    libboost-filesystem-dev \
-    libboost-iostreams-dev \
-    libboost-program-options-dev \
-    libboost-regex-dev \
-    libboost-serialization-dev \
-    libboost-system-dev \
-    libboost-test-dev \
-    libhdf5-serial-dev \
-    libmagick++-dev \
+    ninja \
+    boost-dev \
+    hdf5-dev \
+    imagemagick-dev \
     libtbb-dev \
-    libturbojpeg0-dev \
+    libjpeg-turbo-dev \
+    libtbb \
     wget \
+    openssl-dev \
+    libexecinfo \
+    libexecinfo-dev \
     ca-certificates \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Get ISPC
 # https://ispc.github.io/downloads.html
@@ -48,15 +46,21 @@ RUN mkdir -p ${ISPC_PATH} \
 # Add ispc bin to the PATH
 ENV PATH $PATH:${ISPC_PATH}
 
-# Install embree
-# https://github.com/embree/embree/releases
+# Install Embree
+# https://github.com/embree/embree
 ARG EMBREE_VERSION=2.17.1
-ARG EMBREE_FILE=embree-${EMBREE_VERSION}.x86_64.linux.tar.gz
+ARG EMBREE_SRC=/app/embree
 
-RUN mkdir -p ${DIST_PATH} \
-  && wget https://github.com/embree/embree/releases/download/v${EMBREE_VERSION}/${EMBREE_FILE} \
-  && tar zxvf ${EMBREE_FILE} -C ${DIST_PATH} --strip-components=1 \
-  && rm -rf ${DIST_PATH}/bin ${DIST_PATH}/doc
+RUN mkdir -p ${EMBREE_SRC} \
+ && git clone https://github.com/embree/embree.git ${EMBREE_SRC} \
+ && cd ${EMBREE_SRC} \
+ && git checkout v${EMBREE_VERSION} \
+ && mkdir -p build \
+ && cd build \
+ && CMAKE_PREFIX_PATH=${DIST_PATH} cmake .. -GNinja \
+    -DEMBREE_TUTORIALS=OFF \
+    -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
+&& ninja install
 
 # Install OSPRay
 # https://github.com/ospray/ospray/releases
@@ -64,7 +68,7 @@ ARG OSPRAY_VERSION=1.4.3
 ARG OSPRAY_SRC=/app/ospray
 
 RUN mkdir -p ${OSPRAY_SRC} \
- && git clone https://github.com/ospray/ospray.git ${OSPRAY_SRC} --depth 1 \
+ && git clone https://github.com/ospray/ospray.git ${OSPRAY_SRC} \
  && cd ${OSPRAY_SRC} \
  && git checkout v${OSPRAY_VERSION} \
  && mkdir -p build \
@@ -73,6 +77,24 @@ RUN mkdir -p ${OSPRAY_SRC} \
     -DOSPRAY_ENABLE_APPS=OFF \
     -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
  && ninja install
+ 
+# Install assimp
+# https://github.com/assimp/assimp
+ARG ASSIMP_VERSION=4.1.0
+ARG ASSIMP_SRC=/app/assimp
+
+RUN mkdir -p ${ASSIMP_SRC} \
+ && git clone https://github.com/assimp/assimp.git ${ASSIMP_SRC} \
+ && cd ${ASSIMP_SRC} \
+ && git checkout v${ASSIMP_VERSION} \
+ && mkdir -p build \
+ && cd build \
+ && cmake .. -GNinja \
+    -DASSIMP_BUILD_ASSIMP_TOOLS=OFF \
+    -DASSIMP_BUILD_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
+&& ninja install
 
 # Install libwebsockets (2.0 from Debian is not reliable)
 # https://github.com/warmcat/libwebsockets/releases
@@ -104,7 +126,6 @@ ARG BRAYNS_SRC=/app/brayns
 WORKDIR /app
 ADD . ${BRAYNS_SRC}
 
-
 # Install Brayns
 # https://github.com/BlueBrain/Brayns
 RUN cksum ${BRAYNS_SRC}/.gitsubprojects \
@@ -119,30 +140,33 @@ RUN cksum ${BRAYNS_SRC}/.gitsubprojects \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
     -DBUILD_PYTHON_BINDINGS=OFF \
- && ninja mvd-tool Brayns-install \
+    -DCOMMON_LIBRARY_TYPE=SHARED
+
+RUN cd ${BRAYNS_SRC}/build && ninja mvd-tool Brayns-install \
  && rm -rf ${DIST_PATH}/include ${DIST_PATH}/share
 
 # Final image, containing only Brayns and libraries required to run it
-FROM debian:9.3-slim
+FROM alpine:3.7
 ARG DIST_PATH=/app/dist
 
-RUN apt-get update \
- && apt-get -y --no-install-recommends install \
-    libassimp3v5 \
-    libboost-filesystem1.62.0 \
-    libboost-program-options1.62.0 \
-    libboost-regex1.62.0 \
-    libboost-serialization1.62.0 \
-    libboost-system1.62.0 \
-    libboost-iostreams1.62.0 \
-    libgomp1 \
-    libhdf5-100 \
-    libhdf5-cpp-100 \
-    libmagick++-6.q16-7 \
-    libmagickwand-6.q16-3 \
-    libturbojpeg0 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN echo "http://dl-2.alpinelinux.org/alpine/edge/main" > /etc/apk/repositories && \
+    echo "http://dl-2.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    echo "http://dl-2.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache \
+    boost-filesystem \
+    boost-program_options \
+    boost-regex \
+    boost-serialization \
+    boost-system \
+    boost-iostreams \
+    libgomp \
+    hdf5 \
+    imagemagick-c++ \
+    libjpeg-turbo \
+    libtbb \
+    libexecinfo \
+ && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # The COPY command below will:
 # 1. create a container based on the `builder` image (but do not start it)
@@ -154,6 +178,7 @@ COPY --from=builder ${DIST_PATH} ${DIST_PATH}
 
 # Add binaries from dist to the PATH
 ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:${DIST_PATH}/lib
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:${DIST_PATH}/lib64
 ENV PATH ${DIST_PATH}/bin:$PATH
 
 # Expose a port from the container

@@ -100,7 +100,7 @@ bool ImageManager::importTextureFromFile(
         texture->setType(textureType);
         texture->setWidth(image.columns());
         texture->setHeight(image.rows());
-        texture->setNbChannels(image.matte() ? 4 : 3);
+        texture->setNbChannels(image.isOpaque() ? 3 : 4);
         texture->setDepth(1);
         texture->setRawData((unsigned char*)blob.data(), totalSize);
 

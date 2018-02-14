@@ -111,6 +111,8 @@ struct Brayns::Impl
 
     bool preRender()
     {
+        std::lock_guard<std::mutex> lock{_renderMutex};
+
         if (!isLoadingFinished())
         {
 #ifdef BRAYNS_USE_LUNCHBOX
@@ -179,6 +181,11 @@ struct Brayns::Impl
 
     void postRender()
     {
+        // image jpeg creation is not threadsafe (yet), move that to render
+        // thread? also data loading and maybe more things used by render() are
+        // not safe yet.
+        std::lock_guard<std::mutex> lock{_renderMutex};
+
         _fpsUpdateElapsed += _renderTimer.milliseconds();
         if (_fpsUpdateElapsed > 750)
         {
@@ -287,6 +294,8 @@ struct Brayns::Impl
 
     bool render()
     {
+        std::lock_guard<std::mutex> lock{_renderMutex};
+
         _rendering = true;
         const Vector2ui windowSize =
             _parametersManager.getApplicationParameters().getWindowSize();
@@ -1251,6 +1260,9 @@ private:
 
     // protect rendering vs. data loading/unloading
     std::atomic_bool _rendering{false};
+
+    // protect rendering vs. image streaming
+    std::mutex _renderMutex;
 
     Timer _renderTimer;
     int64_t _fpsUpdateElapsed{0};

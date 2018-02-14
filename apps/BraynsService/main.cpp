@@ -52,21 +52,14 @@ int main(int argc, const char** argv)
         auto triggerRendering = renderLoop->resource<uvw::AsyncHandle>();
         auto stopRenderThread = renderLoop->resource<uvw::AsyncHandle>();
 
-        // image jpeg creation is not threadsafe (yet), move that to render
-        // thread? also data loading and maybe more things used by render() are
-        // not safe yet.
-        std::mutex mutex;
-
         // main thread
         const float idleRenderingDelay = 0.1f;
         bool isLoading = false;
         brayns::Timer timeSinceLastEvent;
         {
             // triggered after rendering, send events to rockets
-            renderingDone->on<uvw::AsyncEvent>([&](const auto&, auto&) {
-                std::lock_guard<std::mutex> lock{mutex};
-                brayns.postRender();
-            });
+            renderingDone->on<uvw::AsyncEvent>(
+                [&](const auto&, auto&) { brayns.postRender(); });
 
             // events from rockets
             brayns.getEngine().triggerRender = [&] { eventRendering->start(); };
@@ -77,7 +70,7 @@ int main(int argc, const char** argv)
                 accumRendering->stop();
                 timeSinceLastEvent.start();
 
-                std::lock_guard<std::mutex> lock{mutex};
+                // stop event loop(s) and exit application
                 if (!brayns.getEngine().getKeepRunning())
                 {
                     stopRenderThread->send();
@@ -85,6 +78,7 @@ int main(int argc, const char** argv)
                     return;
                 }
 
+                // data loading
                 if (brayns.getEngine().rebuildScene())
                 {
                     if (isLoading)
@@ -94,11 +88,16 @@ int main(int argc, const char** argv)
 
                     checkIdleRendering->stop();
 
+                    // broadcast progress updates every 100ms
                     progressUpdate->start(std::chrono::milliseconds(0),
                                           std::chrono::milliseconds(100));
+
+                    // async load execution
                     auto work = loop->resource<uvw::WorkReq>(
                         [&] { brayns.buildScene(); });
 
+                    // async load finished, restore everything to continue
+                    // rendering
                     work->template on<uvw::WorkEvent>([&](const auto&, auto&) {
                         brayns.getEngine().markRebuildScene(false);
                         progressUpdate->stop();
@@ -114,13 +113,16 @@ int main(int argc, const char** argv)
                     return;
                 }
 
+                // rendering
                 if (brayns.preRender())
                     triggerRendering->send();
             });
 
+            // send progress updates while we are loading
             progressUpdate->on<uvw::TimerEvent>(
                 [&](const auto&, auto&) { brayns.sendMessages(); });
 
+            // send final progress update, once loading is finished
             progressUpdate->on<uvw::CloseEvent>(
                 [&](const auto&, auto&) { brayns.sendMessages(); });
 
@@ -133,12 +135,8 @@ int main(int argc, const char** argv)
                 if (timeSinceLastEvent.elapsed() < idleRenderingDelay)
                     return;
 
-                std::lock_guard<std::mutex> lock{mutex};
                 if (brayns.getEngine().continueRendering())
-                {
-                    if (brayns.preRender())
-                        triggerRendering->send();
-                }
+                    triggerRendering->send();
 
                 accumRendering->stop();
             });
@@ -148,7 +146,6 @@ int main(int argc, const char** argv)
         {
             // rendering
             triggerRendering->on<uvw::AsyncEvent>([&](const auto&, auto&) {
-                std::lock_guard<std::mutex> lock{mutex};
                 brayns.render();
                 renderingDone->send();
             });

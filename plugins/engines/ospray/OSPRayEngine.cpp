@@ -201,13 +201,10 @@ void OSPRayEngine::preRender()
         _frameBuffer->setAccumulation(renderParams.getAccumulation());
         _frameBuffer->resize(_frameBuffer->getSize());
     }
-
-    _frameBuffer->map();
 }
 
 void OSPRayEngine::postRender()
 {
-    _frameBuffer->unmap();
 }
 
 Vector2ui OSPRayEngine::getSupportedFrameSize(const Vector2ui& size)

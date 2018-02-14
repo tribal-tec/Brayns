@@ -102,11 +102,9 @@ struct Brayns::Impl
 
     void init()
     {
-#if (BRAYNS_USE_DEFLECT || BRAYNS_USE_NETWORKING)
         // after createEngine() to execute in parallel to scene loading
         _extensionPluginFactory.reset(
             new ExtensionPluginFactory(_engine, _parametersManager));
-#endif
     }
 
     bool preRender()
@@ -1275,9 +1273,7 @@ private:
     lunchbox::ThreadPool _loadingThread{1};
 #endif
 
-#if (BRAYNS_USE_DEFLECT || BRAYNS_USE_NETWORKING)
     ExtensionPluginFactoryPtr _extensionPluginFactory;
-#endif
 };
 
 // -------------------------------------------------------------------------------------------------

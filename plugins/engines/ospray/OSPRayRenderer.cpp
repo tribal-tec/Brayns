@@ -46,8 +46,12 @@ float OSPRayRenderer::render(FrameBufferPtr frameBuffer)
 {
     OSPRayFrameBuffer* osprayFrameBuffer =
         dynamic_cast<OSPRayFrameBuffer*>(frameBuffer.get());
-    return ospRenderFrame(osprayFrameBuffer->impl(), _renderer,
-                          OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+    osprayFrameBuffer->lock();
+    const auto variance =
+        ospRenderFrame(osprayFrameBuffer->impl(), _renderer,
+                       OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+    osprayFrameBuffer->unlock();
+    return variance;
 }
 
 void OSPRayRenderer::commit()

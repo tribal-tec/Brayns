@@ -124,6 +124,7 @@ void OSPRayFrameBuffer::map()
     if (_frameBufferFormat == FrameBufferFormat::none)
         return;
 
+    lock();
     _colorBuffer = (uint8_t*)ospMapFrameBuffer(_frameBuffer, OSP_FB_COLOR);
     _depthBuffer = (float*)ospMapFrameBuffer(_frameBuffer, OSP_FB_DEPTH);
 }
@@ -144,5 +145,7 @@ void OSPRayFrameBuffer::unmap()
         ospUnmapFrameBuffer(_depthBuffer, _frameBuffer);
         _depthBuffer = 0;
     }
+
+    unlock();
 }
 }

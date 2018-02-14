@@ -202,10 +202,6 @@ void OSPRayEngine::preRender()
     }
 }
 
-void OSPRayEngine::postRender()
-{
-}
-
 Vector2ui OSPRayEngine::getSupportedFrameSize(const Vector2ui& size)
 {
     if (!haveDeflectPixelOp())

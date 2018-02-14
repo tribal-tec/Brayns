@@ -250,36 +250,39 @@ struct Brayns::Impl
         promise.set_value();
     }
 
-    void render(const RenderInput& renderInput, RenderOutput& renderOutput)
+    void preRender(const RenderInput& renderInput)
     {
         _engine->getCamera().set(renderInput.position, renderInput.target,
                                  renderInput.up);
+        _parametersManager.getApplicationParameters().setWindowSize(
+            renderInput.windowSize);
 
-        if (_render(renderInput.windowSize))
+        preRender();
+    }
+
+    void postRender(RenderOutput& renderOutput)
+    {
+        FrameBuffer& frameBuffer = _engine->getFrameBuffer();
+        frameBuffer.map();
+        const Vector2i& frameSize = frameBuffer.getSize();
+        uint8_t* colorBuffer = frameBuffer.getColorBuffer();
+        if (colorBuffer)
         {
-            FrameBuffer& frameBuffer = _engine->getFrameBuffer();
-            const Vector2i& frameSize = frameBuffer.getSize();
-            uint8_t* colorBuffer = frameBuffer.getColorBuffer();
-            if (colorBuffer)
-            {
-                const size_t size =
-                    frameSize.x() * frameSize.y() * frameBuffer.getColorDepth();
-                renderOutput.colorBuffer.assign(colorBuffer,
-                                                colorBuffer + size);
-                renderOutput.colorBufferFormat =
-                    frameBuffer.getFrameBufferFormat();
-            }
-
-            float* depthBuffer = frameBuffer.getDepthBuffer();
-            if (depthBuffer)
-            {
-                const size_t size = frameSize.x() * frameSize.y();
-                renderOutput.depthBuffer.assign(depthBuffer,
-                                                depthBuffer + size);
-            }
+            const size_t size =
+                frameSize.x() * frameSize.y() * frameBuffer.getColorDepth();
+            renderOutput.colorBuffer.assign(colorBuffer, colorBuffer + size);
+            renderOutput.colorBufferFormat = frameBuffer.getFrameBufferFormat();
         }
 
-        _engine->postRender();
+        float* depthBuffer = frameBuffer.getDepthBuffer();
+        if (depthBuffer)
+        {
+            const size_t size = frameSize.x() * frameSize.y();
+            renderOutput.depthBuffer.assign(depthBuffer, depthBuffer + size);
+        }
+        frameBuffer.unmap();
+
+        postRender();
     }
 
     bool render()
@@ -287,11 +290,10 @@ struct Brayns::Impl
         std::lock_guard<std::mutex> lock{_renderMutex};
 
         _rendering = true;
-        const Vector2ui windowSize =
-            _parametersManager.getApplicationParameters().getWindowSize();
-        _render(windowSize);
 
+        _render();
         _engine->postRender();
+
         _rendering = false;
         return _engine->getKeepRunning();
     }
@@ -415,7 +417,7 @@ private:
         }
     }
 
-    bool _render(const Vector2ui& /*windowSize*/)
+    bool _render()
     {
         _renderTimer.start();
         _engine->render();
@@ -1281,7 +1283,9 @@ Brayns::~Brayns()
 
 void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 {
-    _impl->render(renderInput, renderOutput);
+    _impl->preRender(renderInput);
+    if (_impl->render())
+        _impl->postRender(renderOutput);
 }
 void Brayns::init()
 {

@@ -29,6 +29,7 @@ namespace brayns
 BraynsViewer::BraynsViewer(Brayns& brayns)
     : BaseWindow(brayns)
 {
+    brayns.init();
 }
 
 void BraynsViewer::display()

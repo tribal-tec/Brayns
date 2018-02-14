@@ -23,7 +23,10 @@
 
 #include "ExtensionPlugin.h"
 #include "ImageGenerator.h"
+
+#ifdef BRAYNS_USE_LIBUV
 #include "SocketListener.h"
+#endif
 
 #include <brayns/api.h>
 #include <brayns/common/Timer.h>
@@ -121,7 +124,10 @@ private:
     std::unique_ptr<rockets::Server> _rocketsServer;
     using JsonRpcServer = rockets::jsonrpc::Server<rockets::Server>;
     std::unique_ptr<JsonRpcServer> _jsonrpcServer;
+
+#ifdef BRAYNS_USE_LIBUV
     std::unique_ptr<SocketListener> _socketListener;
+#endif
 
     ImageGenerator _imageGenerator;
 

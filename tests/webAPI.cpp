@@ -56,6 +56,7 @@ public:
         const char* argv[] = {app, "--http-server", ":0"};
         const int argc = sizeof(argv) / sizeof(char*);
         brayns.reset(new brayns::Brayns(argc, argv));
+        brayns->init();
         brayns->render();
 
         const auto uri = brayns->getParametersManager()

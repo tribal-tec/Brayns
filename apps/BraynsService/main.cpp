@@ -144,7 +144,7 @@ int main(int argc, const char** argv)
         {
             // rendering
             triggerRendering->on<uvw::AsyncEvent>([&](const auto&, auto&) {
-                brayns.render();
+                brayns.renderOnly();
                 renderingDone->send();
             });
 

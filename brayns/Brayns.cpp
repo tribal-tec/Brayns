@@ -285,7 +285,7 @@ struct Brayns::Impl
         postRender();
     }
 
-    bool render()
+    void render()
     {
         std::lock_guard<std::mutex> lock{_renderMutex};
 
@@ -295,7 +295,6 @@ struct Brayns::Impl
         _engine->postRender();
 
         _rendering = false;
-        return _engine->getKeepRunning();
     }
 
     Engine& getEngine() { return *_engine; }
@@ -1284,9 +1283,18 @@ Brayns::~Brayns()
 void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 {
     _impl->preRender(renderInput);
-    if (_impl->render())
-        _impl->postRender(renderOutput);
+    _impl->render();
+    _impl->postRender(renderOutput);
 }
+
+bool Brayns::render()
+{
+    _impl->preRender();
+    _impl->render();
+    _impl->postRender();
+    return _impl->getEngine().getKeepRunning();
+}
+
 void Brayns::init()
 {
     _impl->init();
@@ -1295,6 +1303,11 @@ void Brayns::init()
 bool Brayns::preRender()
 {
     return _impl->preRender();
+}
+
+void Brayns::renderOnly()
+{
+    return _impl->render();
 }
 
 void Brayns::postRender()
@@ -1311,10 +1324,7 @@ void Brayns::sendMessages()
 {
     _impl->sendMessages();
 }
-bool Brayns::render()
-{
-    return _impl->render();
-}
+
 Engine& Brayns::getEngine()
 {
     return _impl->getEngine();

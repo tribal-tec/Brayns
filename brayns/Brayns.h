@@ -55,6 +55,7 @@ public:
 
     void init();
     bool preRender();
+    void renderOnly();
     void postRender();
     void buildScene();
     void sendMessages();

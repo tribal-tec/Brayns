@@ -30,28 +30,30 @@ endif()
 if(BRAYNS_NETWORKING_ENABLED)
   list(APPEND BRAYNSPLUGINS_HEADERS
     extensions/plugins/ImageGenerator.h
-    extensions/plugins/SocketListener.h
     extensions/plugins/jsonSerialization.h
     extensions/plugins/jsonUtils.h
   )
   list(APPEND BRAYNSPLUGINS_SOURCES
     extensions/plugins/ImageGenerator.cpp
     extensions/plugins/RocketsPlugin.cpp
-    extensions/plugins/SocketListener.cpp
     extensions/plugins/base64/base64.cpp
     extensions/plugins/staticjson/staticjson.cpp
   )
   set_source_files_properties(extensions/plugins/staticjson/staticjson.cpp
     PROPERTIES COMPILE_FLAGS -Wno-shadow)
   list(APPEND BRAYNSPLUGINS_PUBLIC_HEADERS extensions/plugins/RocketsPlugin.h)
-  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Rockets uv)
+  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC Rockets)
   if(LibJpegTurbo_FOUND)
     list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC ${LibJpegTurbo_LIBRARIES})
+  endif()
+  if(libuv_FOUND)
+    list(APPEND BRAYNSPLUGINS_HEADERS extensions/plugins/SocketListener.h)
+    list(APPEND BRAYNSPLUGINS_SOURCES extensions/plugins/SocketListener.cpp)
+    list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC ${libuv_LIBRARIES})
   endif()
 endif()
 
 if(BRAYNS_OSPRAY_ENABLED)
-  add_definitions(-DBRAYNS_USE_OSPRAY=1)
   add_subdirectory(engines/ospray)
   list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC braynsOSPRayEnginePlugin)
 endif()

@@ -141,9 +141,11 @@ void RocketsPlugin::_setupRocketsServer()
 
         _jsonrpcServer.reset(new JsonRpcServer(*_rocketsServer));
 
+#ifdef BRAYNS_USE_LIBUV
         _socketListener = std::make_unique<SocketListener>(*_rocketsServer);
         _socketListener->postReceive = _engine->triggerRender;
         _rocketsServer->setSocketListener(_socketListener.get());
+#endif
 
         _parametersManager.getApplicationParameters().setHttpServerURI(
             _rocketsServer->getURI());

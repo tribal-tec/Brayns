@@ -61,7 +61,7 @@ private:
     template <class T, class F = std::function<bool(const T&)>>
     void _handleGET(const std::string& endpoint, T& obj,
                     F modifiedFunc = [](const T& obj) {
-                        return obj.getModified();
+                        return obj.isModified();
                     });
 
     template <class T>
@@ -84,7 +84,6 @@ private:
 
     void _registerEndpoints();
 
-    void _handleApplicationParams();
     void _handleFrameBuffer();
     void _handleGeometryParams();
     void _handleImageJPEG();

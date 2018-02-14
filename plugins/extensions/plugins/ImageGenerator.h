@@ -18,11 +18,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef IMAGEGENERATOR_H
-#define IMAGEGENERATOR_H
+#pragma once
 
 #include <brayns/common/types.h>
+
+#ifdef BRAYNS_USE_LIBJPEGTURBO
 #include <turbojpeg.h>
+#endif
 
 namespace brayns
 {
@@ -31,41 +33,40 @@ class ImageGenerator
 public:
     ImageGenerator() = default;
 
-    ~ImageGenerator()
-    {
-        if (_compressor)
-            tjDestroy(_compressor);
-    }
+    ~ImageGenerator();
 
     struct ImageBase64
     {
         std::string data;
     };
 
+    ImageBase64 createImage(FrameBuffer& frameBuffer, const std::string& format,
+                            uint8_t quality);
+
     struct ImageJPEG
     {
+#ifdef BRAYNS_USE_LIBJPEGTURBO
         struct tjDeleter
         {
             void operator()(uint8_t* ptr) { tjFree(ptr); }
         };
         using JpegData = std::unique_ptr<uint8_t, tjDeleter>;
+#else
+        using JpegData = std::unique_ptr<uint8_t>;
+#endif
         JpegData data;
         unsigned long size{0};
     };
 
-    ImageBase64 createImage(FrameBuffer& frameBuffer, const std::string& format,
-                            uint8_t quality);
-
     ImageJPEG createJPEG(FrameBuffer& frameBuffer, uint8_t quality);
 
 private:
-    bool _processingImageJpeg = false;
+#ifdef BRAYNS_USE_LIBJPEGTURBO
     tjhandle _compressor{tjInitCompress()};
 
     ImageJPEG::JpegData _encodeJpeg(uint32_t width, uint32_t height,
                                     const uint8_t* rawData, int32_t pixelFormat,
                                     uint8_t quality, unsigned long& dataSize);
+#endif
 };
 }
-
-#endif

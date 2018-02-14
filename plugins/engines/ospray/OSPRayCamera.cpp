@@ -57,7 +57,7 @@ OSPRayCamera::~OSPRayCamera()
 
 void OSPRayCamera::commit()
 {
-    if (!getModified())
+    if (!isModified())
         return;
 
     const auto& position = getPosition();

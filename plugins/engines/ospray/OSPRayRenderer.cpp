@@ -44,12 +44,16 @@ OSPRayRenderer::~OSPRayRenderer()
 
 float OSPRayRenderer::render(FrameBufferPtr frameBuffer)
 {
-    OSPRayFrameBuffer* osprayFrameBuffer =
-        dynamic_cast<OSPRayFrameBuffer*>(frameBuffer.get());
+    auto osprayFrameBuffer =
+        std::static_pointer_cast<OSPRayFrameBuffer>(frameBuffer);
     osprayFrameBuffer->lock();
+
     const auto variance =
         ospRenderFrame(osprayFrameBuffer->impl(), _renderer,
                        OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+
+    osprayFrameBuffer->incrementAccumFrames();
+    osprayFrameBuffer->markModified();
     osprayFrameBuffer->unlock();
     return variance;
 }
@@ -61,8 +65,8 @@ void OSPRayRenderer::commit()
     SceneParameters& sp = _parametersManager.getSceneParameters();
     VolumeParameters& vp = _parametersManager.getVolumeParameters();
 
-    if (!ap.getModified() && !rp.getModified() && !sp.getModified() &&
-        !vp.getModified() && !_scene->getModified())
+    if (!ap.isModified() && !rp.isModified() && !sp.isModified() &&
+        !vp.isModified() && !_scene->isModified())
     {
         return;
     }

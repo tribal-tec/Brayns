@@ -298,13 +298,13 @@ void RocketsPlugin::_handleSchema(const std::string& endpoint,
 
 void RocketsPlugin::_registerEndpoints()
 {
-    _handleApplicationParams();
     _handleGeometryParams();
     _handleImageJPEG();
     _handleStreaming();
     _handleVersion();
     _handleVolumeParams();
 
+    _handle(ENDPOINT_APP_PARAMS, _parametersManager.getApplicationParameters());
     _handle(ENDPOINT_FRAME, _parametersManager.getAnimationParameters());
     _handle(ENDPOINT_RENDERING_PARAMS,
             _parametersManager.getRenderingParameters());
@@ -321,13 +321,13 @@ void RocketsPlugin::_registerEndpoints()
     _handleGET(ENDPOINT_PROGRESS, _engine->getProgress());
     _handle(ENDPOINT_MATERIAL_LUT, _engine->getScene().getTransferFunction());
     _handleGET(ENDPOINT_SCENE, _engine->getScene(), [&](const Scene& scene) {
-        return _engine->isReady() && scene.getModified();
+        return _engine->isReady() && scene.isModified();
     });
     _handlePUT(ENDPOINT_SCENE, _engine->getScene(),
                [](Scene& scene) { scene.commitMaterials(Action::update); });
     _handleGET(ENDPOINT_STATISTICS, _engine->getStatistics(),
                [&](const Statistics& statistics) {
-                   return _engine->isReady() && statistics.getModified();
+                   return _engine->isReady() && statistics.isModified();
                });
 
     _handleFrameBuffer();
@@ -338,17 +338,6 @@ void RocketsPlugin::_registerEndpoints()
     _handleQuit();
     _handleResetCamera();
     _handleSnapshot();
-}
-
-void RocketsPlugin::_handleApplicationParams()
-{
-    auto& params = _parametersManager.getApplicationParameters();
-    auto postUpdate = [this](ApplicationParameters& params_) {
-        if (params_.getFrameExportFolder().empty())
-            _engine->resetFrameNumber();
-    };
-    _handleGET(ENDPOINT_APP_PARAMS, params);
-    _handlePUT(ENDPOINT_APP_PARAMS, params, postUpdate);
 }
 
 void RocketsPlugin::_handleFrameBuffer()
@@ -405,7 +394,7 @@ void RocketsPlugin::_handleImageJPEG()
         });
 
     _wsBroadcastOperations[ENDPOINT_IMAGE_JPEG] = [this] {
-        if (_engine->isReady())
+        if (_engine->isReady() && _engine->getFrameBuffer().isModified())
         {
             const auto& params = _parametersManager.getApplicationParameters();
             const auto fps = params.getImageStreamFPS();

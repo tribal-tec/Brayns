@@ -104,9 +104,7 @@ int main(int argc, const char** argv)
                         progressUpdate->close();
                         isLoading = false;
 
-                        eventRendering->start();
                         checkIdleRendering->start();
-                        accumRendering->start();
                     });
 
                     work->queue();

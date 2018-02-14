@@ -37,6 +37,7 @@ common_find_package(Boost REQUIRED COMPONENTS
 common_find_package(vmmlib REQUIRED)
 common_find_package(OpenMP)
 common_find_package(libuv REQUIRED)
+common_find_package(LibJpegTurbo)
 
 if(libuv_VERSION VERSION_LESS 1.9.0)
   add_definitions(-DUV_DISCONNECT=4)
@@ -44,9 +45,8 @@ endif()
 include_directories(SYSTEM uvw/src)
 
 # HTTP messaging
-common_find_package(LibJpegTurbo)
 common_find_package(Rockets)
-if(LibJpegTurbo_FOUND AND TARGET Rockets)
+if(TARGET Rockets)
   option(BRAYNS_NETWORKING_ENABLED "Activate networking interfaces" ON)
   if(BRAYNS_NETWORKING_ENABLED)
     list(APPEND COMMON_FIND_PACKAGE_DEFINES BRAYNS_USE_NETWORKING)

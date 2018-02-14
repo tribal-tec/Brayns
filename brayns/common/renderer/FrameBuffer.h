@@ -22,11 +22,12 @@
 #define FRAMEBUFFER_H
 
 #include <brayns/api.h>
+#include <brayns/common/BaseObject.h>
 #include <brayns/common/types.h>
 
 namespace brayns
 {
-class FrameBuffer
+class FrameBuffer : public BaseObject
 {
 public:
     BRAYNS_API FrameBuffer(const Vector2ui& frameSize,

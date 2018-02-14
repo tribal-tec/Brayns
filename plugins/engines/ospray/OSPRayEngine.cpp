@@ -120,15 +120,14 @@ OSPRayEngine::OSPRayEngine(int argc, const char** argv,
     if (!_parametersManager.getApplicationParameters().getFilters().empty())
         accumulation = false;
 
-    auto ospFrameBuffer =
-        new OSPRayFrameBuffer(_frameSize,
-                              haveDeflectPixelOp() ? FrameBufferFormat::none
-                                                   : FrameBufferFormat::rgba_i8,
-                              accumulation);
+    _frameBuffer =
+        createFrameBuffer(_frameSize,
+                          haveDeflectPixelOp() ? FrameBufferFormat::none
+                                               : FrameBufferFormat::rgba_i8,
+                          accumulation);
     if (haveDeflectPixelOp())
-        ospFrameBuffer->enableDeflectPixelOp();
-
-    _frameBuffer.reset(ospFrameBuffer);
+        std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer)
+            ->enableDeflectPixelOp();
 
     for (const auto& renderer : _renderers)
     {
@@ -165,7 +164,7 @@ void OSPRayEngine::commit()
     Engine::commit();
 
     auto device = ospGetCurrentDevice();
-    if (device && _parametersManager.getRenderingParameters().getModified())
+    if (device && _parametersManager.getRenderingParameters().isModified())
     {
         const auto useDynamicLoadBalancer =
             _parametersManager.getRenderingParameters()
@@ -186,7 +185,7 @@ void OSPRayEngine::commit()
     auto osprayFrameBuffer =
         std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer);
     const auto& streamParams = _parametersManager.getStreamParameters();
-    if (streamParams.getModified() || _camera->getModified())
+    if (streamParams.isModified() || _camera->isModified())
     {
         const bool isStereo = _camera->getType() == CameraType::stereo;
         osprayFrameBuffer->setStreamingParams(streamParams, isStereo);
@@ -235,5 +234,13 @@ Vector2ui OSPRayEngine::getMinimumFrameSize() const
     if (getCamera().getType() == CameraType::stereo)
         return {TILE_SIZE * 2, TILE_SIZE};
     return {TILE_SIZE, TILE_SIZE};
+}
+
+FrameBufferPtr OSPRayEngine::createFrameBuffer(
+    const Vector2ui& frameSize, const FrameBufferFormat frameBufferFormat,
+    const bool accumulation)
+{
+    return std::make_shared<OSPRayFrameBuffer>(frameSize, frameBufferFormat,
+                                               accumulation);
 }
 }

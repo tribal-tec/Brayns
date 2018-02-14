@@ -116,15 +116,6 @@ public:
     std::function<void()> triggerRender;
 
     /**
-     * @brief resets frame number
-     */
-    void resetFrameNumber();
-
-    /**
-     * @returns the current frame number
-     */
-    size_t getFrameNumber() const { return _frameNumber; }
-    /**
      * Adapts the size of the frame buffer according to camera
      * requirements. Typically, in case of 3D stereo vision, the frame buffer
      * width has to be an even number.
@@ -203,6 +194,11 @@ public:
 
     bool continueRendering() const;
 
+    virtual FrameBufferPtr createFrameBuffer(
+        const Vector2ui& frameSize, FrameBufferFormat frameBufferFormat,
+        bool accumulation) = 0;
+
+    FrameBufferPtr getSnapshotFrameBuffer() { return _snapshotFrameBuffer; }
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
@@ -214,14 +210,15 @@ protected:
     RendererMap _renderers;
     Vector2i _frameSize;
     FrameBufferPtr _frameBuffer;
+    FrameBufferPtr _snapshotFrameBuffer;
     Statistics _statistics;
 
-    size_t _frameNumber;
     Progress _progress;
     bool _keepRunning{true};
     bool _isReady{false};
     float _lastVariance{std::numeric_limits<float>::infinity()};
     bool _rebuildScene{false};
+    int _snapshotSpp{0};
 };
 }
 

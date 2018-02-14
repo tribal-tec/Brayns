@@ -34,7 +34,7 @@ public:
      * @return true if any parameter has been modified since the last
      * resetModified().
      */
-    bool getModified() const { return _modified; }
+    bool isModified() const { return _modified; }
     /**
      * Reset the modified state, typically done after changes have been applied.
      */

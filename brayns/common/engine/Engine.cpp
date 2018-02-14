@@ -33,7 +33,6 @@ namespace brayns
 Engine::Engine(ParametersManager& parametersManager)
     : _parametersManager(parametersManager)
 {
-    resetFrameNumber();
 }
 
 Engine::~Engine()
@@ -108,19 +107,14 @@ void Engine::commit()
 
 void Engine::render()
 {
-    ++_frameNumber;
-    _lastVariance = _renderers[_activeRenderer]->render(_frameBuffer);
-    _frameBuffer->incrementAccumFrames();
+    auto frameBuffer =
+        _snapshotFrameBuffer ? _snapshotFrameBuffer : _frameBuffer;
+    _lastVariance = _renderers[_activeRenderer]->render(frameBuffer);
 }
 
 Renderer& Engine::getRenderer()
 {
     return *_renderers[_activeRenderer];
-}
-
-void Engine::resetFrameNumber()
-{
-    _frameNumber = -1;
 }
 
 Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
@@ -137,23 +131,37 @@ void Engine::snapshot(const SnapshotParams& params)
     if (!isReady())
         throw std::runtime_error("Engine not ready");
 
-    auto& rp = _parametersManager.getRenderingParameters();
-    const auto oldSpp = rp.getSamplesPerPixel();
+    if (_snapshotFrameBuffer)
+        throw std::runtime_error("Already a snapshot pending");
 
-    reshape(params.size);
-    rp.setSamplesPerPixel(params.samplesPerPixel);
+    _snapshotFrameBuffer =
+        createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
+    _snapshotSpp = params.samplesPerPixel;
 
-    preRender();
-    render();
-    postRender();
+    //    auto& rp = _parametersManager.getRenderingParameters();
+    //    const auto oldSpp = rp.getSamplesPerPixel();
 
-    rp.setSamplesPerPixel(oldSpp);
+    //    reshape(params.size);
+    //    rp.setSamplesPerPixel(params.samplesPerPixel);
+
+    //    preRender();
+    //    render();
+    //    postRender();
+
+    //    rp.setSamplesPerPixel(oldSpp);
     // reshape() is always done with current windowsize from app params, so no
     // need to reshape back
 }
 
 bool Engine::continueRendering() const
 {
+    if (_snapshotFrameBuffer)
+    {
+        if (_snapshotSpp < 2)
+            return false;
+        return _snapshotFrameBuffer->numAccumFrames() < size_t(_snapshotSpp);
+    }
+
     return _lastVariance > 1 && _frameBuffer->getAccumulation() &&
            (_frameBuffer->numAccumFrames() < 100);
 }

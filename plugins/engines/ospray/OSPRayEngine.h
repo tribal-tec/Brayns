@@ -59,6 +59,10 @@ public:
 
     /** @copydoc Engine::haveDeflectPixelOp */
     bool haveDeflectPixelOp() const final { return _haveDeflectPixelOp; }
+    FrameBufferPtr createFrameBuffer(const Vector2ui& frameSize,
+                                     FrameBufferFormat frameBufferFormat,
+                                     bool accumulation) final;
+
 private:
     bool _haveDeflectPixelOp{false};
     bool _useDynamicLoadBalancer{false};

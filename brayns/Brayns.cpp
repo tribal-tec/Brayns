@@ -144,7 +144,7 @@ struct Brayns::Impl
 
         Scene& scene = _engine->getScene();
 
-        if (scene.getTransferFunction().getModified())
+        if (scene.getTransferFunction().isModified())
             scene.commitTransferFunctionData();
 
         // XXX lights need modified state too, move update to main thread
@@ -154,16 +154,16 @@ struct Brayns::Impl
             DirectionalLight* sun =
                 dynamic_cast<DirectionalLight*>(sunLight.get());
             if (sun &&
-                (camera.getModified() ||
-                 _parametersManager.getRenderingParameters().getModified()))
+                (camera.isModified() ||
+                 _parametersManager.getRenderingParameters().isModified()))
             {
                 sun->setDirection(camera.getTarget() - camera.getPosition());
                 scene.commitLights();
             }
         }
 
-        if (_parametersManager.isAnyModified() || camera.getModified() ||
-            scene.getModified())
+        if (_parametersManager.isAnyModified() || camera.isModified() ||
+            scene.isModified())
         {
             _engine->getFrameBuffer().clear();
         }
@@ -194,6 +194,7 @@ struct Brayns::Impl
         // broadcast for now
         _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
 
+        _engine->getFrameBuffer().resetModified();
         _engine->getStatistics().resetModified();
     }
 
@@ -416,7 +417,7 @@ private:
 
         auto simHandler = _engine->getScene().getSimulationHandler();
         auto& animParams = _parametersManager.getAnimationParameters();
-        if ((animParams.getModified() || animParams.getDelta() != 0) &&
+        if ((animParams.isModified() || animParams.getDelta() != 0) &&
             simHandler && simHandler->isReady())
         {
             animParams.setFrame(animParams.getFrame() + animParams.getDelta());

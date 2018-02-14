@@ -278,6 +278,15 @@ void RocketsPlugin::_handleRPC(const std::string& method,
     _handleSchema(method, buildJsonRpcSchema(method, description));
 }
 
+template <class P, class R>
+void RocketsPlugin::_handleAsyncRPC(
+    const std::string& method, const RpcDocumentation& doc,
+    std::function<void(P, rockets::jsonrpc::AsyncResponse)> action)
+{
+    _jsonrpcServer->bindAsync<P>(method, action);
+    _handleSchema(method, buildJsonRpcSchema<P, R>(method, doc));
+}
+
 template <class T>
 void RocketsPlugin::_handleObjectSchema(const std::string& endpoint, T& obj)
 {
@@ -529,18 +538,23 @@ void RocketsPlugin::_handleSnapshot()
 {
     RpcDocumentation doc{"Make a snapshot of the current view", "settings",
                          "Snapshot settings for quality and size"};
-    _handleRPC<SnapshotParams, ImageGenerator::ImageBase64>(
-        METHOD_SNAPSHOT, doc, [this](const SnapshotParams& params) {
+    _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
+        METHOD_SNAPSHOT, doc, [this](const SnapshotParams& params,
+                                     rockets::jsonrpc::AsyncResponse callback) {
             try
             {
-                _engine->snapshot(params);
-                return _imageGenerator.createImage(_engine->getFrameBuffer(),
-                                                   params.format,
-                                                   params.quality);
+                auto readyCallback = [callback, params,
+                                      this](FrameBufferPtr fb) {
+                    callback(rockets::jsonrpc::Response{
+                        to_json(_imageGenerator.createImage(*fb, params.format,
+                                                            params.quality))});
+                };
+                _engine->snapshot(params, readyCallback);
             }
             catch (const std::runtime_error& e)
             {
-                throw rockets::jsonrpc::response_error(e.what(), -1);
+                callback(rockets::jsonrpc::Response{
+                    rockets::jsonrpc::Response::Error{e.what(), -1}});
             }
         });
 }

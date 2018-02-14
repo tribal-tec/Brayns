@@ -77,6 +77,11 @@ private:
     void _handleRPC(const std::string& method, const std::string& description,
                     std::function<void()> action);
 
+    template <class P, class R>
+    void _handleAsyncRPC(
+        const std::string& method, const RpcDocumentation& doc,
+        std::function<void(P, rockets::jsonrpc::AsyncResponse)> action);
+
     template <class T>
     void _handleObjectSchema(const std::string& endpoint, T& obj);
 

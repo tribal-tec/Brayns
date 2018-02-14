@@ -110,6 +110,13 @@ void Engine::render()
     auto frameBuffer =
         _snapshotFrameBuffer ? _snapshotFrameBuffer : _frameBuffer;
     _lastVariance = _renderers[_activeRenderer]->render(frameBuffer);
+
+    if (_snapshotFrameBuffer &&
+        _snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp))
+    {
+        _cb(_snapshotFrameBuffer);
+        _snapshotFrameBuffer.reset();
+    }
 }
 
 Renderer& Engine::getRenderer()
@@ -126,13 +133,15 @@ Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
     return result;
 }
 
-void Engine::snapshot(const SnapshotParams& params)
+void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
 {
     if (!isReady())
         throw std::runtime_error("Engine not ready");
 
     if (_snapshotFrameBuffer)
         throw std::runtime_error("Already a snapshot pending");
+
+    _cb = cb;
 
     _snapshotFrameBuffer =
         createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);

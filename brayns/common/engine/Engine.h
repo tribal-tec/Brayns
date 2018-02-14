@@ -23,6 +23,7 @@
 
 #include <brayns/common/Statistics.h>
 
+#include <future>
 #include <mutex>
 
 namespace brayns
@@ -181,6 +182,7 @@ public:
     /** @internal */
     void setReady(const bool isReady_) { _isReady = isReady_; }
     Statistics& getStatistics() { return _statistics; }
+    using SnapshotReadyCallback = std::function<void(FrameBufferPtr)>;
     /**
      * Render a snapshot with the given parameters. Result is available in
      * framebuffer.
@@ -190,7 +192,7 @@ public:
      * @throws std::runtime_error if engine is not ready or snapshot creation
      *         failed
      */
-    void snapshot(const SnapshotParams& params);
+    void snapshot(const SnapshotParams& params, SnapshotReadyCallback cb);
 
     bool continueRendering() const;
 
@@ -198,7 +200,6 @@ public:
         const Vector2ui& frameSize, FrameBufferFormat frameBufferFormat,
         bool accumulation) = 0;
 
-    FrameBufferPtr getSnapshotFrameBuffer() { return _snapshotFrameBuffer; }
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
@@ -219,6 +220,7 @@ protected:
     float _lastVariance{std::numeric_limits<float>::infinity()};
     bool _rebuildScene{false};
     int _snapshotSpp{0};
+    SnapshotReadyCallback _cb;
 };
 }
 

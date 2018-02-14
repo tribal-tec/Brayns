@@ -111,11 +111,15 @@ void Engine::render()
         _snapshotFrameBuffer ? _snapshotFrameBuffer : _frameBuffer;
     _lastVariance = _renderers[_activeRenderer]->render(frameBuffer);
 
-    if (_snapshotFrameBuffer &&
-        _snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp))
+    if (_snapshotFrameBuffer)
     {
-        _cb(_snapshotFrameBuffer);
-        _snapshotFrameBuffer.reset();
+        setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
+                        _snapshotSpp);
+        if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp))
+        {
+            _cb(_snapshotFrameBuffer);
+            _snapshotFrameBuffer.reset();
+        }
     }
 }
 
@@ -147,19 +151,8 @@ void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
         createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
     _snapshotSpp = params.samplesPerPixel;
 
-    //    auto& rp = _parametersManager.getRenderingParameters();
-    //    const auto oldSpp = rp.getSamplesPerPixel();
-
-    //    reshape(params.size);
-    //    rp.setSamplesPerPixel(params.samplesPerPixel);
-
-    //    preRender();
-    //    render();
-    //    postRender();
-
-    //    rp.setSamplesPerPixel(oldSpp);
-    // reshape() is always done with current windowsize from app params, so no
-    // need to reshape back
+    setLastOperation("Render snapshot ...");
+    setLastProgress(0.f);
 }
 
 bool Engine::continueRendering() const

@@ -23,7 +23,6 @@
 
 #include <brayns/common/Statistics.h>
 
-#include <future>
 #include <mutex>
 
 namespace brayns

@@ -179,11 +179,6 @@ struct Brayns::Impl
 
     void postRender()
     {
-        // image jpeg creation is not threadsafe (yet), move that to render
-        // thread? also data loading and maybe more things used by render() are
-        // not safe yet.
-        std::lock_guard<std::mutex> lock{_renderMutex};
-
         _fpsUpdateElapsed += _renderTimer.milliseconds();
         if (_fpsUpdateElapsed > 750)
         {
@@ -241,20 +236,16 @@ struct Brayns::Impl
 
         std::promise<void> promise;
         _dataLoadingFuture = promise.get_future();
-//        _loadScene();
 
 #ifdef BRAYNS_USE_LUNCHBOX
         if (isAsyncMode())
-        {
-            //_dataLoadingFuture =
             _loadingThread.post(std::bind(&Brayns::Impl::_loadScene, this))
                 .get();
-        }
         else
 #endif
-            _dataLoadingFuture =
-                std::async(std::launch::deferred,
-                           std::bind(&Brayns::Impl::_loadScene, this));
+            std::async(std::launch::deferred,
+                       std::bind(&Brayns::Impl::_loadScene, this))
+                .get();
 
         promise.set_value();
     }
@@ -340,7 +331,7 @@ private:
 
     void _loadScene()
     {
-        // fix race condition: we have to wait until rendering is finished
+        // XXX remove this hopefully
         while (_rendering)
         {
             std::cout << "Waiting (shall not happen)" << std::endl;
@@ -406,7 +397,7 @@ private:
         _engine->getStatistics().setSceneSizeInBytes(
             _engine->getScene().getSizeInBytes());
 
-        // broadcast for now
+        // XXX broadcast messages is what we want here
         _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
     }
 
@@ -1260,7 +1251,7 @@ private:
     // protect rendering vs. data loading/unloading
     std::atomic_bool _rendering{false};
 
-    // protect rendering vs. image streaming
+    // protect render vs preRender() (commits?)
     std::mutex _renderMutex;
 
     Timer _renderTimer;

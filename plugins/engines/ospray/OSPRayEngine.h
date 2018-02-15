@@ -60,6 +60,8 @@ public:
                                      FrameBufferFormat frameBufferFormat,
                                      bool accumulation) final;
 
+    CameraPtr createCamera(CameraType type) final;
+
 private:
     bool _haveDeflectPixelOp{false};
     bool _useDynamicLoadBalancer{false};

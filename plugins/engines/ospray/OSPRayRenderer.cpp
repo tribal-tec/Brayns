@@ -31,9 +31,8 @@ OSPRayRenderer::OSPRayRenderer(const std::string& name,
                                ParametersManager& parametersManager)
     : Renderer(parametersManager)
     , _name(name)
-    , _camera(0)
+    , _renderer(ospNewRenderer(name.c_str()))
 {
-    _renderer = ospNewRenderer(name.c_str());
     assert(_renderer);
 }
 

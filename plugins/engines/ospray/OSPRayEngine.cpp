@@ -239,4 +239,9 @@ FrameBufferPtr OSPRayEngine::createFrameBuffer(
     return std::make_shared<OSPRayFrameBuffer>(frameSize, frameBufferFormat,
                                                accumulation);
 }
+
+CameraPtr OSPRayEngine::createCamera(const CameraType type)
+{
+    return std::make_shared<OSPRayCamera>(type);
+}
 }

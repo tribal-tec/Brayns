@@ -199,6 +199,8 @@ public:
         const Vector2ui& frameSize, FrameBufferFormat frameBufferFormat,
         bool accumulation) = 0;
 
+    virtual CameraPtr createCamera(CameraType type) = 0;
+
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
@@ -210,7 +212,6 @@ protected:
     RendererMap _renderers;
     Vector2i _frameSize;
     FrameBufferPtr _frameBuffer;
-    FrameBufferPtr _snapshotFrameBuffer;
     Statistics _statistics;
 
     Progress _progress;
@@ -218,8 +219,11 @@ protected:
     bool _isReady{false};
     float _lastVariance{std::numeric_limits<float>::infinity()};
     bool _rebuildScene{false};
+
     int _snapshotSpp{0};
     SnapshotReadyCallback _cb;
+    FrameBufferPtr _snapshotFrameBuffer;
+    CameraPtr _snapshotCamera;
 };
 }
 

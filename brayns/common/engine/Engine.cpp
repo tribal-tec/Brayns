@@ -107,19 +107,25 @@ void Engine::commit()
 
 void Engine::render()
 {
-    auto frameBuffer =
-        _snapshotFrameBuffer ? _snapshotFrameBuffer : _frameBuffer;
-    _lastVariance = _renderers[_activeRenderer]->render(frameBuffer);
-
-    if (_snapshotFrameBuffer)
+    auto renderer = _renderers[_activeRenderer];
+    if (!_snapshotFrameBuffer)
     {
-        setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
-                        _snapshotSpp);
-        if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp))
-        {
-            _cb(_snapshotFrameBuffer);
-            _snapshotFrameBuffer.reset();
-        }
+        _lastVariance = renderer->render(_frameBuffer);
+        return;
+    }
+
+    renderer->render(_snapshotFrameBuffer);
+
+    setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
+                    _snapshotSpp);
+    if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp))
+    {
+        _cb(_snapshotFrameBuffer);
+
+        renderer->setCamera(_camera);
+
+        _snapshotCamera.reset();
+        _snapshotFrameBuffer.reset();
     }
 }
 
@@ -146,10 +152,18 @@ void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
         throw std::runtime_error("Already a snapshot pending");
 
     _cb = cb;
+    _snapshotSpp = params.samplesPerPixel;
 
     _snapshotFrameBuffer =
         createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
-    _snapshotSpp = params.samplesPerPixel;
+
+    _snapshotCamera = createCamera(getCamera().getType());
+    *_snapshotCamera = getCamera();
+    _snapshotCamera->setAspectRatio(float(params.size.x()) / params.size.y());
+    _snapshotCamera->commit();
+    _renderers[_activeRenderer]->setCamera(_snapshotCamera);
+
+    // XXX samplesPerPixel to one
 
     setLastOperation("Render snapshot ...");
     setLastProgress(0.f);

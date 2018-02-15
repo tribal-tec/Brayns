@@ -48,7 +48,7 @@ public:
     OSPRenderer impl() const { return _renderer; }
 private:
     std::string _name;
-    OSPRayCamera* _camera;
+    OSPRayCamera* _camera{nullptr};
     OSPRenderer _renderer;
 };
 }

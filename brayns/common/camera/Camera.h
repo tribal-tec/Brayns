@@ -47,6 +47,8 @@ public:
 
     BRAYNS_API virtual ~Camera();
 
+    BRAYNS_API Camera& operator=(const Camera& rhs);
+
     /**
        Sets position, target and up vector
        @param position The x, y, z coordinates of the camera position
@@ -215,7 +217,7 @@ public:
     */
     const ClipPlanes& getClipPlanes() const { return _clipPlanes; }
 private:
-    CameraType _type{CameraType::perspective};
+    const CameraType _type{CameraType::perspective};
     Vector3f _position;
     Vector3f _target;
     Vector3f _up;

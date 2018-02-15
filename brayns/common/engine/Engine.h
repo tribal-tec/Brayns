@@ -70,7 +70,7 @@ public:
     /** Executes engine specific pre-render operations */
     virtual void preRender() {}
     /** Executes engine specific post-render operations */
-    virtual void postRender() {}
+    virtual void postRender();
     /** Gets the scene */
     Scene& getScene() { return *_scene; }
     /** Gets the frame buffer */

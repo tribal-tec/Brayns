@@ -107,14 +107,14 @@ void Engine::commit()
 
 void Engine::render()
 {
-    auto renderer = _renderers[_activeRenderer];
-    if (!_snapshotFrameBuffer)
-    {
-        _lastVariance = renderer->render(_frameBuffer);
-        return;
-    }
+    auto fb = _snapshotFrameBuffer ? _snapshotFrameBuffer : _frameBuffer;
+    _lastVariance = _renderers[_activeRenderer]->render(fb);
+}
 
-    renderer->render(_snapshotFrameBuffer);
+void Engine::postRender()
+{
+    if (!_snapshotFrameBuffer)
+        return;
 
     setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
                     _snapshotSpp);
@@ -122,7 +122,7 @@ void Engine::render()
     {
         _cb(_snapshotFrameBuffer);
 
-        renderer->setCamera(_camera);
+        _renderers[_activeRenderer]->setCamera(_camera);
 
         _snapshotCamera.reset();
         _snapshotFrameBuffer.reset();

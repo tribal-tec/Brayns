@@ -179,6 +179,10 @@ struct Brayns::Impl
 
     void postRender()
     {
+        _engine->postRender();
+
+        _writeFrameToFile();
+
         _fpsUpdateElapsed += _renderTimer.milliseconds();
         if (_fpsUpdateElapsed > 750)
         {
@@ -289,12 +293,9 @@ struct Brayns::Impl
     {
         std::lock_guard<std::mutex> lock{_renderMutex};
 
-        _rendering = true;
-
-        _render();
-        _engine->postRender();
-
-        _rendering = false;
+        _renderTimer.start();
+        _engine->render();
+        _renderTimer.stop();
     }
 
     Engine& getEngine() { return *_engine; }
@@ -333,17 +334,13 @@ private:
     void _loadScene()
     {
         // XXX remove this hopefully
-        while (_rendering)
-        {
-            std::cout << "Waiting (shall not happen)" << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
+        std::lock_guard<std::mutex> lock{_renderMutex};
 
         Progress loadingProgress(
             "Loading scene ...",
             LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
             [this](const std::string& msg, const float progress) {
-                std::lock_guard<std::mutex> lock(_engine->getProgress().mutex);
+                std::lock_guard<std::mutex> lock_(_engine->getProgress().mutex);
                 _engine->setLastOperation(msg);
                 _engine->setLastProgress(progress);
             });
@@ -414,17 +411,6 @@ private:
         {
             animParams.setFrame(animParams.getFrame() + animParams.getDelta());
         }
-    }
-
-    bool _render()
-    {
-        _renderTimer.start();
-        _engine->render();
-        _renderTimer.stop();
-
-        _writeFrameToFile();
-
-        return true;
     }
 
     void _loadData(Progress& loadingProgress)
@@ -1248,9 +1234,6 @@ private:
     float _eyeSeparation{0.0635f};
 
     std::future<void> _dataLoadingFuture;
-
-    // protect rendering vs. data loading/unloading
-    std::atomic_bool _rendering{false};
 
     // protect render vs preRender() (commits?)
     std::mutex _renderMutex;

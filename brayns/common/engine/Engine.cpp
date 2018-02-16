@@ -118,14 +118,19 @@ void Engine::postRender()
 
     setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
                     _snapshotSpp);
-    if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp))
+    if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp) ||
+        _snapshotCancelled)
     {
-        _cb(_snapshotFrameBuffer);
+        if (_snapshotCancelled)
+            setLastProgress(1.f);
+        else
+            _cb(_snapshotFrameBuffer);
 
         _renderers[_activeRenderer]->setCamera(_camera);
 
         _snapshotCamera.reset();
         _snapshotFrameBuffer.reset();
+        _snapshotCancelled = false;
     }
 }
 

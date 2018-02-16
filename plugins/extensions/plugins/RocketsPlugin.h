@@ -30,6 +30,7 @@
 
 #include <brayns/api.h>
 #include <brayns/common/Timer.h>
+#include <rockets/jsonrpc/asyncReceiver.h>
 #include <rockets/jsonrpc/server.h>
 #include <rockets/server.h>
 
@@ -83,7 +84,8 @@ private:
     template <class P, class R>
     void _handleAsyncRPC(
         const std::string& method, const RpcDocumentation& doc,
-        std::function<void(P, rockets::jsonrpc::AsyncResponse)> action);
+        std::function<void(P, rockets::jsonrpc::AsyncResponse)> action,
+        rockets::jsonrpc::AsyncReceiver::CancelRequestCallback cancel);
 
     template <class T>
     void _handleObjectSchema(const std::string& endpoint, T& obj);
@@ -122,7 +124,9 @@ private:
     ParametersManager& _parametersManager;
 
     std::unique_ptr<rockets::Server> _rocketsServer;
-    using JsonRpcServer = rockets::jsonrpc::Server<rockets::Server>;
+    using JsonRpcServer =
+        rockets::jsonrpc::Server<rockets::Server,
+                                 rockets::jsonrpc::AsyncReceiver>;
     std::unique_ptr<JsonRpcServer> _jsonrpcServer;
 
 #ifdef BRAYNS_USE_LIBUV

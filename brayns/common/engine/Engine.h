@@ -192,7 +192,7 @@ public:
      *         failed
      */
     void snapshot(const SnapshotParams& params, SnapshotReadyCallback cb);
-
+    void cancelSnapshot() { _snapshotCancelled = true; }
     bool continueRendering() const;
 
     virtual FrameBufferPtr createFrameBuffer(
@@ -224,6 +224,7 @@ protected:
     SnapshotReadyCallback _cb;
     FrameBufferPtr _snapshotFrameBuffer;
     CameraPtr _snapshotCamera;
+    bool _snapshotCancelled{false};
 };
 }
 

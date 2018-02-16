@@ -283,9 +283,10 @@ void RocketsPlugin::_handleRPC(const std::string& method,
 template <class P, class R>
 void RocketsPlugin::_handleAsyncRPC(
     const std::string& method, const RpcDocumentation& doc,
-    std::function<void(P, rockets::jsonrpc::AsyncResponse)> action)
+    std::function<void(P, rockets::jsonrpc::AsyncResponse)> action,
+    rockets::jsonrpc::AsyncReceiver::CancelRequestCallback cancel)
 {
-    _jsonrpcServer->bindAsync<P>(method, action);
+    _jsonrpcServer->bindAsync<P>(method, action, cancel);
     _handleSchema(method, buildJsonRpcSchema<P, R>(method, doc));
 }
 
@@ -541,8 +542,9 @@ void RocketsPlugin::_handleSnapshot()
     RpcDocumentation doc{"Make a snapshot of the current view", "settings",
                          "Snapshot settings for quality and size"};
     _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
-        METHOD_SNAPSHOT, doc, [this](const SnapshotParams& params,
-                                     rockets::jsonrpc::AsyncResponse callback) {
+        METHOD_SNAPSHOT, doc,
+        [this](const SnapshotParams& params,
+               rockets::jsonrpc::AsyncResponse callback) {
             try
             {
                 auto readyCallback = [callback, params,
@@ -558,7 +560,8 @@ void RocketsPlugin::_handleSnapshot()
                 callback(rockets::jsonrpc::Response{
                     rockets::jsonrpc::Response::Error{e.what(), -1}});
             }
-        });
+        },
+        [this] { _engine->cancelSnapshot(); });
 }
 
 std::future<rockets::http::Response> RocketsPlugin::_handleCircuitConfigBuilder(

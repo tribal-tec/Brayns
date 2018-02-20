@@ -43,9 +43,12 @@ public:
      *         if control shall be returned to Brayns main loop for e.g.
      *         rendering a new frame.
      */
-    BRAYNS_API virtual bool run(KeyboardHandler& keyboardHandler,
-                                AbstractManipulator& cameraManipulator) = 0;
+    virtual void preRender(KeyboardHandler& keyboardHandler BRAYNS_UNUSED,
+                           AbstractManipulator& cameraManipulator BRAYNS_UNUSED)
+    {
+    }
 
+    virtual void postRender() {}
 protected:
     ExtensionPlugin(EnginePtr engine)
         : _engine(engine)

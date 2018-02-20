@@ -59,8 +59,10 @@ public:
     /**
        Executes code specific to every registered plugin
      */
-    void execute(KeyboardHandler& keyboardHandler,
-                 AbstractManipulator& cameraManipulator);
+    void preRender(KeyboardHandler& keyboardHandler,
+                   AbstractManipulator& cameraManipulator);
+
+    void postRender();
 
 private:
     ExtensionPlugins _plugins;

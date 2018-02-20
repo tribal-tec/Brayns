@@ -33,9 +33,11 @@ class DeflectPlugin : public ExtensionPlugin
 public:
     DeflectPlugin(EnginePtr engine, ParametersManager& parametersManager);
 
-    /** @copydoc ExtensionPlugin::run */
-    BRAYNS_API bool run(KeyboardHandler& keyboardHandler,
-                        AbstractManipulator& cameraManipulator) final;
+    /** @copydoc ExtensionPlugin::preRender */
+    BRAYNS_API void preRender(KeyboardHandler& keyboardHandler,
+                              AbstractManipulator& cameraManipulator) final;
+
+    BRAYNS_API void postRender() final;
 
 private:
     struct HandledEvents
@@ -64,6 +66,7 @@ private:
 
     bool _startStream(bool observerOnly);
     void _closeStream();
+    void _setupSocketListener();
 
     void _handleDeflectEvents(Engine& engine, KeyboardHandler& keyboardHandler,
                               AbstractManipulator& cameraManipulator);

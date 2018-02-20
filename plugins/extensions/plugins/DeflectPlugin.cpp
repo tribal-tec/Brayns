@@ -32,6 +32,10 @@
 
 #include <deflect/SizeHints.h>
 
+#ifdef BRAYNS_USE_LIBUV
+#include <uvw.hpp>
+#endif
+
 namespace
 {
 const float wheelFactor = 1.f / 40.f;
@@ -58,8 +62,8 @@ DeflectPlugin::DeflectPlugin(EnginePtr engine,
                               // DEFLECT_HOST environment variable is defined
 }
 
-bool DeflectPlugin::run(KeyboardHandler& keyboardHandler,
-                        AbstractManipulator& cameraManipulator)
+void DeflectPlugin::preRender(KeyboardHandler& keyboardHandler,
+                              AbstractManipulator& cameraManipulator)
 {
     if (_stream)
     {
@@ -85,14 +89,17 @@ bool DeflectPlugin::run(KeyboardHandler& keyboardHandler,
         _sendSizeHints(*_engine);
 
     if (deflectEnabled && _stream && _stream->isConnected())
+        _handleDeflectEvents(*_engine, keyboardHandler, cameraManipulator);
+}
+
+void DeflectPlugin::postRender()
+{
+    const bool observerOnly = _engine->haveDeflectPixelOp();
+    if (_params.getEnabled() && _stream && _stream->isConnected())
     {
         if (!observerOnly)
             _sendDeflectFrame(*_engine);
-
-        _handleDeflectEvents(*_engine, keyboardHandler, cameraManipulator);
     }
-
-    return true;
 }
 
 bool DeflectPlugin::_startStream(const bool observerOnly)
@@ -119,7 +126,9 @@ bool DeflectPlugin::_startStream(const bool observerOnly)
             BRAYNS_ERROR << "Deflect failed to connect to Tide on host "
                          << _stream->getHost() << std::endl;
 
-        if (!_stream->registerForEvents())
+        if (_stream->registerForEvents())
+            _setupSocketListener();
+        else
             BRAYNS_ERROR << "Deflect failed to register for events!"
                          << std::endl;
 
@@ -143,6 +152,20 @@ void DeflectPlugin::_closeStream()
     _sendFuture.wait();
     _sendFuture = make_ready_future(true);
     _stream.reset();
+}
+
+void DeflectPlugin::_setupSocketListener()
+{
+#ifdef BRAYNS_USE_LIBUV
+    auto loop = uvw::Loop::getDefault();
+    auto handle = loop->resource<uvw::PollHandle>(_stream->getDescriptor());
+
+    handle->on<uvw::PollEvent>([engine = _engine](const auto&, auto&) {
+        engine->triggerRender();
+    });
+
+    handle->start(uvw::PollHandle::Event::READABLE);
+#endif
 }
 
 void DeflectPlugin::_handleDeflectEvents(Engine& engine,
@@ -292,7 +315,7 @@ deflect::Stream::Future DeflectPlugin::_sendLastImage(
                                      _lastImage.size.x(), _lastImage.size.y(),
                                      4);
 
-    return static_cast<deflect::Stream&>(*_stream).asyncSend(deflectImage);
+    return static_cast<deflect::Stream&>(*_stream).sendAndFinish(deflectImage);
 }
 
 deflect::PixelFormat DeflectPlugin::_getDeflectImageFormat(

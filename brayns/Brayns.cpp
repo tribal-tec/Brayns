@@ -126,6 +126,9 @@ struct Brayns::Impl
         else if (_dataLoadingFuture.valid())
             _finishLoadScene();
 
+        _extensionPluginFactory->preRender(_keyboardHandler,
+                                           *_cameraManipulator);
+
         _updateAnimation();
 
         _engine->setActiveRenderer(
@@ -189,8 +192,7 @@ struct Brayns::Impl
             _fpsUpdateElapsed = 0;
         }
 
-        // broadcast for now
-        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+        _extensionPluginFactory->postRender();
 
         _engine->getFrameBuffer().resetModified();
         _engine->getStatistics().resetModified();
@@ -198,8 +200,8 @@ struct Brayns::Impl
 
     void sendMessages()
     {
-        // broadcast for now
-        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+        // XXX only rockets
+        _extensionPluginFactory->postRender();
 
         _parametersManager.resetModified();
         _engine->getProgress().resetModified();
@@ -394,8 +396,8 @@ private:
         _engine->getStatistics().setSceneSizeInBytes(
             _engine->getScene().getSizeInBytes());
 
-        // XXX broadcast messages is what we want here
-        _extensionPluginFactory->execute(_keyboardHandler, *_cameraManipulator);
+        // XXX only rockets
+        _extensionPluginFactory->postRender();
     }
 
     void _updateAnimation()

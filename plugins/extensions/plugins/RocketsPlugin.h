@@ -49,9 +49,8 @@ public:
     RocketsPlugin(EnginePtr engine, ParametersManager& parametersManager);
     ~RocketsPlugin();
 
-    /** @copydoc ExtensionPlugin::run */
-    BRAYNS_API bool run(KeyboardHandler& keyboardHandler,
-                        AbstractManipulator& cameraManipulator) final;
+    /** @copydoc ExtensionPlugin::postRender */
+    BRAYNS_API void postRender() final;
 
 private:
     std::string _getHttpInterface() const;

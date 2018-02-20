@@ -96,13 +96,14 @@ RocketsPlugin::RocketsPlugin(EnginePtr engine,
 
 RocketsPlugin::~RocketsPlugin()
 {
-    _rocketsServer->setSocketListener(nullptr);
+    if (_rocketsServer)
+        _rocketsServer->setSocketListener(nullptr);
 }
 
-bool RocketsPlugin::run(KeyboardHandler&, AbstractManipulator&)
+void RocketsPlugin::postRender()
 {
     if (!_rocketsServer)
-        return true;
+        return;
 
     try
     {
@@ -113,8 +114,6 @@ bool RocketsPlugin::run(KeyboardHandler&, AbstractManipulator&)
         BRAYNS_ERROR << "Error while handling HTTP/websocket messages: "
                      << exc.what() << std::endl;
     }
-
-    return true;
 }
 
 std::string RocketsPlugin::_getHttpInterface() const

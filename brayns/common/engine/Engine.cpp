@@ -127,6 +127,8 @@ void Engine::postRender()
             _cb(_snapshotFrameBuffer);
 
         _renderers[_activeRenderer]->setCamera(_camera);
+        _parametersManager.getRenderingParameters().setSamplesPerPixel(
+            _restoreSpp);
 
         _snapshotCamera.reset();
         _snapshotFrameBuffer.reset();
@@ -166,9 +168,10 @@ void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
     *_snapshotCamera = getCamera();
     _snapshotCamera->setAspectRatio(float(params.size.x()) / params.size.y());
     _snapshotCamera->commit();
+    _restoreSpp =
+        _parametersManager.getRenderingParameters().getSamplesPerPixel();
+    _parametersManager.getRenderingParameters().setSamplesPerPixel(1);
     _renderers[_activeRenderer]->setCamera(_snapshotCamera);
-
-    // XXX samplesPerPixel to one
 
     setLastOperation("Render snapshot ...");
     setLastProgress(0.f);

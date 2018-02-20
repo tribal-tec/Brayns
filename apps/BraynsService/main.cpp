@@ -33,19 +33,19 @@ int main(int argc, const char** argv)
 {
     try
     {
+        BRAYNS_INFO << "Initializing Service..." << std::endl;
+
         brayns::Timer timer;
         timer.start();
 
-        BRAYNS_INFO << "Initializing Service..." << std::endl;
-
         brayns::Brayns brayns(argc, argv);
 
-        auto loop = uvw::Loop::getDefault();
-        auto renderingDone = loop->resource<uvw::AsyncHandle>();
-        auto eventRendering = loop->resource<uvw::IdleHandle>();
-        auto accumRendering = loop->resource<uvw::IdleHandle>();
-        auto progressUpdate = loop->resource<uvw::TimerHandle>();
-        auto checkIdleRendering = loop->resource<uvw::CheckHandle>();
+        auto mainLoop = uvw::Loop::getDefault();
+        auto renderingDone = mainLoop->resource<uvw::AsyncHandle>();
+        auto eventRendering = mainLoop->resource<uvw::IdleHandle>();
+        auto accumRendering = mainLoop->resource<uvw::IdleHandle>();
+        auto progressUpdate = mainLoop->resource<uvw::TimerHandle>();
+        auto checkIdleRendering = mainLoop->resource<uvw::CheckHandle>();
         checkIdleRendering->start();
 
         auto renderLoop = uvw::Loop::create();
@@ -74,7 +74,7 @@ int main(int argc, const char** argv)
                 if (!brayns.getEngine().getKeepRunning())
                 {
                     stopRenderThread->send();
-                    loop->stop();
+                    mainLoop->stop();
                     return;
                 }
 
@@ -93,7 +93,7 @@ int main(int argc, const char** argv)
                                           std::chrono::milliseconds(100));
 
                     // async load execution
-                    auto work = loop->resource<uvw::WorkReq>(
+                    auto work = mainLoop->resource<uvw::WorkReq>(
                         [&] { brayns.buildScene(); });
 
                     // async load finished, restore everything to continue
@@ -105,6 +105,7 @@ int main(int argc, const char** argv)
                         isLoading = false;
 
                         checkIdleRendering->start();
+                        eventRendering->start();
                     });
 
                     work->queue();
@@ -155,10 +156,12 @@ int main(int argc, const char** argv)
 
         brayns.init();
 
-        std::thread render_thread([&] { renderLoop->run(); });
-        loop->run();
-        render_thread.join();
+        // Start render & main loop
+        std::thread renderThread([&] { renderLoop->run(); });
+        mainLoop->run();
 
+        // Finished
+        renderThread.join();
         timer.stop();
         BRAYNS_INFO << "Service was running for " << timer.seconds()
                     << " seconds" << std::endl;

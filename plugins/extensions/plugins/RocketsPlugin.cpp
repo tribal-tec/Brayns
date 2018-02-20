@@ -107,7 +107,6 @@ bool RocketsPlugin::run(KeyboardHandler&, AbstractManipulator&)
     try
     {
         _broadcastWebsocketMessages();
-        _rocketsServer->process(0);
     }
     catch (const std::exception& exc)
     {

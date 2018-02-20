@@ -221,6 +221,7 @@ protected:
     bool _rebuildScene{false};
 
     int _snapshotSpp{0};
+    int _restoreSpp{0};
     SnapshotReadyCallback _cb;
     FrameBufferPtr _snapshotFrameBuffer;
     CameraPtr _snapshotCamera;

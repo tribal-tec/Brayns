@@ -51,7 +51,7 @@ void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,
             flags_ |= POLLOUT;
         _iface.processSocket(fd, flags_);
 
-        if (event.flags() & uvw::PollHandle::Event::READABLE && postReceive)
+        if ((event.flags() & uvw::PollHandle::Event::READABLE) && postReceive)
             postReceive();
     });
 

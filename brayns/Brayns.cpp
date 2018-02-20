@@ -147,7 +147,6 @@ struct Brayns::Impl
         if (scene.getTransferFunction().isModified())
             scene.commitTransferFunctionData();
 
-        // XXX lights need modified state too, move update to main thread
         if (_parametersManager.getRenderingParameters().getHeadLight())
         {
             LightPtr sunLight = scene.getLight(0);

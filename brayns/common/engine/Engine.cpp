@@ -121,24 +121,7 @@ void Engine::postRender()
         return;
     }
 
-    setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
-                    _snapshotSpp);
-    if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp) ||
-        _snapshotCancelled)
-    {
-        if (_snapshotCancelled)
-            setLastProgress(1.f);
-        else
-            _cb(_snapshotFrameBuffer);
-
-        _renderers[_activeRenderer]->setCamera(_camera);
-        _parametersManager.getRenderingParameters().setSamplesPerPixel(
-            _restoreSpp);
-
-        _snapshotCamera.reset();
-        _snapshotFrameBuffer.reset();
-        _snapshotCancelled = false;
-    }
+    _processSnapshot();
 }
 
 Renderer& Engine::getRenderer()
@@ -192,7 +175,30 @@ bool Engine::continueRendering() const
     }
 
     return _lastVariance > 1 && _frameBuffer->getAccumulation() &&
-           (_frameBuffer->numAccumFrames() < 100);
+           (_frameBuffer->numAccumFrames() <
+            _parametersManager.getRenderingParameters().getMaxAccumFrames());
+}
+
+void Engine::_processSnapshot()
+{
+    setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
+                    _snapshotSpp);
+    if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp) ||
+        _snapshotCancelled)
+    {
+        if (_snapshotCancelled)
+            setLastProgress(1.f);
+        else
+            _cb(_snapshotFrameBuffer);
+
+        _renderers[_activeRenderer]->setCamera(_camera);
+        _parametersManager.getRenderingParameters().setSamplesPerPixel(
+            _restoreSpp);
+
+        _snapshotCamera.reset();
+        _snapshotFrameBuffer.reset();
+        _snapshotCancelled = false;
+    }
 }
 
 void Engine::_writeFrameToFile()

@@ -172,7 +172,6 @@ struct Brayns::Impl
         _parametersManager.resetModified();
         _engine->getCamera().resetModified();
         _engine->getScene().resetModified();
-        _engine->getProgress().resetModified();
 
         return true;
     }
@@ -190,6 +189,7 @@ struct Brayns::Impl
 
         _extensionPluginFactory->postRender();
 
+        _engine->getProgress().resetModified();
         _engine->getFrameBuffer().resetModified();
         _engine->getStatistics().resetModified();
     }
@@ -305,6 +305,7 @@ struct Brayns::Impl
 private:
     void _loadScene()
     {
+        // fix race condition: we have to wait until rendering is finished
         std::lock_guard<std::mutex> lock{_renderMutex};
 
         Progress loadingProgress(

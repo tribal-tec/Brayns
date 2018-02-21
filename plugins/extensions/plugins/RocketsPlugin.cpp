@@ -102,10 +102,7 @@ RocketsPlugin::~RocketsPlugin()
 
 void RocketsPlugin::preRender(KeyboardHandler&, AbstractManipulator&)
 {
-    if (!_rocketsServer)
-        return;
-
-    if(_socketListener)
+    if (!_rocketsServer || _socketListener)
         return;
 
     try
@@ -125,21 +122,6 @@ void RocketsPlugin::postRender()
         return;
 
     _broadcastWebsocketMessages();
-
-    // BUG: this should only send messages, not receive. Not possible with
-    // Rockets/libwebsockets w/o using proper socker listener, hence incoming
-    // messages are received as well and their modified state in Brayns.cpp is
-    // reset after this call to postRender().
-//    if(!_socketListener)
-//        try
-//        {
-//            _rocketsServer->process(0);
-//        }
-//        catch (const std::exception& exc)
-//        {
-//            BRAYNS_ERROR << "Error while handling HTTP/websocket messages: "
-//                         << exc.what() << std::endl;
-//        }
 }
 
 std::string RocketsPlugin::_getHttpInterface() const
@@ -172,7 +154,7 @@ void RocketsPlugin::_setupRocketsServer()
             _socketListener->postReceive = _engine->triggerRender;
             _rocketsServer->setSocketListener(_socketListener.get());
         }
-        catch(const std::runtime_error& e)
+        catch (const std::runtime_error& e)
         {
             BRAYNS_DEBUG << "Failed to setup rockets socket listener: "
                          << e.what() << std::endl;
@@ -579,11 +561,13 @@ void RocketsPlugin::_handleSnapshot()
                rockets::jsonrpc::AsyncResponse callback) {
             try
             {
-                auto readyCallback = [callback, params,
-                                      this](FrameBufferPtr fb) {
+                auto readyCallback =
+                    [ callback, params,
+                      &imageGenerator = _imageGenerator ](FrameBufferPtr fb)
+                {
                     callback(rockets::jsonrpc::Response{
-                        to_json(_imageGenerator.createImage(*fb, params.format,
-                                                            params.quality))});
+                        to_json(imageGenerator.createImage(*fb, params.format,
+                                                           params.quality))});
                 };
                 _engine->snapshot(params, readyCallback);
             }

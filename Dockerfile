@@ -29,6 +29,7 @@ RUN apt-get update \
     libmagick++-dev \
     libtbb-dev \
     libturbojpeg0-dev \
+    libuv1-dev \
     wget \
     ca-certificates \
  && apt-get clean \
@@ -141,6 +142,7 @@ RUN apt-get update \
     libmagick++-6.q16-7 \
     libmagickwand-6.q16-3 \
     libturbojpeg0 \
+    libuv1 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

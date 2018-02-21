@@ -110,7 +110,7 @@ ADD . ${BRAYNS_SRC}
 # https://github.com/BlueBrain/Brayns
 RUN cksum ${BRAYNS_SRC}/.gitsubprojects \
  && cd ${BRAYNS_SRC} \
- && git submodule update --init --recursive --remote \
+ && git submodule update --init --recursive \
  && mkdir -p build \
  && cd build \
  && PKG_CONFIG_PATH=${DIST_PATH}/lib/pkgconfig CMAKE_PREFIX_PATH=${DIST_PATH} cmake .. -GNinja \

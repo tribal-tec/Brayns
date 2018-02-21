@@ -49,6 +49,10 @@ public:
     RocketsPlugin(EnginePtr engine, ParametersManager& parametersManager);
     ~RocketsPlugin();
 
+    /** @copydoc ExtensionPlugin::preRender */
+    BRAYNS_API void preRender(KeyboardHandler& keyboardHandler,
+                              AbstractManipulator& cameraManipulator) final;
+
     /** @copydoc ExtensionPlugin::postRender */
     BRAYNS_API void postRender() final;
 

@@ -204,6 +204,7 @@ public:
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
+    void _writeFrameToFile();
 
     ParametersManager& _parametersManager;
     ScenePtr _scene;

@@ -26,6 +26,8 @@
 #include <brayns/common/renderer/Renderer.h>
 #include <brayns/common/scene/Scene.h>
 
+#include <brayns/io/ImageManager.h>
+
 #include <brayns/parameters/ParametersManager.h>
 
 namespace brayns
@@ -114,7 +116,10 @@ void Engine::render()
 void Engine::postRender()
 {
     if (!_snapshotFrameBuffer)
+    {
+        _writeFrameToFile();
         return;
+    }
 
     setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
                     _snapshotSpp);
@@ -188,5 +193,19 @@ bool Engine::continueRendering() const
 
     return _lastVariance > 1 && _frameBuffer->getAccumulation() &&
            (_frameBuffer->numAccumFrames() < 100);
+}
+
+void Engine::_writeFrameToFile()
+{
+    const auto& frameExportFolder =
+        _parametersManager.getApplicationParameters().getFrameExportFolder();
+    if (frameExportFolder.empty())
+        return;
+    char str[7];
+    const auto frame = _parametersManager.getAnimationParameters().getFrame();
+    snprintf(str, 7, "%06d", int(frame));
+    const auto filename = frameExportFolder + "/" + str + ".png";
+    FrameBuffer& frameBuffer = getFrameBuffer();
+    ImageManager::exportFrameBufferToFile(frameBuffer, filename);
 }
 }

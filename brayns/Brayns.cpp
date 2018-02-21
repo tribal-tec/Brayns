@@ -38,7 +38,6 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
-#include <brayns/io/ImageManager.h>
 #include <brayns/io/MeshLoader.h>
 #include <brayns/io/MolecularSystemReader.h>
 #include <brayns/io/ProteinLoader.h>
@@ -153,8 +152,7 @@ struct Brayns::Impl
         if (_parametersManager.getRenderingParameters().getHeadLight())
         {
             LightPtr sunLight = scene.getLight(0);
-            DirectionalLight* sun =
-                dynamic_cast<DirectionalLight*>(sunLight.get());
+            auto sun = std::dynamic_pointer_cast<DirectionalLight>(sunLight);
             if (sun &&
                 (camera.isModified() ||
                  _parametersManager.getRenderingParameters().isModified()))
@@ -170,20 +168,12 @@ struct Brayns::Impl
             _engine->getFrameBuffer().clear();
         }
 
-        _engine->getScene().getTransferFunction().resetModified();
-        _parametersManager.resetModified();
-        _engine->getCamera().resetModified();
-        _engine->getScene().resetModified();
-        _engine->getProgress().resetModified();
-
         return true;
     }
 
     void postRender()
     {
         _engine->postRender();
-
-        _writeFrameToFile();
 
         _fpsUpdateElapsed += _renderTimer.milliseconds();
         if (_fpsUpdateElapsed > 750)
@@ -194,6 +184,11 @@ struct Brayns::Impl
 
         _extensionPluginFactory->postRender();
 
+        _parametersManager.resetModified();
+        _engine->getScene().getTransferFunction().resetModified();
+        _engine->getCamera().resetModified();
+        _engine->getScene().resetModified();
+        _engine->getProgress().resetModified();
         _engine->getFrameBuffer().resetModified();
         _engine->getStatistics().resetModified();
     }
@@ -201,10 +196,7 @@ struct Brayns::Impl
     void sendMessages()
     {
         // XXX only rockets
-        _extensionPluginFactory->postRender();
-
-        _parametersManager.resetModified();
-        _engine->getProgress().resetModified();
+        postRender();
     }
 
     void createEngine()
@@ -255,14 +247,14 @@ struct Brayns::Impl
         promise.set_value();
     }
 
-    void preRender(const RenderInput& renderInput)
+    bool preRender(const RenderInput& renderInput)
     {
         _engine->getCamera().set(renderInput.position, renderInput.target,
                                  renderInput.up);
         _parametersManager.getApplicationParameters().setWindowSize(
             renderInput.windowSize);
 
-        preRender();
+        return preRender();
     }
 
     void postRender(RenderOutput& renderOutput)
@@ -316,25 +308,8 @@ struct Brayns::Impl
     }
 
 private:
-    void _writeFrameToFile()
-    {
-        const auto& frameExportFolder =
-            _parametersManager.getApplicationParameters()
-                .getFrameExportFolder();
-        if (frameExportFolder.empty())
-            return;
-        char str[7];
-        const auto frame =
-            _parametersManager.getAnimationParameters().getFrame();
-        snprintf(str, 7, "%06d", int(frame));
-        const auto filename = frameExportFolder + "/" + str + ".png";
-        FrameBuffer& frameBuffer = _engine->getFrameBuffer();
-        ImageManager::exportFrameBufferToFile(frameBuffer, filename);
-    }
-
     void _loadScene()
     {
-        // XXX remove this hopefully
         std::lock_guard<std::mutex> lock{_renderMutex};
 
         Progress loadingProgress(
@@ -1236,7 +1211,7 @@ private:
 
     std::future<void> _dataLoadingFuture;
 
-    // protect render vs preRender() (commits?)
+    // protect render() vs preRender() when doing all the commit()
     std::mutex _renderMutex;
 
     Timer _renderTimer;
@@ -1266,15 +1241,15 @@ Brayns::~Brayns()
 
 void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 {
-    _impl->preRender(renderInput);
-    _impl->render();
+    if(_impl->preRender(renderInput))
+        _impl->render();
     _impl->postRender(renderOutput);
 }
 
 bool Brayns::render()
 {
-    _impl->preRender();
-    _impl->render();
+    if(_impl->preRender())
+        _impl->render();
     _impl->postRender();
     return _impl->getEngine().getKeepRunning();
 }

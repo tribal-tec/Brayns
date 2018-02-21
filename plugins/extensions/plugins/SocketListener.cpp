@@ -27,6 +27,8 @@ namespace brayns
 SocketListener::SocketListener(rockets::SocketBasedInterface& interface)
     : _iface{interface}
 {
+    if (!uvw::Loop::getDefault()->alive())
+        throw std::runtime_error("No libuv loop is alive");
 }
 
 void SocketListener::onNewSocket(const rockets::SocketDescriptor fd,

@@ -187,6 +187,11 @@ struct Brayns::Impl
             _fpsUpdateElapsed = 0;
         }
 
+        // WAR to keep clients updated about current animation frame
+        auto& ap = _parametersManager.getAnimationParameters();
+        if (ap.getDelta() != 0)
+            ap.markModified();
+
         _extensionPluginFactory->postRender();
 
         _engine->getProgress().resetModified();

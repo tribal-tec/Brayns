@@ -134,7 +134,8 @@ int main(int argc, const char** argv)
                 if (timeSinceLastEvent.elapsed() < idleRenderingDelay)
                     return;
 
-                if (brayns.getEngine().continueRendering())
+                if (brayns.preRender() &&
+                    brayns.getEngine().continueRendering())
                     triggerRendering->send();
 
                 accumRendering->stop();

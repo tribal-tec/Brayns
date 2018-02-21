@@ -119,11 +119,11 @@ int main(int argc, const char** argv)
 
             // send progress updates while we are loading
             progressUpdate->on<uvw::TimerEvent>(
-                [&](const auto&, auto&) { brayns.sendMessages(); });
+                [&](const auto&, auto&) { brayns.postRender(); });
 
             // send final progress update, once loading is finished
             progressUpdate->on<uvw::CloseEvent>(
-                [&](const auto&, auto&) { brayns.sendMessages(); });
+                [&](const auto&, auto&) { brayns.postRender(); });
 
             // start accum rendering when we have no more other events
             checkIdleRendering->on<uvw::CheckEvent>(

@@ -115,7 +115,7 @@ struct Brayns::Impl
 #ifdef BRAYNS_USE_LUNCHBOX
             if (isAsyncMode())
             {
-                sendMessages();
+                postRender();
 
                 return false;
             }
@@ -168,6 +168,12 @@ struct Brayns::Impl
             _engine->getFrameBuffer().clear();
         }
 
+        _engine->getScene().getTransferFunction().resetModified();
+        _parametersManager.resetModified();
+        _engine->getCamera().resetModified();
+        _engine->getScene().resetModified();
+        _engine->getProgress().resetModified();
+
         return true;
     }
 
@@ -184,19 +190,8 @@ struct Brayns::Impl
 
         _extensionPluginFactory->postRender();
 
-        _parametersManager.resetModified();
-        _engine->getScene().getTransferFunction().resetModified();
-        _engine->getCamera().resetModified();
-        _engine->getScene().resetModified();
-        _engine->getProgress().resetModified();
         _engine->getFrameBuffer().resetModified();
         _engine->getStatistics().resetModified();
-    }
-
-    void sendMessages()
-    {
-        // XXX only rockets
-        postRender();
     }
 
     void createEngine()
@@ -371,8 +366,8 @@ private:
         _engine->getStatistics().setSceneSizeInBytes(
             _engine->getScene().getSizeInBytes());
 
-        // XXX only rockets
-        _extensionPluginFactory->postRender();
+        // finish reporting of progress
+        postRender();
     }
 
     void _updateAnimation()
@@ -1241,16 +1236,20 @@ Brayns::~Brayns()
 
 void Brayns::render(const RenderInput& renderInput, RenderOutput& renderOutput)
 {
-    if(_impl->preRender(renderInput))
+    if (_impl->preRender(renderInput))
+    {
         _impl->render();
-    _impl->postRender(renderOutput);
+        _impl->postRender(renderOutput);
+    }
 }
 
 bool Brayns::render()
 {
-    if(_impl->preRender())
+    if (_impl->preRender())
+    {
         _impl->render();
-    _impl->postRender();
+        _impl->postRender();
+    }
     return _impl->getEngine().getKeepRunning();
 }
 
@@ -1277,11 +1276,6 @@ void Brayns::postRender()
 void Brayns::buildScene()
 {
     _impl->buildScene();
-}
-
-void Brayns::sendMessages()
-{
-    _impl->sendMessages();
 }
 
 Engine& Brayns::getEngine()

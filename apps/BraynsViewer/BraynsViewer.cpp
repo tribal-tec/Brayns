@@ -22,7 +22,10 @@
 #include "BraynsViewer.h"
 
 #include <brayns/Brayns.h>
+#include <brayns/common/engine/Engine.h>
 #include <brayns/parameters/ParametersManager.h>
+
+#include <thread>
 
 namespace brayns
 {
@@ -50,5 +53,11 @@ void BraynsViewer::display()
     setTitle(ss.str());
 
     BaseWindow::display();
+
+    if (_brayns.getEngine().rebuildScene())
+    {
+        _brayns.getEngine().markRebuildScene(false);
+        std::thread([& brayns = _brayns]() { brayns.buildScene(); }).detach();
+    }
 }
 }

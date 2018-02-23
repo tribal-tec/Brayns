@@ -48,7 +48,9 @@ public:
     BRAYNS_API bool run(EnginePtr engine, KeyboardHandler& keyboardHandler,
                         AbstractManipulator& cameraManipulator) final;
 
+    static RocketsPlugin* instance() { return _instance; }
 private:
+    static RocketsPlugin* _instance;
     std::string _getHttpInterface() const;
     void _setupRocketsServer();
     void _setupWebsocket();
@@ -116,12 +118,35 @@ private:
 
     std::unique_ptr<rockets::Server> _rocketsServer;
     using JsonRpcServer = rockets::jsonrpc::Server<rockets::Server>;
-    std::unique_ptr<JsonRpcServer> _jsonrpcServer;
 
     ImageGenerator _imageGenerator;
 
     Timer _timer;
+
+public:
+    std::unique_ptr<JsonRpcServer> _jsonrpcServer;
 };
+
+template <typename RetVal, typename Params>
+inline void registerAction(const std::string& name,
+                           std::function<RetVal(Params)> action)
+{
+    RocketsPlugin::instance()->_jsonrpcServer->bind<Params, RetVal>(name,
+                                                                    action);
+}
+
+template <typename Params>
+inline void registerAction(const std::string& name,
+                           std::function<void(Params)> action)
+{
+    RocketsPlugin::instance()->_jsonrpcServer->connect<Params>(name, action);
+}
+
+inline void registerAction(const std::string& name,
+                           std::function<void()> action)
+{
+    RocketsPlugin::instance()->_jsonrpcServer->connect(name, action);
+}
 }
 
 #endif

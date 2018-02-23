@@ -89,11 +89,13 @@ std::string hyphenatedToCamelCase(const std::string& hyphenated)
 
 namespace brayns
 {
+RocketsPlugin* RocketsPlugin::_instance{nullptr};
 RocketsPlugin::RocketsPlugin(ParametersManager& parametersManager)
     : ExtensionPlugin()
     , _parametersManager(parametersManager)
 {
     _setupRocketsServer();
+    _instance = this;
 }
 
 RocketsPlugin::~RocketsPlugin()

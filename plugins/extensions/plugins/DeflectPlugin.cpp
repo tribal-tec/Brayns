@@ -18,6 +18,21 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "jsonSerialization.h"
+#include <string>
+struct Param
+{
+    std::string value;
+};
+namespace staticjson
+{
+inline void init(Param* s, ObjectHandler* h)
+{
+    h->add_property("value", &s->value);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+}
+
 #include "DeflectPlugin.h"
 
 #include <brayns/Brayns.h>
@@ -31,6 +46,8 @@
 #include <brayns/parameters/ApplicationParameters.h>
 
 #include <deflect/SizeHints.h>
+
+#include <plugins/extensions/plugins/RocketsPlugin.h>
 
 namespace
 {
@@ -55,6 +72,17 @@ DeflectPlugin::DeflectPlugin(ParametersManager& parametersManager)
 {
     _params.setEnabled(true); // Streaming will only be activated if the
                               // DEFLECT_HOST environment variable is defined
+
+    registerAction<std::string, Param>("foo", [](const Param& param) {
+        std::cout << "Param: " << param.value << std::endl;
+        return param.value;
+    });
+
+    registerAction<Param>("shutup", [](const Param& param) {
+        std::cout << "Ok, shut up " << param.value << std::endl;
+    });
+
+    registerAction("silence", [] { std::cout << "Ok, silence" << std::endl; });
 }
 
 bool DeflectPlugin::run(EnginePtr engine, KeyboardHandler& keyboardHandler,

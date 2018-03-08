@@ -73,20 +73,6 @@ else()
   unset(BRAYNS_DEFLECT_ENABLED)
 endif()
 
-# Topology viewer
-if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/extensions/usecases/TopologyViewer)
-  list(APPEND COMMON_FIND_PACKAGE_DEFINES BRAYNS_TOPOLOGY_VIEWER_PLUGIN_ENABLED)
-  add_definitions(-DBRAYNS_USE_TOPOLOGY_VIEWER_PLUGIN)
-  add_subdirectory(plugins/extensions/usecases/TopologyViewer)
-endif()
-
-# Membraneless Organelles
-if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/extensions/usecases/MembranelessOrganelles)
-  list(APPEND COMMON_FIND_PACKAGE_DEFINES BRAYNS_MEMBRANELESS_ORGANELLES_PLUGIN_ENABLED)
-  add_definitions(-DBRAYNS_USE_MEMBRANELESS_ORGANELLES_PLUGIN)
-  add_subdirectory(plugins/extensions/usecases/MembranelessOrganelles)
-endif()
-
 # Data access
 common_find_package(Brion)
 common_find_package(Servus)
@@ -137,6 +123,8 @@ else()
 endif()
 
 common_find_package_post()
+
+list(APPEND BRAYNS_DEPENDENT_LIBRARIES vmmlib Deflect Rockets Servus)
 
 # ------------------------------------------------------------------------------
 # BRAYNS applications and libraries
@@ -213,6 +201,8 @@ if(BRAYNS_OSPRAY_ENABLED)
     endif()
   endif()
 endif()
+
+include(CommonCPack)
 
 set(DOXYGEN_EXTRA_INPUT "${PROJECT_SOURCE_DIR}/Changelog.md")
 set(COMMON_PROJECT_DOMAIN ch.epfl.bluebrain)

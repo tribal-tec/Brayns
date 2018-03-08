@@ -64,7 +64,7 @@ public:
      * In a setup using event loops, one wants to postpone this call until the
      * event loop is setup'd correctly to use it from within a plugin.
      */
-    BRAYNS_API void createPlugins();
+    BRAYNS_API void loadPlugins();
 
     /** @name Simple execution API  */
     //@{
@@ -168,12 +168,12 @@ public:
     template <typename T>
     std::shared_ptr<T> addPlugin()
     {
-        auto plugin{std::make_shared<T>(_engine, _parametersManager,
-                                        _actionInterface.get())};
+        auto plugin{std::make_shared<T>(_engine, _pluginAPI.get())};
         _extensionPluginFactory.add(plugin);
         return plugin;
     }
 
+    ActionInterface* getActionInterface() { return _actionInterface.get(); }
 private:
     EnginePtr _engine;
     ParametersManager _parametersManager;
@@ -182,6 +182,8 @@ private:
 
     struct Impl;
     std::unique_ptr<Impl> _impl;
+
+    std::unique_ptr<PluginAPI> _pluginAPI;
 };
 }
 #endif // BRAYNS

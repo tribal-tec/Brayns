@@ -1,6 +1,7 @@
 /* Copyright (c) 2015-2018, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
  * Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
+ *                     Jafet Villafranca <jafet.villafrancadiaz@epfl.ch>
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -18,37 +19,50 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef EXTENSIONPLUGIN_H
-#define EXTENSIONPLUGIN_H
+#include "PluginAPI.h"
 
-#include <brayns/api.h>
-#include <brayns/common/types.h>
+#include "Brayns.h"
+#include "common/engine/Engine.h"
 
 namespace brayns
 {
-/**
- * Defines the abstract representation of an extension plug-in. What we mean by
- * extension is a set a functionalities that are not provided by the core of the
- * application. For example, exposing a REST interface via HTTP, or streaming
- * images to an distant display.
- */
-class ExtensionPlugin
+class PluginAPI::Impl
 {
 public:
-    virtual ~ExtensionPlugin() = default;
-
-    /**
-     * Called from Brayns::preRender() to prepare the engine based on the
-     * plugins' need for an upcoming render().
-     */
-    virtual void preRender() {}
-    /** Called from Brayns::postRender() after render() has finished. */
-    virtual void postRender() {}
-    /**
-     * Called after scene has finished loading.
-     */
-    virtual void postSceneLoading() {}
+    Brayns& _brayns;
+    Impl(Brayns& brayns)
+        : _brayns(brayns)
+    {
+    }
 };
+
+PluginAPI::PluginAPI(Brayns& brayns)
+    : _impl(std::make_shared<Impl>(brayns))
+{
 }
 
-#endif
+Scene& PluginAPI::getScene()
+{
+    return _impl->_brayns.getEngine().getScene();
+}
+
+ParametersManager& PluginAPI::getParametersManager()
+{
+    return _impl->_brayns.getParametersManager();
+}
+
+ActionInterface* PluginAPI::getActionInterface()
+{
+    return _impl->_brayns.getActionInterface();
+}
+
+KeyboardHandler& PluginAPI::getKeyboardHandler()
+{
+    return _impl->_brayns.getKeyboardHandler();
+}
+
+AbstractManipulator& PluginAPI::getCameraManipulator()
+{
+    return _impl->_brayns.getCameraManipulator();
+}
+}

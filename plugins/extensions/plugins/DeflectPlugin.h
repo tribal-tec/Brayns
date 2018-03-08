@@ -31,12 +31,10 @@ namespace brayns
 class DeflectPlugin : public ExtensionPlugin
 {
 public:
-    DeflectPlugin(EnginePtr engine, ParametersManager& parametersManager,
-                  ActionInterface* actionInterface);
+    DeflectPlugin(EnginePtr engine, PluginAPI* api);
 
     /** Handle stream setup and incoming events. */
-    BRAYNS_API void preRender(KeyboardHandler& keyboardHandler,
-                              AbstractManipulator& cameraManipulator) final;
+    BRAYNS_API void preRender() final;
 
     /** Send rendered frame. */
     BRAYNS_API void postRender() final;
@@ -70,8 +68,7 @@ private:
     void _closeStream();
     void _setupSocketListener();
 
-    void _handleDeflectEvents(Engine& engine, KeyboardHandler& keyboardHandler,
-                              AbstractManipulator& cameraManipulator);
+    void _handleDeflectEvents();
 
     void _sendSizeHints(Engine& engine);
     void _sendDeflectFrame(Engine& engine);
@@ -83,8 +80,11 @@ private:
     double _getZoomDelta(const deflect::Event& pinchEvent,
                          const Vector2ui& windowSize) const;
 
+    EnginePtr _engine;
     ApplicationParameters& _appParams;
     StreamParameters& _params;
+    KeyboardHandler& _keyboardHandler;
+    AbstractManipulator& _cameraManipulator;
     Vector2d _previousPos;
     bool _pan = false;
     bool _pinch = false;

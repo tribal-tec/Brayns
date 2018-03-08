@@ -21,6 +21,7 @@
 #include "jsonSerialization.h"
 
 #include <brayns/Brayns.h>
+#include <brayns/PluginAPI.h>
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/renderer/Renderer.h>
 #include <brayns/parameters/ParametersManager.h>
@@ -57,7 +58,7 @@ public:
         const char* argv[] = {app, "--http-server", ":0"};
         const int argc = sizeof(argv) / sizeof(char*);
         brayns.reset(new brayns::Brayns(argc, argv));
-        brayns->createPlugins();
+        brayns->loadPlugins();
         brayns->getParametersManager()
             .getApplicationParameters()
             .setImageStreamFPS(0);
@@ -248,10 +249,9 @@ const Vec2 vecVal{{1, 1}};
 class MyPlugin : public brayns::ExtensionPlugin
 {
 public:
-    MyPlugin(brayns::EnginePtr engine, brayns::ParametersManager&,
-             brayns::ActionInterface* actions)
-        : brayns::ExtensionPlugin(engine)
+    MyPlugin(brayns::EnginePtr, brayns::PluginAPI* api)
     {
+        auto actions = api->getActionInterface();
         BOOST_REQUIRE(actions);
 
         actions->registerNotification("hello", [&] { ++numCalls; });

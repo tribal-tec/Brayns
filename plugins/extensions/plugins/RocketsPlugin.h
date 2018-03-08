@@ -47,8 +47,7 @@ struct RpcDocumentation;
 class RocketsPlugin : public ExtensionPlugin, public ActionInterface
 {
 public:
-    RocketsPlugin(EnginePtr engine, ParametersManager& parametersManager,
-                  ActionInterface* ActionInterface);
+    RocketsPlugin(EnginePtr engine, PluginAPI* api);
     ~RocketsPlugin();
 
     /**
@@ -58,8 +57,7 @@ public:
      * Otherwise, this is a NOP as the incoming message processing is done by
      * the SocketListener.
      */
-    BRAYNS_API void preRender(KeyboardHandler& keyboardHandler,
-                              AbstractManipulator& cameraManipulator) final;
+    BRAYNS_API void preRender() final;
 
     /**
      * Enqueue modified and registered objects for broadcast that have changed
@@ -134,6 +132,8 @@ private:
 
     bool _writeBlueConfigFile(const std::string& filename,
                               const std::map<std::string, std::string>& params);
+
+    EnginePtr _engine;
 
     using WsClientConnectNotifications =
         std::map<std::string, std::function<std::string()>>;

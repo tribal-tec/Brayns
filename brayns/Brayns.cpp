@@ -59,18 +59,13 @@
 #include <servus/uri.h>
 #endif
 
-#if BRAYNS_USE_TOPOLOGY_VIEWER_PLUGIN
-#include <plugins/extensions/usecases/TopologyViewer/TopologyViewerPlugin.h>
-#endif
-
-#ifdef BRAYNS_USE_MEMBRANELESS_ORGANELLES_PLUGIN
-#include <plugins/extensions/usecases/MembranelessOrganelles/MembranelessOrganellesPlugin.h>
-#endif
-
 #include <future>
 #ifdef BRAYNS_USE_LUNCHBOX
 #include <lunchbox/threadPool.h>
 #endif
+
+#include "PluginAPI.h"
+#include <ospcommon/library.h>
 
 namespace
 {
@@ -128,8 +123,7 @@ struct Brayns::Impl
 #endif
         }
 
-        _extensionPluginFactory.preRender(_keyboardHandler,
-                                          *_cameraManipulator);
+        _extensionPluginFactory.preRender();
 
         Scene& scene = _engine->getScene();
 
@@ -1241,6 +1235,7 @@ private:
 
 Brayns::Brayns(int argc, const char** argv)
     : _impl(new Impl(argc, argv, _parametersManager, _extensionPluginFactory))
+    , _pluginAPI(std::make_unique<PluginAPI>(*this))
 {
     _engine = _impl->_engine;
 }
@@ -1268,20 +1263,47 @@ bool Brayns::render()
     return _impl->getEngine().getKeepRunning();
 }
 
-void Brayns::createPlugins()
+void Brayns::loadPlugins()
 {
+// Add built-in plugins, nothing to load
 #if (BRAYNS_USE_NETWORKING)
     _actionInterface = addPlugin<RocketsPlugin>();
 #endif
 #ifdef BRAYNS_USE_DEFLECT
     addPlugin<DeflectPlugin>();
 #endif
-#ifdef BRAYNS_USE_TOPOLOGY_VIEWER_PLUGIN
-    addPlugin<TopologyViewerPlugin>();
-#endif
-#ifdef BRAYNS_USE_MEMBRANELESS_ORGANELLES_PLUGIN
-    addPlugin<MembranelessOrganellesPlugin>();
-#endif
+
+    // Load runtime plugins and them
+    const auto& pluginName =
+        _parametersManager.getApplicationParameters().getPlugin();
+    if (pluginName.empty())
+        return;
+
+    try
+    {
+        ospcommon::Library library(pluginName);
+        BRAYNS_INFO << "Loaded plugin '" << pluginName << "'" << std::endl;
+
+        auto createSym = library.getSymbol("brayns_plugin_create");
+        if (!createSym)
+        {
+            BRAYNS_ERROR << "Plugin '" << pluginName
+                         << "' is not a valid Brayns plugin; missing "
+                            "brayns_plugin_create()"
+                         << std::endl;
+            return;
+        }
+
+        ExtensionPlugin* (*createFunc)(PluginAPI*) =
+            (ExtensionPlugin * (*)(PluginAPI*))createSym;
+        auto plugin = createFunc(_pluginAPI.get());
+
+        _extensionPluginFactory.add(ExtensionPluginPtr{plugin});
+    }
+    catch (const std::runtime_error& exc)
+    {
+        BRAYNS_ERROR << exc.what() << std::endl;
+    }
 }
 
 bool Brayns::preRender()

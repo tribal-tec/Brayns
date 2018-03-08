@@ -1,6 +1,7 @@
 /* Copyright (c) 2015-2018, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
  * Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
+ *                     Jafet Villafranca <jafet.villafrancadiaz@epfl.ch>
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -18,37 +19,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef EXTENSIONPLUGIN_H
-#define EXTENSIONPLUGIN_H
+#pragma once
 
-#include <brayns/api.h>
 #include <brayns/common/types.h>
 
 namespace brayns
 {
-/**
- * Defines the abstract representation of an extension plug-in. What we mean by
- * extension is a set a functionalities that are not provided by the core of the
- * application. For example, exposing a REST interface via HTTP, or streaming
- * images to an distant display.
- */
-class ExtensionPlugin
+class PluginAPI
 {
 public:
-    virtual ~ExtensionPlugin() = default;
+    PluginAPI(Brayns& brayns);
 
-    /**
-     * Called from Brayns::preRender() to prepare the engine based on the
-     * plugins' need for an upcoming render().
-     */
-    virtual void preRender() {}
-    /** Called from Brayns::postRender() after render() has finished. */
-    virtual void postRender() {}
-    /**
-     * Called after scene has finished loading.
-     */
-    virtual void postSceneLoading() {}
+    Scene& getScene();
+    ParametersManager& getParametersManager();
+    ActionInterface* getActionInterface();
+    KeyboardHandler& getKeyboardHandler();
+    AbstractManipulator& getCameraManipulator();
+
+private:
+    class Impl;
+    std::shared_ptr<Impl> _impl;
 };
 }
-
-#endif

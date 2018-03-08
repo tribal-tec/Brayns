@@ -21,6 +21,7 @@
 #include "DeflectPlugin.h"
 
 #include <brayns/Brayns.h>
+#include <brayns/PluginAPI.h>
 #include <brayns/common/camera/AbstractManipulator.h>
 #include <brayns/common/camera/Camera.h>
 #include <brayns/common/engine/Engine.h>
@@ -51,20 +52,19 @@ std::future<T> make_ready_future(const T value)
 
 namespace brayns
 {
-DeflectPlugin::DeflectPlugin(EnginePtr engine,
-                             ParametersManager& parametersManager,
-                             ActionInterface* actionInterface BRAYNS_UNUSED)
-    : ExtensionPlugin(engine)
-    , _appParams{parametersManager.getApplicationParameters()}
-    , _params{parametersManager.getStreamParameters()}
+DeflectPlugin::DeflectPlugin(EnginePtr engine, PluginAPI* api)
+    : _engine(engine)
+    , _appParams{api->getParametersManager().getApplicationParameters()}
+    , _params{api->getParametersManager().getStreamParameters()}
+    , _keyboardHandler(api->getKeyboardHandler())
+    , _cameraManipulator(api->getCameraManipulator())
     , _sendFuture{make_ready_future(true)}
 {
     _params.setEnabled(true); // Streaming will only be activated if the
                               // DEFLECT_HOST environment variable is defined
 }
 
-void DeflectPlugin::preRender(KeyboardHandler& keyboardHandler,
-                              AbstractManipulator& cameraManipulator)
+void DeflectPlugin::preRender()
 {
     if (_stream)
     {
@@ -90,7 +90,7 @@ void DeflectPlugin::preRender(KeyboardHandler& keyboardHandler,
         _sendSizeHints(*_engine);
 
     if (deflectEnabled && _stream && _stream->isConnected())
-        _handleDeflectEvents(*_engine, keyboardHandler, cameraManipulator);
+        _handleDeflectEvents();
 }
 
 void DeflectPlugin::postRender()
@@ -169,9 +169,7 @@ void DeflectPlugin::_setupSocketListener()
 #endif
 }
 
-void DeflectPlugin::_handleDeflectEvents(Engine& engine,
-                                         KeyboardHandler& keyboardHandler,
-                                         AbstractManipulator& cameraManipulator)
+void DeflectPlugin::_handleDeflectEvents()
 {
     while (_stream->hasEvent())
     {
@@ -180,16 +178,16 @@ void DeflectPlugin::_handleDeflectEvents(Engine& engine,
         {
         case deflect::Event::EVT_PRESS:
             _previousPos =
-                _getWindowPos(event, engine.getFrameBuffer().getSize());
+                _getWindowPos(event, _engine->getFrameBuffer().getSize());
             _pan = _pinch = false;
             break;
         case deflect::Event::EVT_MOVE:
         case deflect::Event::EVT_RELEASE:
         {
             const auto pos =
-                _getWindowPos(event, engine.getFrameBuffer().getSize());
+                _getWindowPos(event, _engine->getFrameBuffer().getSize());
             if (!_pan && !_pinch)
-                cameraManipulator.dragLeft(pos, _previousPos);
+                _cameraManipulator.dragLeft(pos, _previousPos);
             _previousPos = pos;
             _pan = _pinch = false;
             break;
@@ -199,8 +197,8 @@ void DeflectPlugin::_handleDeflectEvents(Engine& engine,
             if (_pinch)
                 break;
             const auto pos =
-                _getWindowPos(event, engine.getFrameBuffer().getSize());
-            cameraManipulator.dragMiddle(pos, _previousPos);
+                _getWindowPos(event, _engine->getFrameBuffer().getSize());
+            _cameraManipulator.dragMiddle(pos, _previousPos);
             _previousPos = pos;
             _pan = true;
             break;
@@ -210,25 +208,25 @@ void DeflectPlugin::_handleDeflectEvents(Engine& engine,
             if (_pan)
                 break;
             const auto pos =
-                _getWindowPos(event, engine.getFrameBuffer().getSize());
+                _getWindowPos(event, _engine->getFrameBuffer().getSize());
             const auto delta =
-                _getZoomDelta(event, engine.getFrameBuffer().getSize());
-            cameraManipulator.wheel(pos, delta * wheelFactor);
+                _getZoomDelta(event, _engine->getFrameBuffer().getSize());
+            _cameraManipulator.wheel(pos, delta * wheelFactor);
             _pinch = true;
             break;
         }
         case deflect::Event::EVT_KEY_PRESS:
         {
-            keyboardHandler.handleKeyboardShortcut(event.text[0]);
+            _keyboardHandler.handleKeyboardShortcut(event.text[0]);
             break;
         }
         case deflect::Event::EVT_VIEW_SIZE_CHANGED:
         {
             Vector2ui newSize(event.dx, event.dy);
-            if (engine.getCamera().getType() == CameraType::stereo)
+            if (_engine->getCamera().getType() == CameraType::stereo)
                 newSize.x() *= 2;
 
-            _appParams.setWindowSize(engine.getSupportedFrameSize(newSize));
+            _appParams.setWindowSize(_engine->getSupportedFrameSize(newSize));
             break;
         }
         case deflect::Event::EVT_CLOSE:

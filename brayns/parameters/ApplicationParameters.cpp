@@ -26,6 +26,7 @@
 
 namespace
 {
+const std::string PARAM_PLUGIN = "plugin";
 const std::string PARAM_WINDOW_SIZE = "window-size";
 const std::string PARAM_CAMERA = "camera";
 const std::string PARAM_BENCHMARKING = "enable-benchmark";
@@ -54,12 +55,13 @@ ApplicationParameters::ApplicationParameters()
     , _jpegCompression(DEFAULT_JPEG_COMPRESSION)
     , _tmpFolder(DEFAULT_TMP_FOLDER)
 {
-    _parameters.add_options()(PARAM_WINDOW_SIZE.c_str(),
-                              po::value<uints>()->multitoken(),
-                              "Window size [int int]")(
-        PARAM_CAMERA.c_str(), po::value<std::string>(),
-        "Camera type [string]")(PARAM_BENCHMARKING.c_str(), po::value<bool>(),
-                                "Enable|Disable benchmarking [bool]")(
+    _parameters.add_options()(PARAM_PLUGIN.c_str(), po::value<std::string>(),
+                              "Plugin name [string]")(
+        PARAM_WINDOW_SIZE.c_str(), po::value<uints>()->multitoken(),
+        "Window size [int int]")(PARAM_CAMERA.c_str(), po::value<std::string>(),
+                                 "Camera type [string]")(
+        PARAM_BENCHMARKING.c_str(), po::value<bool>(),
+        "Enable|Disable benchmarking [bool]")(
         PARAM_JPEG_COMPRESSION.c_str(), po::value<size_t>(),
         "JPEG compression rate (100 is full quality) [int]")(
         PARAM_JPEG_SIZE.c_str(), po::value<uints>()->multitoken(),
@@ -79,6 +81,8 @@ ApplicationParameters::ApplicationParameters()
 
 bool ApplicationParameters::_parse(const po::variables_map& vm)
 {
+    if (vm.count(PARAM_PLUGIN))
+        _plugin = vm[PARAM_PLUGIN].as<std::string>();
     if (vm.count(PARAM_WINDOW_SIZE))
     {
         uints values = vm[PARAM_WINDOW_SIZE].as<uints>();

@@ -5,7 +5,7 @@
 # This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 
 set(BRAYNSPLUGINS_LINK_LIBRARIES
-  PUBLIC braynsCommon braynsIO vmmlib)
+  PRIVATE braynsCommon braynsIO vmmlib)
 
 set(BRAYNSPLUGINS_SOURCES
   engines/EngineFactory.cpp
@@ -56,12 +56,12 @@ if(BRAYNS_NETWORKING_ENABLED)
 endif()
 
 if(libuv_FOUND)
-  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC ${libuv_LIBRARIES})
+  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PRIVATE ${libuv_LIBRARIES})
 endif()
 
 if(BRAYNS_OSPRAY_ENABLED)
   add_subdirectory(engines/ospray)
-  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PUBLIC braynsOSPRayEnginePlugin)
+  list(APPEND BRAYNSPLUGINS_LINK_LIBRARIES PRIVATE braynsOSPRayEnginePlugin)
 endif()
 
 common_library(braynsPlugins)

@@ -64,8 +64,9 @@
 #include <lunchbox/threadPool.h>
 #endif
 
-#include "PluginAPI.h"
+#ifdef BRAYNS_USE_OSPRAY
 #include <ospcommon/library.h>
+#endif
 
 namespace
 {
@@ -1235,7 +1236,6 @@ private:
 
 Brayns::Brayns(int argc, const char** argv)
     : _impl(new Impl(argc, argv, _parametersManager, _extensionPluginFactory))
-    , _pluginAPI(std::make_unique<PluginAPI>(*this))
 {
     _engine = _impl->_engine;
 }
@@ -1279,6 +1279,7 @@ void Brayns::loadPlugins()
     if (pluginName.empty())
         return;
 
+#ifdef BRAYNS_USE_OSPRAY
     try
     {
         ospcommon::Library library(pluginName);
@@ -1296,7 +1297,7 @@ void Brayns::loadPlugins()
 
         ExtensionPlugin* (*createFunc)(PluginAPI*) =
             (ExtensionPlugin * (*)(PluginAPI*))createSym;
-        auto plugin = createFunc(_pluginAPI.get());
+        auto plugin = createFunc(this);
 
         _extensionPluginFactory.add(ExtensionPluginPtr{plugin});
     }
@@ -1304,6 +1305,7 @@ void Brayns::loadPlugins()
     {
         BRAYNS_ERROR << exc.what() << std::endl;
     }
+#endif
 }
 
 bool Brayns::preRender()
@@ -1344,5 +1346,10 @@ KeyboardHandler& Brayns::getKeyboardHandler()
 AbstractManipulator& Brayns::getCameraManipulator()
 {
     return _impl->getCameraManipulator();
+}
+
+Scene& Brayns::getScene()
+{
+    return _engine->getScene();
 }
 }

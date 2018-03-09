@@ -28,16 +28,11 @@ namespace brayns
 class PluginAPI
 {
 public:
-    PluginAPI(Brayns& brayns);
-
-    Scene& getScene();
-    ParametersManager& getParametersManager();
-    ActionInterface* getActionInterface();
-    KeyboardHandler& getKeyboardHandler();
-    AbstractManipulator& getCameraManipulator();
-
-private:
-    class Impl;
-    std::shared_ptr<Impl> _impl;
+    virtual ~PluginAPI() = default;
+    virtual Scene& getScene() = 0;
+    virtual ParametersManager& getParametersManager() = 0;
+    virtual ActionInterface* getActionInterface() = 0;
+    virtual KeyboardHandler& getKeyboardHandler() = 0;
+    virtual AbstractManipulator& getCameraManipulator() = 0;
 };
 }

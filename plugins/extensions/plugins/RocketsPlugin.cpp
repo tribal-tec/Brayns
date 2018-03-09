@@ -32,6 +32,10 @@
 #include <fstream>
 #include <rockets/jsonrpc/helpers.h>
 
+#ifdef BRAYNS_USE_LIBUV
+#include "SocketListener.h"
+#endif
+
 namespace
 {
 const std::string ENDPOINT_API_VERSION = "v1/";

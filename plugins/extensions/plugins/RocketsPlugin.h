@@ -24,10 +24,6 @@
 #include "ExtensionPlugin.h"
 #include "ImageGenerator.h"
 
-#ifdef BRAYNS_USE_LIBUV
-#include "SocketListener.h"
-#endif
-
 #include <brayns/api.h>
 #include <brayns/common/ActionInterface.h>
 #include <brayns/common/Timer.h>
@@ -38,6 +34,7 @@
 namespace brayns
 {
 struct RpcDocumentation;
+class SocketListener;
 
 /**
    The RocketsPlugin is in charge of exposing a both an http/REST interface to

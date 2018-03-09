@@ -25,6 +25,7 @@
 #include <brayns/api.h>
 #include <brayns/common/types.h>
 
+#include <brayns/PluginAPI.h>
 #include <brayns/common/ActionInterface.h>
 #include <brayns/parameters/ParametersManager.h>
 #include <plugins/extensions/ExtensionPluginFactory.h>
@@ -51,7 +52,7 @@ namespace brayns
 
     This object exposes the basic API for Brayns
 */
-class Brayns
+class Brayns : public PluginAPI
 {
 public:
     BRAYNS_API Brayns(int argc, const char** argv);
@@ -143,17 +144,17 @@ public:
     /**
      * @return The parameter manager
      */
-    BRAYNS_API ParametersManager& getParametersManager();
+    BRAYNS_API ParametersManager& getParametersManager() final;
 
     /**
      * Gets the keyboard handler
      */
-    BRAYNS_API KeyboardHandler& getKeyboardHandler();
+    BRAYNS_API KeyboardHandler& getKeyboardHandler() final;
 
     /**
      * Gets the camera manipulator
      */
-    BRAYNS_API AbstractManipulator& getCameraManipulator();
+    BRAYNS_API AbstractManipulator& getCameraManipulator() final;
 
     /**
      * Create and add the given plugin type to Brayns. The constructor signature
@@ -168,12 +169,18 @@ public:
     template <typename T>
     std::shared_ptr<T> addPlugin()
     {
-        auto plugin{std::make_shared<T>(_engine, _pluginAPI.get())};
+        auto plugin{std::make_shared<T>(_engine, this)};
         _extensionPluginFactory.add(plugin);
         return plugin;
     }
 
-    ActionInterface* getActionInterface() { return _actionInterface.get(); }
+    ActionInterface* getActionInterface() final
+    {
+        return _actionInterface.get();
+    }
+
+    Scene& getScene() final;
+
 private:
     EnginePtr _engine;
     ParametersManager _parametersManager;
@@ -182,8 +189,6 @@ private:
 
     struct Impl;
     std::unique_ptr<Impl> _impl;
-
-    std::unique_ptr<PluginAPI> _pluginAPI;
 };
 }
 #endif // BRAYNS

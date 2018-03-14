@@ -27,6 +27,7 @@ set(BRAYNSCOMMON_SOURCES
   utils/base64/base64.cpp
   utils/ImageUtils.cpp
   utils/Utils.cpp
+  volume/Volume.cpp
 )
 
 set(BRAYNSCOMMON_PUBLIC_HEADERS
@@ -69,6 +70,7 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   tasks/TaskRuntimeError.h
   types.h
   utils/Utils.h
+  volume/Volume.h
   volume/VolumeHandler.h
 )
 

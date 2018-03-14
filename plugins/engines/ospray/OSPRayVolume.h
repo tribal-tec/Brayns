@@ -20,33 +20,28 @@
 
 #pragma once
 
-#include <brayns/common/types.h>
+#include <brayns/common/volume/Volume.h>
+
+#include <ospray/SDK/volume/Volume.h>
 
 namespace brayns
 {
-class Volume
+class OSPRayVolume : public Volume
 {
 public:
-    virtual ~Volume() = default;
+    OSPRayVolume(OSPTransferFunction transferFunction);
+    ~OSPRayVolume();
 
-    virtual void setDimensions(const Vector3ui& dim) = 0;
-    virtual void setGridSpacing(const Vector3f& spacing) = 0;
-    virtual void setDataRange(const Vector2f& range) = 0;
+    void setDimensions(const Vector3ui& dim) final;
+    void setGridSpacing(const Vector3f& spacing) final;
+    void setDataRange(const Vector2f& range) final;
+    void setDataType(const DataType type) final;
+    void setBrick(void* data, const Vector3ui& position,
+                  const Vector3ui& size) final;
+    void commit() final;
 
-    enum class DataType
-    {
-        FLOAT,
-        UINT8,
-        UINT16,
-        UINT32,
-        INT8,
-        INT16,
-        INT32
-    };
-    virtual void setDataType(const DataType type) = 0;
-    virtual void setBrick(void* data, const Vector3ui& position,
-                          const Vector3ui& size) = 0;
-
-    virtual void commit() = 0;
+    OSPVolume impl() const { return _volume; }
+private:
+    OSPVolume _volume;
 };
 }

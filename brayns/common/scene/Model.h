@@ -161,6 +161,8 @@ public:
 
     BRAYNS_API virtual ~Model() = default;
 
+    virtual VolumePtr addVolume() = 0;
+
     virtual void commit() = 0;
 
     /**
@@ -323,6 +325,8 @@ protected:
     SDFGeometryData _sdf;
     bool _sdfGeometriesDirty{false};
     bool _instancesDirty{true};
+
+    Volumes _volumes;
 
     size_t _sizeInBytes{0};
 

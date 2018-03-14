@@ -227,6 +227,27 @@ bool OSPRayScene::commitTransferFunctionData()
     if (!_transferFunction.isModified())
         return false;
 
+//    Vector3fs colors;
+//    colors.reserve(_transferFunction.getDiffuseColors().size());
+//    floats opacities;
+//    opacities.reserve(_transferFunction.getDiffuseColors().size());
+
+//    for (const auto& i : _transferFunction.getDiffuseColors())
+//    {
+//        colors.push_back({i.x(), i.y(), i.z()});
+//        opacities.push_back(i.w());
+//    }
+
+//    OSPData colorsData = ospNewData(colors.size(), OSP_FLOAT3, colors.data());
+//    ospSetData(_ospTransferFunction, "colors", colorsData);
+//    ospSet2f(_ospTransferFunction, "valueRange",
+//             _transferFunction.getValuesRange().x(),
+//             _transferFunction.getValuesRange().y());
+//    OSPData opacityValuesData =
+//        ospNewData(opacities.size(), OSP_FLOAT, opacities.data());
+//    ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
+//    ospCommit(_ospTransferFunction);
+
     if (_ospTransferFunctionDiffuseData)
         ospRelease(_ospTransferFunctionDiffuseData);
 

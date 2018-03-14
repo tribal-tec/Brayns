@@ -19,7 +19,9 @@
  */
 
 #include "OSPRayModel.h"
+
 #include "OSPRayMaterial.h"
+#include "OSPRayVolume.h"
 #include "utils.h"
 
 #include <brayns/common/Transformation.h>
@@ -30,6 +32,11 @@ namespace brayns
 {
 OSPRayModel::~OSPRayModel()
 {
+    if (_ospVolumeData)
+        ospRelease(_ospVolumeData);
+
+    ospRelease(_ospTransferFunction);
+
     if (_useSimulationModel)
     {
         for (auto geom : _ospExtendedSpheres)
@@ -364,6 +371,13 @@ void OSPRayModel::_commitSDFGeometries()
         else
             ospAddGeometry(_model, _ospSDFGeometryRefs[materialId]);
     }
+}
+
+VolumePtr OSPRayModel::addVolume()
+{
+    auto volume = std::make_shared<OSPRayVolume>(_ospTransferFunction);
+    ospAddVolume(_model, volume->impl());
+    return volume;
 }
 
 void OSPRayModel::commit()

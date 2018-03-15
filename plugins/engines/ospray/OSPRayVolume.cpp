@@ -20,10 +20,14 @@
 
 #include "OSPRayVolume.h"
 
+#include <brayns/parameters/VolumeParameters.h>
+
 namespace brayns
 {
-OSPRayVolume::OSPRayVolume(OSPTransferFunction transferFunction)
-    : _volume(ospNewVolume("block_bricked_volume"))
+OSPRayVolume::OSPRayVolume(VolumeParameters &params,
+                           OSPTransferFunction transferFunction)
+    : _parameters(params)
+    , _volume(ospNewVolume("block_bricked_volume"))
 {
     ospSetObject(_volume, "transferFunction", transferFunction);
 }
@@ -89,6 +93,19 @@ void OSPRayVolume::setBrick(void *data, const Vector3ui &position,
 
 void OSPRayVolume::commit()
 {
+    ospSet1i(_volume, "gradientShadingEnabled",
+             _parameters.getGradientShading());
+    ospSet1f(_volume, "adaptiveMaxSamplingRate",
+             _parameters.getAdaptiveMaxSamplingRate());
+    ospSet1i(_volume, "adaptiveSampling", _parameters.getAdaptiveSampling());
+    ospSet1i(_volume, "singleShade", true);
+    ospSet1i(_volume, "preIntegration", true);
+    ospSet1f(_volume, "samplingRate", _parameters.getSamplingRate());
+    ospSet3fv(_volume, "specular", &_parameters.getSpecular().x());
+    ospSet3fv(_volume, "volumeClippingBoxLower",
+              &_parameters.getClipBox().getMin().x());
+    ospSet3fv(_volume, "volumeClippingBoxUpper",
+              &_parameters.getClipBox().getMax().x());
     ospCommit(_volume);
 }
 }

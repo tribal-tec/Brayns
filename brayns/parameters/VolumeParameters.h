@@ -49,6 +49,34 @@ public:
     const Vector3f& getElementSpacing() const { return _elementSpacing; }
     /** Volume offset */
     const Vector3f& getOffset() const { return _offset; }
+    void setGradientShading(const bool enabled)
+    {
+        _updateValue(_gradientShading, enabled);
+    }
+    bool getGradientShading() const { return _gradientShading; }
+    void setAdaptiveSampling(const bool enabled)
+    {
+        _updateValue(_adaptiveSampling, enabled);
+    }
+    bool getAdaptiveSampling() const { return _adaptiveSampling; }
+    void setAdaptiveMaxSamplingRate(const float value)
+    {
+        _updateValue(_adaptiveMaxSamplingRate, value);
+    }
+    float getAdaptiveMaxSamplingRate() const
+    {
+        return _adaptiveMaxSamplingRate;
+    }
+
+    void setSamplingRate(const float value)
+    {
+        _updateValue(_samplingRate, value);
+    }
+    float getSamplingRate() const { return _samplingRate; }
+    void setSpecular(const Vector3f& value) { _updateValue(_specular, value); }
+    const Vector3f& getSpecular() const { return _specular; }
+    void setClipBox(const Boxf& value) { _updateValue(_clipBox, value); }
+    const Boxf& getClipBox() const { return _clipBox; }
 protected:
     void parse(const po::variables_map& vm) final;
 
@@ -57,6 +85,13 @@ protected:
     Vector3ui _dimensions;
     Vector3f _elementSpacing;
     Vector3f _offset;
+
+    bool _gradientShading{false};
+    float _adaptiveMaxSamplingRate{2.f};
+    bool _adaptiveSampling{true};
+    float _samplingRate{0.125f};
+    Vector3f _specular{0.3f, 0.3f, 0.3f};
+    Boxf _clipBox;
 
     SERIALIZATION_FRIEND(VolumeParameters)
 };

@@ -29,7 +29,8 @@ namespace brayns
 class OSPRayVolume : public Volume
 {
 public:
-    OSPRayVolume(OSPTransferFunction transferFunction);
+    OSPRayVolume(VolumeParameters& params,
+                 OSPTransferFunction transferFunction);
     ~OSPRayVolume();
 
     void setDimensions(const Vector3ui& dim) final;
@@ -42,6 +43,7 @@ public:
 
     OSPVolume impl() const { return _volume; }
 private:
+    VolumeParameters& _parameters;
     OSPVolume _volume;
 };
 }

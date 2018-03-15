@@ -496,6 +496,15 @@ inline void init(brayns::VolumeParameters* v, ObjectHandler* h)
                     Flags::Optional);
     h->add_property("volume_offset", Vector3fArray(v->_offset),
                     Flags::Optional);
+
+    h->add_property("gradient_shading", &v->_gradientShading, Flags::Optional);
+    h->add_property("adaptive_max_sampling_rate", &v->_adaptiveMaxSamplingRate,
+                    Flags::Optional);
+    h->add_property("adaptive_sampling", &v->_adaptiveSampling,
+                    Flags::Optional);
+    h->add_property("sampling_rate", &v->_samplingRate, Flags::Optional);
+    h->add_property("specular", Vector3fArray(v->_specular), Flags::Optional);
+    h->add_property("clip_box", &v->_clipBox, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

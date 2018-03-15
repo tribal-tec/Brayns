@@ -327,6 +327,7 @@ protected:
     bool _instancesDirty{true};
 
     Volumes _volumes;
+    bool _volumesDirty{true};
 
     size_t _sizeInBytes{0};
 

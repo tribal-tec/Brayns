@@ -375,8 +375,14 @@ void OSPRayModel::_commitSDFGeometries()
 
 VolumePtr OSPRayModel::addVolume()
 {
-    auto volume = std::make_shared<OSPRayVolume>(_ospTransferFunction);
+    VolumeParameters params;
+    auto volume =
+        std::make_shared<OSPRayVolume>(params/*_parametersManager.getVolumeParameters()*/,
+                                       _ospTransferFunction);
+    _volumes.push_back(volume);
     ospAddVolume(_model, volume->impl());
+    return volume;
+    _volumesDirty = true;
     return volume;
 }
 
@@ -432,6 +438,18 @@ void OSPRayModel::commit()
 
     // handled by the scene
     _instancesDirty = false;
+
+    //const auto& vp = _parametersManager.getVolumeParameters();
+    //if (vp.isModified())
+    if(_volumesDirty)
+    {
+        for (auto volume : _volumes)
+        {
+            auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+            ospVolume->commit();
+        }
+        _volumesDirty = false;
+    }
 
     // Commit models
     ospCommit(_model);

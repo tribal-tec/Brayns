@@ -184,7 +184,7 @@ void Model::updateSDFGeometryNeighbours(
 bool Model::dirty() const
 {
     return _spheresDirty || _cylindersDirty || _conesDirty ||
-           _trianglesMeshesDirty || _sdfGeometriesDirty || _instancesDirty;
+           _trianglesMeshesDirty || _sdfGeometriesDirty || _instancesDirty || _volumesDirty;
 }
 
 void Model::setMaterialsColorMap(const MaterialsColorMap colorMap)

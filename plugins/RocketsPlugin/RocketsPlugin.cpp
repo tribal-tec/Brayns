@@ -733,7 +733,7 @@ public:
     {
         auto& params = _parametersManager.getVolumeParameters();
         auto postUpdate = [this](VolumeParameters&) {
-            _engine->markRebuildScene();
+            //_engine->markRebuildScene();
         };
         _handleGET(ENDPOINT_VOLUME_PARAMS, params);
         _handlePUT(ENDPOINT_VOLUME_PARAMS, params, postUpdate);

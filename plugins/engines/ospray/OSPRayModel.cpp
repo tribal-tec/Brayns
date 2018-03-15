@@ -32,9 +32,6 @@ namespace brayns
 {
 OSPRayModel::~OSPRayModel()
 {
-    if (_ospVolumeData)
-        ospRelease(_ospVolumeData);
-
     ospRelease(_ospTransferFunction);
 
     if (_useSimulationModel)
@@ -373,17 +370,33 @@ void OSPRayModel::_commitSDFGeometries()
     }
 }
 
-VolumePtr OSPRayModel::addVolume()
+VolumePtr OSPRayModel::createVolume()
 {
     VolumeParameters params;
-    auto volume =
-        std::make_shared<OSPRayVolume>(params/*_parametersManager.getVolumeParameters()*/,
-                                       _ospTransferFunction);
+    return std::make_shared<OSPRayVolume>(
+        params/*_parametersManager.getVolumeParameters()*/, _ospTransferFunction);
+}
+
+void OSPRayModel::addVolume(VolumePtr volume)
+{
     _volumes.push_back(volume);
-    ospAddVolume(_model, volume->impl());
-    return volume;
     _volumesDirty = true;
-    return volume;
+
+    auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+    ospAddVolume(_model, ospVolume->impl());
+}
+
+void OSPRayModel::removeVolume(VolumePtr volume)
+{
+    auto i = std::find(_volumes.begin(), _volumes.end(), volume);
+    if (i != _volumes.end())
+    {
+        _volumes.erase(i);
+        _volumesDirty = true;
+    }
+
+    auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+    ospRemoveVolume(_model, ospVolume->impl());
 }
 
 void OSPRayModel::commit()

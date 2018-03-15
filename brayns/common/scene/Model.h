@@ -161,7 +161,9 @@ public:
 
     BRAYNS_API virtual ~Model() = default;
 
-    virtual VolumePtr addVolume() = 0;
+    virtual VolumePtr createVolume() = 0;
+    virtual void addVolume(VolumePtr) = 0;
+    virtual void removeVolume(VolumePtr) = 0;
 
     virtual void commit() = 0;
 

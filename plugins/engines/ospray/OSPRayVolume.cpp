@@ -60,35 +60,45 @@ void OSPRayVolume::setDataType(const DataType type)
     {
     case DataType::FLOAT:
         ospSetString(_volume, "voxelType", "float");
+        _dataSize = 4;
         break;
     case DataType::UINT8:
         ospSetString(_volume, "voxelType", "uchar");
+        _dataSize = 1;
         break;
     case DataType::UINT16:
         ospSetString(_volume, "voxelType", "ushort");
+        _dataSize = 2;
         break;
     case DataType::UINT32:
         ospSetString(_volume, "voxelType", "uint");
+        _dataSize = 4;
         break;
     case DataType::INT8:
         ospSetString(_volume, "voxelType", "char");
+        _dataSize = 1;
         break;
     case DataType::INT16:
         ospSetString(_volume, "voxelType", "short");
+        _dataSize = 2;
         break;
     case DataType::INT32:
         ospSetString(_volume, "voxelType", "int");
+        _dataSize = 4;
         break;
     }
 }
 
-void OSPRayVolume::setBrick(void *data, const Vector3ui &position,
-                            const Vector3ui &size_)
+size_t OSPRayVolume::setBrick(void *data, const Vector3ui &position,
+                              const Vector3ui &size_)
 {
     const ospcommon::vec3i pos{int(position.x()), int(position.y()),
                                int(position.z())};
     const ospcommon::vec3i size{int(size_.x()), int(size_.y()), int(size_.z())};
     ospSetRegion(_volume, data, (osp::vec3i &)pos, (osp::vec3i &)size);
+    const size_t sizeInBytes = size_.product() * _dataSize;
+    _sizeInBytes += sizeInBytes;
+    return sizeInBytes;
 }
 
 void OSPRayVolume::commit()

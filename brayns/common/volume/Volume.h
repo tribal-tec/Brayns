@@ -44,9 +44,13 @@ public:
         INT32
     };
     virtual void setDataType(const DataType type) = 0;
-    virtual void setBrick(void* data, const Vector3ui& position,
-                          const Vector3ui& size) = 0;
+    virtual size_t setBrick(void* data, const Vector3ui& position,
+                            const Vector3ui& size) = 0;
 
     virtual void commit() = 0;
+
+    size_t getSizeInBytes() const { return _sizeInBytes; }
+protected:
+    size_t _sizeInBytes{0};
 };
 }

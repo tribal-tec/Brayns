@@ -37,12 +37,13 @@ public:
     void setGridSpacing(const Vector3f& spacing) final;
     void setDataRange(const Vector2f& range) final;
     void setDataType(const DataType type) final;
-    void setBrick(void* data, const Vector3ui& position,
-                  const Vector3ui& size) final;
+    size_t setBrick(void* data, const Vector3ui& position,
+                    const Vector3ui& size) final;
     void commit() final;
 
     OSPVolume impl() const { return _volume; }
 private:
+    size_t _dataSize{0};
     VolumeParameters& _parameters;
     OSPVolume _volume;
 };

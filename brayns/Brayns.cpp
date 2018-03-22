@@ -506,6 +506,13 @@ private:
                 colorMapFilename, sceneParameters.getColorMapRange(), scene);
         }
 
+        if (!geometryParameters.getDataBlob().empty())
+        {
+            _loadXYZBFile(updateProgress, geometryParameters.getDataBlob());
+            loadingProgress += tic;
+            geometryParameters.clearDataBlob();
+        }
+
         if (!geometryParameters.getLoadCacheFile().empty())
         {
             scene.loadFromCacheFile();
@@ -631,7 +638,8 @@ private:
     /**
         Loads data from a XYZR file (command line parameter --xyzr-file)
     */
-    void _loadXYZBFile(const Progress::UpdateCallback& progressUpdate)
+    void _loadXYZBFile(const Progress::UpdateCallback& progressUpdate,
+                       const std::string& blob = std::string())
     {
         // Load XYZB File
         auto& geometryParameters = _parametersManager.getGeometryParameters();
@@ -640,8 +648,11 @@ private:
                     << std::endl;
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
-        if (!xyzbLoader.importFromBinaryFile(geometryParameters.getXYZBFile(),
-                                             scene))
+        if (!blob.empty())
+            if (!xyzbLoader.importFromBlob(blob, scene))
+                BRAYNS_ERROR << "Failed to import xyz from blob" << std::endl;
+
+        if (!xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene))
             BRAYNS_ERROR << "Failed to import "
                          << geometryParameters.getXYZBFile() << std::endl;
     }

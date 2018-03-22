@@ -31,6 +31,53 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 {
 }
 
+bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
+{
+    BRAYNS_INFO << "Loading xyz file from blob" << std::endl;
+
+    SpheresMap& spheres = scene.getSpheres();
+    bool validParsing = true;
+    std::string line;
+
+    std::stringstream stream(blob);
+
+    size_t numlines = 0;
+    {
+        numlines = std::count(std::istreambuf_iterator<char>(stream),
+                              std::istreambuf_iterator<char>(), '\n');
+    }
+    stream.seekg(0);
+
+    while (validParsing && std::getline(stream, line))
+    {
+        std::vector<float> lineData;
+        std::stringstream lineStream(line);
+
+        float value;
+        while (lineStream >> value)
+            lineData.push_back(value);
+
+        switch (lineData.size())
+        {
+        case 3:
+        {
+            const Vector3f position(lineData[0], lineData[1], lineData[2]);
+            scene.addSphere(0,
+                            Sphere(position,
+                                   _geometryParameters.getRadiusMultiplier()));
+            break;
+        }
+        default:
+            BRAYNS_ERROR << "Invalid line: " << line << std::endl;
+            validParsing = false;
+            break;
+        }
+        updateProgress("Loading spheres...", spheres[0].size(), numlines);
+    }
+
+    return validParsing;
+}
+
 bool XYZBLoader::importFromFile(const std::string& filename, Scene& scene)
 {
     BRAYNS_INFO << "Loading xyz file from " << filename << std::endl;

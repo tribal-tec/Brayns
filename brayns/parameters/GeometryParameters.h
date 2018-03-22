@@ -309,6 +309,9 @@ public:
         return _connectivityConfiguration._connectivityScale;
     }
 
+    void appendDataBlob(const std::string& blob) { _datablob += blob; }
+    void clearDataBlob() { _datablob.clear(); }
+    const std::string& getDataBlob() const { return _datablob; }
 protected:
     bool _parse(const po::variables_map& vm) final;
 
@@ -356,6 +359,8 @@ protected:
     MemoryMode _memoryMode;
 
     ConnectivityConfiguration _connectivityConfiguration;
+
+    std::string _datablob;
 
     SERIALIZATION_FRIEND(GeometryParameters)
 };

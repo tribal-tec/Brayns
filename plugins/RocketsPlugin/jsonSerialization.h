@@ -120,8 +120,18 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
 #define Vector3fArray(vec) \
     reinterpret_cast<std::array<float, 3>*>(&(vec).array[0])
 
+struct Bla
+{
+    size_t size;
+};
+
 namespace staticjson
 {
+inline void init(Bla* s, ObjectHandler* h)
+{
+    h->add_property("size", &s->size);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
 inline void init(brayns::SnapshotParams* s, ObjectHandler* h)
 {
     h->add_property("format", &s->format);

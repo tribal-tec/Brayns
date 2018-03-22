@@ -252,6 +252,23 @@ public:
             }
             return responses;
         });
+
+        _rocketsServer->handleBinary(
+            std::bind(&Impl::_processWebsocketBinaryMessage, this,
+                      std::placeholders::_1));
+    }
+
+    rockets::ws::Response _processWebsocketBinaryMessage(
+        const rockets::ws::Request& request)
+    {
+        if (_binaryLeft == 0)
+            return rockets::ws::Response("Missing binary rpc?");
+        _parametersManager.getGeometryParameters().appendDataBlob(
+            request.message);
+        _binaryLeft -= request.message.size();
+        if (_binaryLeft == 0)
+            _engine->markRebuildScene();
+        return {};
     }
 
     void _broadcastWebsocketMessages()
@@ -411,6 +428,12 @@ public:
         _handleFrameBuffer();
         _handleSimulationHistogram();
         _handleVolumeHistogram();
+
+        RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
+        _handleRPC<Bla, bool>("binary", doc, [this](const Bla& settings) {
+            _binaryLeft = settings.size;
+            return true;
+        });
 
         _handleInspect();
         _handleQuit();
@@ -719,6 +742,7 @@ public:
 
     Timer _timer;
     float _leftover{0.f};
+    size_t _binaryLeft{0};
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

@@ -124,7 +124,15 @@ public:
             brayns->render();
     }
 
-    brayns::Brayns& getBrayns() { return *brayns; }
+    auto& getBrayns() { return *brayns; }
+    auto& getWsClient() { return wsClient; }
+    auto& getJsonRpcClient() { return client; }
+    void process()
+    {
+        wsClient.process(10);
+        brayns->preRender();
+    }
+
 private:
     static ClientServer* _instance;
     std::unique_ptr<brayns::Brayns> brayns;
@@ -160,4 +168,19 @@ void makeNotification(const std::string& method)
 brayns::Camera& getCamera()
 {
     return ClientServer::instance().getBrayns().getEngine().getCamera();
+}
+
+auto& getWsClient()
+{
+    return ClientServer::instance().getWsClient();
+}
+
+auto& getJsonRpcClient()
+{
+    return ClientServer::instance().getJsonRpcClient();
+}
+
+void process()
+{
+    ClientServer::instance().process();
 }

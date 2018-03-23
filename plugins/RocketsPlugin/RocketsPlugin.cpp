@@ -261,12 +261,12 @@ public:
     rockets::ws::Response _processWebsocketBinaryMessage(
         const rockets::ws::Request& request)
     {
-        if (_binaryRequests.count(request.requestID) == 0)
+        if (_binaryRequests.count(request.clientID) == 0)
             return rockets::ws::Response(
                 "Missing receive_binary RPC or cancelled?",
                 rockets::ws::Recipient::sender, rockets::ws::Format::text);
 
-        auto& req = _binaryRequests[request.requestID];
+        auto& req = _binaryRequests[request.clientID];
         if (req.byteLeft.empty() || req.byteLeft[0] == 0)
             return rockets::ws::Response(
                 "Missing receive_binary RPC or cancelled?",
@@ -282,7 +282,7 @@ public:
         {
             _engine->markRebuildScene();
             req.done();
-            _binaryRequests.erase(request.requestID);
+            _binaryRequests.erase(request.clientID);
         }
 
         return {};
@@ -386,7 +386,8 @@ public:
     template <class P, class R>
     void _handleAsyncRPC(
         const std::string& method, const RpcDocumentation& doc,
-        std::function<void(P, std::string, rockets::jsonrpc::AsyncResponse)>
+        std::function<void(P, std::string, uintptr_t,
+                           rockets::jsonrpc::AsyncResponse)>
             action,
         rockets::jsonrpc::AsyncReceiver::CancelRequestCallback cancel)
     {
@@ -657,7 +658,7 @@ public:
         _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
             [ engine = _engine, &imageGenerator = _imageGenerator ](
-                const SnapshotParams& params, const std::string&,
+                const SnapshotParams& params, const std::string&, uintptr_t,
                 rockets::jsonrpc::AsyncResponse callback) {
                 try
                 {
@@ -695,11 +696,12 @@ public:
         _handleAsyncRPC<std::vector<BinaryParams>, bool>(
             "receive_binary", doc,
             [this](const std::vector<BinaryParams>& params, const std::string& requestID,
+                   uintptr_t clientID,
                    rockets::jsonrpc::AsyncResponse callback) {
                 const std::vector<std::string> supportedTypes{"foo", "bla",
-                                                              "wtf"};
+                                                              "xyz"};
 
-                if (_binaryRequests.count(requestID) != 0)
+                if (_binaryRequests.count(clientID) != 0)
                 {
                     callback(rockets::jsonrpc::Response{
                         rockets::jsonrpc::Response::Error{
@@ -708,6 +710,7 @@ public:
                 }
 
                 BinaryRequest request;
+                request.id = requestID;
                 for (const auto& param : params)
                 {
                     bool unsupported =
@@ -730,11 +733,17 @@ public:
                 request.done = [callback] {
                     callback(rockets::jsonrpc::Response{to_json(true)});
                 };
-                _binaryRequests.emplace(requestID, request);
+                _binaryRequests.emplace(clientID, request);
             },
             [&params = _parametersManager.getGeometryParameters(), &requests = _binaryRequests] (const std::string& requestID){
-                requests.erase(requestID);
-                params.clearDataBlob();
+                for(auto& req : requests)
+                    if(req.second.id == requestID)
+                    {
+                        std::cout << "Cancelled " << requestID << std::endl;
+                        requests.erase(req.first);
+                        params.clearDataBlob();
+                        break;
+                    }
             });
     }
 
@@ -809,12 +818,12 @@ public:
 
     struct BinaryRequest
     {
-        size_t id;
+        std::string id;
         std::deque<size_t> byteLeft;
         std::function<void()> done;
     };
 
-    std::map<std::string, BinaryRequest> _binaryRequests;
+    std::map<uintptr_t, BinaryRequest> _binaryRequests;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

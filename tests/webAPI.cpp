@@ -34,95 +34,138 @@
 
 BOOST_GLOBAL_FIXTURE(ClientServer);
 
-// BOOST_AUTO_TEST_CASE(reset_camera)
-//{
-//    const auto target = getCamera().getTarget();
-//    getCamera().setTarget({1, 2, 3});
-//    makeNotification("reset-camera");
-//    BOOST_CHECK_EQUAL(getCamera().getTarget(), target);
-//}
+BOOST_AUTO_TEST_CASE(reset_camera)
+{
+    const auto target = getCamera().getTarget();
+    getCamera().setTarget({1, 2, 3});
+    makeNotification("reset-camera");
+    BOOST_CHECK_EQUAL(getCamera().getTarget(), target);
+}
 
-// BOOST_AUTO_TEST_CASE(inspect)
-//{
-//    auto inspectResult =
-//        makeRequest<std::array<float, 2>, brayns::Renderer::PickResult>(
-//            "inspect", {{0.5, 0.5}});
-//    BOOST_CHECK(inspectResult.hit);
-//    BOOST_CHECK(inspectResult.pos.equals(
-//        {0.500001490116119, 0.500001490116119, 1.19209289550781e-7}));
+BOOST_AUTO_TEST_CASE(inspect)
+{
+    auto inspectResult =
+        makeRequest<std::array<float, 2>, brayns::Renderer::PickResult>(
+            "inspect", {{0.5, 0.5}});
+    BOOST_CHECK(inspectResult.hit);
+    BOOST_CHECK(inspectResult.pos.equals(
+        {0.500001490116119, 0.500001490116119, 1.19209289550781e-7}));
 
-//    auto failedInspectResult =
-//        makeRequest<std::array<float, 2>, brayns::Renderer::PickResult>(
-//            "inspect", {{10, -10}});
-//    BOOST_CHECK(!failedInspectResult.hit);
-//}
+    auto failedInspectResult =
+        makeRequest<std::array<float, 2>, brayns::Renderer::PickResult>(
+            "inspect", {{10, -10}});
+    BOOST_CHECK(!failedInspectResult.hit);
+}
 
-//#ifdef BRAYNS_USE_MAGICKPP
-// BOOST_AUTO_TEST_CASE(snapshot)
-//{
-//    brayns::SnapshotParams params;
-//    params.format = "jpg";
-//    params.size = {5, 5};
-//    params.quality = 75;
+#ifdef BRAYNS_USE_MAGICKPP
+BOOST_AUTO_TEST_CASE(snapshot)
+{
+    brayns::SnapshotParams params;
+    params.format = "jpg";
+    params.size = {5, 5};
+    params.quality = 75;
 
-//    auto image =
-//        makeRequest<brayns::SnapshotParams,
-//                    brayns::ImageGenerator::ImageBase64>("snapshot", params);
-//    BOOST_CHECK_EQUAL(image.data,
-//                      "/9j/4AAQSkZJRgABAQAAAQABAAD/"
-//                      "2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4n"
-//                      "ICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/"
-//                      "2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy"
-//                      "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/"
-//                      "wAARCAAFAAUDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/"
-//                      "xAAgEAABAwMFAQAAAAAAAAAAAAACAAEEAwURBxIhMkGB/"
-//                      "8QAFQEBAQAAAAAAAAAAAAAAAAAABAb/"
-//                      "xAAcEQACAgIDAAAAAAAAAAAAAAABAgADBEEFEdH/2gAMAwEAAhEDEQA/"
-//                      "AJ0PVMbfBjwxsrmMekFJiKU3O0WHPT3GfqIir6OLxGqUlNDZ9hVsboT/"
-//                      "2Q==");
-//}
-//#endif
+    auto image =
+        makeRequest<brayns::SnapshotParams,
+                    brayns::ImageGenerator::ImageBase64>("snapshot", params);
+    BOOST_CHECK_EQUAL(image.data,
+                      "/9j/4AAQSkZJRgABAQAAAQABAAD/"
+                      "2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4n"
+                      "ICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/"
+                      "2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy"
+                      "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/"
+                      "wAARCAAFAAUDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/"
+                      "xAAfEAABBAAHAAAAAAAAAAAAAAABAAIRIQMEBxIVMUH/"
+                      "xAAVAQEBAAAAAAAAAAAAAAAAAAACBf/"
+                      "EABkRAAEFAAAAAAAAAAAAAAAAAAABAxETUf/"
+                      "aAAwDAQACEQMRAD8AiDWoBu3gHOEky/OibMxWGKHQ9gWSbREVGhvASp/"
+                      "/2Q==");
+}
+#endif
 
-// BOOST_AUTO_TEST_CASE(snapshot_empty_params)
-//{
-//    BOOST_CHECK_THROW((makeRequest<brayns::SnapshotParams,
-//                                   brayns::ImageGenerator::ImageBase64>(
-//                          "snapshot", brayns::SnapshotParams())),
-//                      rockets::jsonrpc::response_error);
-//}
+BOOST_AUTO_TEST_CASE(snapshot_empty_params)
+{
+    BOOST_CHECK_THROW((makeRequest<brayns::SnapshotParams,
+                                   brayns::ImageGenerator::ImageBase64>(
+                          "snapshot", brayns::SnapshotParams())),
+                      rockets::jsonrpc::response_error);
+}
 
-// BOOST_AUTO_TEST_CASE(snapshot_illegal_format)
-//{
-//    brayns::SnapshotParams params;
-//    params.size = {5, 5};
-//    params.format = "";
-//    BOOST_CHECK_THROW(
-//        (makeRequest<brayns::SnapshotParams,
-//                     brayns::ImageGenerator::ImageBase64>("snapshot",
-//                     params)),
-//        rockets::jsonrpc::response_error);
-//}
+BOOST_AUTO_TEST_CASE(snapshot_illegal_format)
+{
+    brayns::SnapshotParams params;
+    params.size = {5, 5};
+    params.format = "";
+    BOOST_CHECK_THROW(
+        (makeRequest<brayns::SnapshotParams,
+                     brayns::ImageGenerator::ImageBase64>("snapshot", params)),
+        rockets::jsonrpc::response_error);
+}
 
-// BOOST_AUTO_TEST_CASE(receive_illegal_binary)
-//{
-//    brayns::BinaryParams params;
-//    BOOST_CHECK_THROW((makeRequest<std::vector<brayns::BinaryParams>,
-//                                   bool>(
-//                           "receive_binary", {params})),
-//                      rockets::jsonrpc::response_error);
+BOOST_AUTO_TEST_CASE(receive_binary_illegal)
+{
+    const std::string illegal("illegal");
+    getWsClient().sendBinary(illegal.data(), illegal.size());
+    process();
+    // nothing to test, Brayns ignores the message and prints a warning
+}
 
-//    params.type = "blub";
-//    BOOST_CHECK_THROW((makeRequest<std::vector<brayns::BinaryParams>,
-//                                   bool>(
-//                           "receive_binary", {params})),
-//                      rockets::jsonrpc::response_error);
-//}
+BOOST_AUTO_TEST_CASE(receive_binary_single_file_unsupported)
+{
+    brayns::BinaryParams params;
+    try
+    {
+        makeRequest<std::vector<brayns::BinaryParams>, bool>("receive_binary",
+                                                             {params});
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1729);
+        BOOST_REQUIRE(!e.data.empty());
+        brayns::BinaryError error;
+        BOOST_CHECK(from_json(error, e.data));
+        BOOST_CHECK_EQUAL(error.index, 0);
+        BOOST_CHECK_EQUAL(error.supportedTypes.size(), 3);
+    }
+
+    params.type = "blub";
+    BOOST_CHECK_THROW((makeRequest<std::vector<brayns::BinaryParams>, bool>(
+                          "receive_binary", {params})),
+                      rockets::jsonrpc::response_error);
+
+    params.type = "xyz";
+    params.size = 0;
+    BOOST_CHECK_THROW((makeRequest<std::vector<brayns::BinaryParams>, bool>(
+                          "receive_binary", {params})),
+                      rockets::jsonrpc::response_error);
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_multiple_files_one_unsupported)
+{
+    std::vector<brayns::BinaryParams> params{3, {4, ""}};
+    params[0].type = "xyz";
+    params[1].type = "wrong";
+    params[2].type = "abc";
+    try
+    {
+        makeRequest<std::vector<brayns::BinaryParams>, bool>("receive_binary",
+                                                             params);
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_REQUIRE(!e.data.empty());
+        brayns::BinaryError error;
+        BOOST_CHECK(from_json(error, e.data));
+        BOOST_CHECK_EQUAL(error.index, 1); // fails on the first wrong param
+        BOOST_CHECK_EQUAL(error.supportedTypes.size(), 3);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(receive_binary)
 {
     brayns::BinaryParams params;
     params.size = [] {
-        std::ifstream file(BRAYNS_TESTDATA + std::string("happy.xyz"),
+        std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
                            std::ios::binary | std::ios::ate);
         return file.tellg();
     }();
@@ -132,61 +175,82 @@ BOOST_AUTO_TEST_CASE(receive_binary)
         getJsonRpcClient().request<std::vector<brayns::BinaryParams>, bool>(
             "receive_binary", {params});
 
-    auto fut = std::async(std::launch::async, [&responseFuture] {
+    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
             process();
     });
 
-    std::ifstream file(BRAYNS_TESTDATA + std::string("happy.xyz"),
+    std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
                        std::ios::binary);
 
     std::vector<char> buffer(1024, 0);
 
     while (file.read(buffer.data(), buffer.size()))
     {
-        std::streamsize s = file.gcount();
-        getWsClient().sendBinary(buffer.data(), s);
-    }
-    std::streamsize s = file.gcount();
-    if (s != 0)
-    {
-        file.read(buffer.data(), s);
-        getWsClient().sendBinary(buffer.data(), s);
+        const std::streamsize size = file.gcount();
+        getWsClient().sendBinary(buffer.data(), size);
     }
 
-    fut.get();
+    // read & send last chunk
+    const std::streamsize size = file.gcount();
+    if (size != 0)
+    {
+        file.read(buffer.data(), size);
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    asyncWait.get();
     BOOST_CHECK(responseFuture.get());
 }
 
-// BOOST_AUTO_TEST_CASE(receive_binary_cancel)
-//{
-//    brayns::BinaryParams params;
-//    params.size = [] {
-//        std::ifstream file(BRAYNS_TESTDATA + std::string("happy.xyz"),
-//        std::ios::binary | std::ios::ate);
-//        return file.tellg()*2;
-//    }();
-//    params.type = "xyz";
+BOOST_AUTO_TEST_CASE(receive_binary_cancel)
+{
+    brayns::BinaryParams params;
+    params.size = 42;
+    params.type = "xyz";
 
-//    auto responseFuture =
-//    getJsonRpcClient().request<std::vector<brayns::BinaryParams>,
-//            bool>("receive_binary", {params});
+    auto responseFuture =
+        getJsonRpcClient().request<std::vector<brayns::BinaryParams>, bool>(
+            "receive_binary", {params});
 
-//    auto fut = std::async(std::launch::async, [&responseFuture] {
-//        while (!is_ready(responseFuture))
-//            process();
-//    });
+    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
+        while (!is_ready(responseFuture))
+            process();
+    });
 
-//    std::ifstream file(BRAYNS_TESTDATA + std::string("happy.xyz"),
-//    std::ios::binary);
+    getJsonRpcClient().cancelLastRequest();
 
-//    std::vector<char> buffer (1024,0);
+    asyncWait.get();
+    BOOST_CHECK_THROW(responseFuture.get(), std::runtime_error);
+}
 
-//    while(file.read(buffer.data(), buffer.size())) {
-//        std::streamsize s=file.gcount();
-//        getWsClient().sendBinary(buffer.data(), s);
-//    }
+BOOST_AUTO_TEST_CASE(receive_binary_second_request_with_first_one_not_finished)
+{
+    brayns::BinaryParams params;
+    params.size = 4;
+    params.type = "xyz";
 
-//    fut.get();
-//    std::cout << responseFuture.get() << std::endl;
-//}
+    auto responseFuture =
+        getJsonRpcClient().request<std::vector<brayns::BinaryParams>, bool>(
+            "receive_binary", {params});
+
+    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
+        while (!is_ready(responseFuture))
+            process();
+    });
+
+    try
+    {
+        makeRequest<std::vector<brayns::BinaryParams>, bool>("receive_binary",
+                                                             {params});
+        BOOST_REQUIRE(false);
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1730);
+    }
+
+    // "cancel" the first request to finish this test
+    std::string dummyXZY(params.size, 'a');
+    getWsClient().sendBinary(dummyXZY.data(), dummyXZY.size());
+}

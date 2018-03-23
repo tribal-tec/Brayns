@@ -38,6 +38,10 @@ namespace brayns
 MeshLoader::MeshLoader(const GeometryParameters& geometryParameters)
     : _geometryParameters(geometryParameters)
 {
+    std::string fucka;
+    Assimp::Importer importer;
+    importer.GetExtensionList(fucka);
+    std::cout << fucka << std::endl;
 }
 
 void MeshLoader::clear()

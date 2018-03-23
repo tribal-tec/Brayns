@@ -261,12 +261,16 @@ public:
     rockets::ws::Response _processWebsocketBinaryMessage(
         const rockets::ws::Request& request)
     {
-        if (_binaryRequests.count(request.clientID) == 0)
-            return rockets::ws::Response("Missing receive_binary RPC?");
+        if (_binaryRequests.count(request.requestID) == 0)
+            return rockets::ws::Response(
+                "Missing receive_binary RPC or cancelled?",
+                rockets::ws::Recipient::sender, rockets::ws::Format::text);
 
-        auto& req = _binaryRequests[request.clientID];
+        auto& req = _binaryRequests[request.requestID];
         if (req.byteLeft.empty() || req.byteLeft[0] == 0)
-            return rockets::ws::Response("Missing receive_binary RPC?");
+            return rockets::ws::Response(
+                "Missing receive_binary RPC or cancelled?",
+                rockets::ws::Recipient::sender, rockets::ws::Format::text);
 
         _parametersManager.getGeometryParameters().appendDataBlob(
             request.message);
@@ -277,8 +281,8 @@ public:
         if (req.byteLeft.empty())
         {
             _engine->markRebuildScene();
-            _binaryRequests.erase(request.clientID);
             req.done();
+            _binaryRequests.erase(request.requestID);
         }
 
         return {};
@@ -382,7 +386,7 @@ public:
     template <class P, class R>
     void _handleAsyncRPC(
         const std::string& method, const RpcDocumentation& doc,
-        std::function<void(P, uintptr_t, rockets::jsonrpc::AsyncResponse)>
+        std::function<void(P, std::string, rockets::jsonrpc::AsyncResponse)>
             action,
         rockets::jsonrpc::AsyncReceiver::CancelRequestCallback cancel)
     {
@@ -652,14 +656,13 @@ public:
                              "Snapshot settings for quality and size"};
         _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
-            [this](const SnapshotParams& params, uintptr_t,
-                   rockets::jsonrpc::AsyncResponse callback) {
+            [ engine = _engine, &imageGenerator = _imageGenerator ](
+                const SnapshotParams& params, const std::string&,
+                rockets::jsonrpc::AsyncResponse callback) {
                 try
                 {
-                    auto readyCallback =
-                        [ callback, params,
-                          &imageGenerator = _imageGenerator ](FrameBufferPtr fb)
-                    {
+                    auto readyCallback = [callback, params,
+                                          &imageGenerator](FrameBufferPtr fb) {
                         try
                         {
                             callback(rockets::jsonrpc::Response{to_json(
@@ -673,7 +676,7 @@ public:
                                                                   -1}});
                         }
                     };
-                    _engine->snapshot(params, readyCallback);
+                    engine->snapshot(params, readyCallback);
                 }
                 catch (const std::runtime_error& e)
                 {
@@ -681,7 +684,9 @@ public:
                         rockets::jsonrpc::Response::Error{e.what(), -1}});
                 }
             },
-            [this] { _engine->cancelSnapshot(); });
+            [engine = _engine](const std::string&) {
+                engine->cancelSnapshot();
+            });
     }
 
     void _handleReceiveBinary()
@@ -689,12 +694,12 @@ public:
         RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
         _handleAsyncRPC<std::vector<BinaryParams>, bool>(
             "receive_binary", doc,
-            [this](const std::vector<BinaryParams>& params, uintptr_t clientID,
+            [this](const std::vector<BinaryParams>& params, const std::string& requestID,
                    rockets::jsonrpc::AsyncResponse callback) {
                 const std::vector<std::string> supportedTypes{"foo", "bla",
                                                               "wtf"};
 
-                if (_binaryRequests.count(clientID) != 0)
+                if (_binaryRequests.count(requestID) != 0)
                 {
                     callback(rockets::jsonrpc::Response{
                         rockets::jsonrpc::Response::Error{
@@ -725,9 +730,12 @@ public:
                 request.done = [callback] {
                     callback(rockets::jsonrpc::Response{to_json(true)});
                 };
-                _binaryRequests.emplace(clientID, request);
+                _binaryRequests.emplace(requestID, request);
             },
-            [] { std::cout << "Cancel, haha!" << std::endl; });
+            [&params = _parametersManager.getGeometryParameters(), &requests = _binaryRequests] (const std::string& requestID){
+                requests.erase(requestID);
+                params.clearDataBlob();
+            });
     }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
@@ -806,7 +814,7 @@ public:
         std::function<void()> done;
     };
 
-    std::map<uintptr_t, BinaryRequest> _binaryRequests;
+    std::map<std::string, BinaryRequest> _binaryRequests;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

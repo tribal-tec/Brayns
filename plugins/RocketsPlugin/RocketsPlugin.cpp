@@ -262,15 +262,19 @@ public:
         const rockets::ws::Request& request)
     {
         if (_binaryRequests.count(request.clientID) == 0)
-            return rockets::ws::Response(
-                "Missing receive_binary RPC or cancelled?",
-                rockets::ws::Recipient::sender, rockets::ws::Format::text);
+        {
+            BRAYNS_ERROR << "Missing receive_binary RPC or cancelled?"
+                         << std::endl;
+            return {};
+        }
 
         auto& req = _binaryRequests[request.clientID];
         if (req.byteLeft.empty() || req.byteLeft[0] == 0)
-            return rockets::ws::Response(
-                "Missing receive_binary RPC or cancelled?",
-                rockets::ws::Recipient::sender, rockets::ws::Format::text);
+        {
+            BRAYNS_ERROR << "Missing receive_binary RPC or cancelled?"
+                         << std::endl;
+            return {};
+        }
 
         _parametersManager.getGeometryParameters().appendDataBlob(
             request.message);
@@ -695,13 +699,13 @@ public:
         RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
         _handleAsyncRPC<std::vector<BinaryParams>, bool>(
             "receive_binary", doc,
-            [this](const std::vector<BinaryParams>& params, const std::string& requestID,
+            [&requests = _binaryRequests](const std::vector<BinaryParams>& params, const std::string& requestID,
                    uintptr_t clientID,
                    rockets::jsonrpc::AsyncResponse callback) {
                 const std::vector<std::string> supportedTypes{"foo", "bla",
                                                               "xyz"};
 
-                if (_binaryRequests.count(clientID) != 0)
+                if (requests.count(clientID) != 0)
                 {
                     callback(rockets::jsonrpc::Response{
                         rockets::jsonrpc::Response::Error{
@@ -713,17 +717,17 @@ public:
                 request.id = requestID;
                 for (const auto& param : params)
                 {
-                    bool unsupported =
+                    const bool unsupported =
                         std::find(supportedTypes.begin(), supportedTypes.end(),
                                   param.type) == supportedTypes.end();
-                    if (unsupported)
+                    if (unsupported || param.size == 0)
                     {
                         BinaryError error;
                         error.index = request.byteLeft.size();
                         error.supportedTypes = supportedTypes;
                         callback(rockets::jsonrpc::Response{
                             rockets::jsonrpc::Response::Error{
-                                "unsupported type", -1729, to_json(error)}});
+                                "Unsupported type or illegal size", -1729, to_json(error)}});
                         return;
                     }
 
@@ -733,13 +737,12 @@ public:
                 request.done = [callback] {
                     callback(rockets::jsonrpc::Response{to_json(true)});
                 };
-                _binaryRequests.emplace(clientID, request);
+                requests.emplace(clientID, request);
             },
             [&params = _parametersManager.getGeometryParameters(), &requests = _binaryRequests] (const std::string& requestID){
                 for(auto& req : requests)
                     if(req.second.id == requestID)
                     {
-                        std::cout << "Cancelled " << requestID << std::endl;
                         requests.erase(req.first);
                         params.clearDataBlob();
                         break;

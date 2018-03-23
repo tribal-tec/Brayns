@@ -261,13 +261,26 @@ public:
     rockets::ws::Response _processWebsocketBinaryMessage(
         const rockets::ws::Request& request)
     {
-        if (_binaryLeft == 0)
-            return rockets::ws::Response("Missing binary rpc?");
+        if (_binaryRequests.count(request.clientID) == 0)
+            return rockets::ws::Response("Missing receive_binary RPC?");
+
+        auto& req = _binaryRequests[request.clientID];
+        if (req.byteLeft.empty() || req.byteLeft[0] == 0)
+            return rockets::ws::Response("Missing receive_binary RPC?");
+
         _parametersManager.getGeometryParameters().appendDataBlob(
             request.message);
-        _binaryLeft -= request.message.size();
-        if (_binaryLeft == 0)
+        req.byteLeft[0] -= request.message.size();
+        if (req.byteLeft[0] == 0)
+            req.byteLeft.pop_front();
+
+        if (req.byteLeft.empty())
+        {
             _engine->markRebuildScene();
+            _binaryRequests.erase(request.clientID);
+            req.done();
+        }
+
         return {};
     }
 
@@ -369,7 +382,8 @@ public:
     template <class P, class R>
     void _handleAsyncRPC(
         const std::string& method, const RpcDocumentation& doc,
-        std::function<void(P, rockets::jsonrpc::AsyncResponse)> action,
+        std::function<void(P, uintptr_t, rockets::jsonrpc::AsyncResponse)>
+            action,
         rockets::jsonrpc::AsyncReceiver::CancelRequestCallback cancel)
     {
         _jsonrpcServer->bindAsync<P>(method, action, cancel);
@@ -429,16 +443,12 @@ public:
         _handleSimulationHistogram();
         _handleVolumeHistogram();
 
-        RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
-        _handleRPC<Bla, bool>("binary", doc, [this](const Bla& settings) {
-            _binaryLeft = settings.size;
-            return true;
-        });
-
         _handleInspect();
         _handleQuit();
         _handleResetCamera();
         _handleSnapshot();
+
+        _handleReceiveBinary();
     }
 
     void _handleFrameBuffer()
@@ -642,7 +652,7 @@ public:
                              "Snapshot settings for quality and size"};
         _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
-            [this](const SnapshotParams& params,
+            [this](const SnapshotParams& params, uintptr_t,
                    rockets::jsonrpc::AsyncResponse callback) {
                 try
                 {
@@ -672,6 +682,52 @@ public:
                 }
             },
             [this] { _engine->cancelSnapshot(); });
+    }
+
+    void _handleReceiveBinary()
+    {
+        RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
+        _handleAsyncRPC<std::vector<BinaryParams>, bool>(
+            "receive_binary", doc,
+            [this](const std::vector<BinaryParams>& params, uintptr_t clientID,
+                   rockets::jsonrpc::AsyncResponse callback) {
+                const std::vector<std::string> supportedTypes{"foo", "bla",
+                                                              "wtf"};
+
+                if (_binaryRequests.count(clientID) != 0)
+                {
+                    callback(rockets::jsonrpc::Response{
+                        rockets::jsonrpc::Response::Error{
+                            "Already pending binary request", -1730}});
+                    return;
+                }
+
+                BinaryRequest request;
+                for (const auto& param : params)
+                {
+                    bool unsupported =
+                        std::find(supportedTypes.begin(), supportedTypes.end(),
+                                  param.type) == supportedTypes.end();
+                    if (unsupported)
+                    {
+                        BinaryError error;
+                        error.index = request.byteLeft.size();
+                        error.supportedTypes = supportedTypes;
+                        callback(rockets::jsonrpc::Response{
+                            rockets::jsonrpc::Response::Error{
+                                "unsupported type", -1729, to_json(error)}});
+                        return;
+                    }
+
+                    request.byteLeft.push_back(param.size);
+                }
+
+                request.done = [callback] {
+                    callback(rockets::jsonrpc::Response{to_json(true)});
+                };
+                _binaryRequests.emplace(clientID, request);
+            },
+            [] { std::cout << "Cancel, haha!" << std::endl; });
     }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
@@ -742,7 +798,15 @@ public:
 
     Timer _timer;
     float _leftover{0.f};
-    size_t _binaryLeft{0};
+
+    struct BinaryRequest
+    {
+        size_t id;
+        std::deque<size_t> byteLeft;
+        std::function<void()> done;
+    };
+
+    std::map<uintptr_t, BinaryRequest> _binaryRequests;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

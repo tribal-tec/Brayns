@@ -649,8 +649,11 @@ private:
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
         if (!blob.empty())
+        {
             if (!xyzbLoader.importFromBlob(blob, scene))
                 BRAYNS_ERROR << "Failed to import xyz from blob" << std::endl;
+            return;
+        }
 
         if (!xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene))
             BRAYNS_ERROR << "Failed to import "

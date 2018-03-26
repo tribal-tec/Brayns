@@ -135,7 +135,7 @@ public:
      * Callback when a new frame shall be triggered. Currently called by event
      * plugins Deflect and Rockets.
      */
-    std::function<void()> triggerRender;
+    std::function<void()> triggerRender{[] {}};
 
     /**
      * Adapts the size of the frame buffer according to camera

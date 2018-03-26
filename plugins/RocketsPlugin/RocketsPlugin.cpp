@@ -253,6 +253,12 @@ public:
             return responses;
         });
 
+        _rocketsServer->handleClose([& requests = _binaryRequests](
+            const uintptr_t clientID) {
+            requests.erase(clientID);
+            return std::vector<rockets::ws::Response>{};
+        });
+
         _rocketsServer->handleBinary(
             std::bind(&Impl::_processWebsocketBinaryMessage, this,
                       std::placeholders::_1));
@@ -269,7 +275,7 @@ public:
         }
 
         auto& req = _binaryRequests[request.clientID];
-        if (req.byteLeft.empty() || req.byteLeft[0] == 0)
+        if (req.params.empty() || req.params[0].size == 0)
         {
             BRAYNS_ERROR << "Missing receive_binary RPC or cancelled?"
                          << std::endl;
@@ -277,21 +283,22 @@ public:
         }
 
         req.data += request.message;
-        req.byteLeft[0] -= request.message.size();
-        if (req.byteLeft[0] == 0)
+        req.params[0].size -= request.message.size();
+        if (req.params[0].size == 0)
         {
-            req.byteLeft.pop_front();
-            _parametersManager.getGeometryParameters().appendDataBlob(req.data);
+            if (req.params.size() == 1)
+            {
+                _engine->rebuildSceneFromBlob(
+                    {req.params[0].type, std::move(req.data)},
+                    [ this, clientID = request.clientID ] {
+                        _binaryRequests[clientID].done();
+                        _binaryRequests.erase(clientID);
+                    });
+            }
+            else
+                req.data.reserve(req.params[1].size);
+            req.params.pop_front();
         }
-
-        if (req.byteLeft.empty())
-        {
-            _engine->markRebuildScene();
-            req.done();
-            _binaryRequests.erase(request.clientID);
-        }
-        else
-            req.data.reserve(req.byteLeft[0]);
 
         return {};
     }
@@ -727,6 +734,7 @@ public:
 
                 BinaryRequest request;
                 request.id = requestID;
+                size_t i = 0;
                 for (const auto& param : params)
                 {
                     const bool unsupported =
@@ -735,18 +743,18 @@ public:
                     if (unsupported || param.size == 0)
                     {
                         BinaryError error;
-                        error.index = request.byteLeft.size();
+                        error.index = i;
                         error.supportedTypes = supportedTypes;
                         callback(rockets::jsonrpc::Response{
                             rockets::jsonrpc::Response::Error{
                                 "Unsupported type or illegal size", -1729, to_json(error)}});
                         return;
                     }
-
-                    request.byteLeft.push_back(param.size);
+                    ++i;
                 }
 
-                request.data.reserve(request.byteLeft[0]);
+                request.params.assign(params.begin(), params.end());
+                request.data.reserve(request.params[0].size);
 
                 request.done = [callback] {
                     callback(rockets::jsonrpc::Response{to_json(true)});
@@ -836,7 +844,7 @@ public:
     struct BinaryRequest
     {
         std::string id;
-        std::deque<size_t> byteLeft;
+        std::deque<BinaryParams> params;
         std::string data;
         std::function<void()> done;
     };

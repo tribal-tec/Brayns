@@ -21,6 +21,7 @@
 #pragma once
 
 #include <brayns/Brayns.h>
+#include <brayns/common/engine/Engine.h>
 #include <brayns/parameters/ParametersManager.h>
 
 #include <boost/test/unit_test.hpp>
@@ -131,6 +132,12 @@ public:
     {
         wsClient.process(10);
         brayns->preRender();
+
+        if (brayns->getEngine().rebuildScene())
+        {
+            brayns->buildScene();
+            brayns->getEngine().markRebuildScene(false);
+        }
     }
 
 private:

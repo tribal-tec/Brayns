@@ -23,6 +23,7 @@
 
 #include <brayns/common/Statistics.h>
 
+#include <functional>
 #include <mutex>
 
 namespace brayns
@@ -105,6 +106,27 @@ public:
     void markRebuildScene(const bool rebuild = true)
     {
         _rebuildScene = rebuild;
+    }
+
+    struct Blob
+    {
+        std::string type;
+        std::string data;
+    };
+    void rebuildSceneFromBlob(const Blob& blob,
+                              const std::function<void()>& finishCallback)
+    {
+        _rebuildScene = true;
+        _blob = blob;
+        _finishLoadSceneCallback = finishCallback;
+    }
+
+    void clearBlob() { _blob.data.clear(); }
+    const Blob& getBlob() const { return _blob; }
+    void finishLoadCallback()
+    {
+        if (_finishLoadSceneCallback)
+            _finishLoadSceneCallback();
     }
 
     /** @return true if Brayns::buildScene() shall be called. */
@@ -235,6 +257,9 @@ protected:
     Progress _progress;
     bool _keepRunning{true};
     bool _rebuildScene{false};
+
+    Blob _blob;
+    std::function<void()> _finishLoadSceneCallback;
 
     int _snapshotSpp{0};
     int _restoreSpp{0};

@@ -287,8 +287,11 @@ struct Brayns::Impl : public PluginAPI
         if (!isLoadingFinished())
             throw std::runtime_error("Build scene already in progress");
 
-        _engine->setLastOperation("");
-        _engine->setLastProgress(0);
+        if (_engine->getBlob().data.empty())
+        {
+            _engine->setLastOperation("");
+            _engine->setLastProgress(0);
+        }
 
         std::promise<void> promise;
         _dataLoadingFuture = promise.get_future();

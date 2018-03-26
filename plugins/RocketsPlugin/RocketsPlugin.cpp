@@ -309,10 +309,14 @@ public:
         req.appendChunk(request.message);
         req.params[0].size -= request.message.size();
 
-        if (req.progress.isModified())
+        if (_timer2.elapsed() >= 0.01)
         {
-            _jsonrpcServer->notify(ENDPOINT_PROGRESS, req.progress);
-            req.progress.resetModified();
+            if (req.progress.isModified())
+            {
+                _jsonrpcServer->notify(ENDPOINT_PROGRESS, req.progress);
+                req.progress.resetModified();
+            }
+            _timer2.start();
         }
 
         if (req.params[0].size == 0)
@@ -755,11 +759,11 @@ public:
         using Params = std::vector<BinaryParam>;
         _handleAsyncRPC<Params, bool>(
             METHOD_RECEIVE_BINARY, doc,
-            [& requests =
-                 _binaryRequests](const Params& params,
-                                  const std::string& requestID,
-                                  const uintptr_t clientID,
-                                  rockets::jsonrpc::AsyncResponse respond) {
+            [& requests = _binaryRequests,
+             &timer = _timer2 ](const Params& params,
+                                const std::string& requestID,
+                                const uintptr_t clientID,
+                                rockets::jsonrpc::AsyncResponse respond) {
                 if (requests.count(clientID) != 0)
                 {
                     respond(ALREADY_PENDING_REQUEST);
@@ -797,6 +801,7 @@ public:
                 request.respond = respond;
                 request.progress.requestID = requestID;
                 request.updateTotalBytes();
+                timer.start();
             },
             [& requests = _binaryRequests](const std::string& requestID) {
                 for (auto& req : requests)
@@ -907,6 +912,8 @@ public:
             return 0.5f * ((float)_receivedBytes / _totalBytes);
         }
     };
+
+    Timer _timer2;
 
     std::map<uintptr_t, BinaryRequest> _binaryRequests;
 };

@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(receive_binary)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParams>, bool>(
-            "receive_binary", {params});
+            "receive-binary", {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))

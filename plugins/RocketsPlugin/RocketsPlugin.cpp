@@ -204,7 +204,7 @@ public:
             {
                 _socketListener =
                     std::make_unique<SocketListener>(*_rocketsServer);
-                _socketListener->setPostReceiveCallback(_engine->triggerRender);
+                //_socketListener->setPostReceiveCallback(_engine->triggerRender);
                 _rocketsServer->setSocketListener(_socketListener.get());
             }
             catch (const std::runtime_error& e)
@@ -269,7 +269,7 @@ public:
     {
         if (_binaryRequests.count(request.clientID) == 0)
         {
-            BRAYNS_ERROR << "Missing receive_binary RPC or cancelled?"
+            BRAYNS_ERROR << "Missing receive-binary RPC or cancelled?"
                          << std::endl;
             return {};
         }
@@ -277,7 +277,7 @@ public:
         auto& req = _binaryRequests[request.clientID];
         if (req.params.empty() || req.params[0].size == 0)
         {
-            BRAYNS_ERROR << "Missing receive_binary RPC or cancelled?"
+            BRAYNS_ERROR << "Missing receive-binary RPC or cancelled?"
                          << std::endl;
             return {};
         }
@@ -367,6 +367,7 @@ public:
                                            rockets::jsonrpc::Request request) {
             if (from_json(obj, request.message, postUpdateFunc))
             {
+                _engine->triggerRender();
                 const auto& msg =
                     rockets::jsonrpc::makeNotification(endpoint, obj);
                 _rocketsServer->broadcastText(msg, {request.clientID});
@@ -709,7 +710,7 @@ public:
     {
         RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
         _handleAsyncRPC<std::vector<BinaryParams>, bool>(
-            "receive_binary", doc,
+            "receive-binary", doc,
             [&requests = _binaryRequests](const std::vector<BinaryParams>& params, const std::string& requestID,
                    uintptr_t clientID,
                    rockets::jsonrpc::AsyncResponse callback) {

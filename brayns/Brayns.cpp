@@ -448,6 +448,12 @@ private:
 
         // finish reporting of progress
         postSceneLoading();
+
+        if (!_engine->getBlob().data.empty())
+        {
+            _engine->clearBlob();
+            _engine->finishLoadCallback();
+        }
     }
 
     void _updateAnimation()
@@ -484,12 +490,7 @@ private:
         if (!_engine->getBlob().data.empty())
         {
             if (_engine->getBlob().type == "xyz")
-            {
                 _loadXYZBFile(updateProgress, _engine->getBlob().data);
-                loadingProgress += tic;
-            }
-            _engine->clearBlob();
-            _engine->finishLoadCallback();
             return;
         }
 

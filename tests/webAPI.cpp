@@ -102,12 +102,26 @@ BOOST_AUTO_TEST_CASE(snapshot_illegal_format)
         rockets::jsonrpc::response_error);
 }
 
-BOOST_AUTO_TEST_CASE(receive_binary_illegal)
+BOOST_AUTO_TEST_CASE(receive_binary_illegal_no_request)
 {
     const std::string illegal("illegal");
     getWsClient().sendBinary(illegal.data(), illegal.size());
     process();
     // nothing to test, Brayns ignores the message and prints a warning
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_illegal_no_params)
+{
+    try
+    {
+        makeRequest<std::vector<brayns::BinaryParams>, bool>("receive_binary",
+                                                             {});
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1731);
+        BOOST_CHECK(e.data.empty());
+    }
 }
 
 BOOST_AUTO_TEST_CASE(receive_binary_single_file_unsupported)

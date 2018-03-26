@@ -196,6 +196,7 @@ inline void init(brayns::Camera* c, ObjectHandler* h)
 
 inline void init(brayns::Engine::Progress* p, ObjectHandler* h)
 {
+    h->add_property("id", &p->requestID);
     h->add_property("amount", &p->amount);
     h->add_property("operation", &p->operation);
     h->set_flags(Flags::DisallowUnknownKey);

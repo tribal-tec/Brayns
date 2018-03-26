@@ -390,12 +390,28 @@ private:
 
         Progress loadingProgress(
             "Loading scene ...",
-            LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
+            (_engine->getBlob().data.empty()
+                 ? 0
+                 : LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP) +
+                LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
             [this](const std::string& msg, const float progress) {
-                std::lock_guard<std::mutex> lock_(_engine->getProgress().mutex);
-                _engine->setLastOperation(msg);
-                _engine->setLastProgress(progress);
+                if (_engine->getBlob().data.empty())
+                {
+                    std::lock_guard<std::mutex> lock_(
+                        _engine->getProgress().mutex);
+                    _engine->setLastOperation(msg);
+                    _engine->setLastProgress(progress);
+                }
+                else
+                {
+                    _engine->getBlob().progress->setOperation(msg);
+                    _engine->getBlob().progress->setAmount(progress);
+                }
             });
+
+        if (!_engine->getBlob().data.empty())
+            loadingProgress +=
+                LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP;
 
         loadingProgress.setMessage("Unloading ...");
         _engine->getScene().unload();

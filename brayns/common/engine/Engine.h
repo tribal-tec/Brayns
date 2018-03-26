@@ -108,10 +108,26 @@ public:
         _rebuildScene = rebuild;
     }
 
+    struct Progress : public BaseObject
+    {
+        std::string requestID;
+        std::string operation;
+        float amount{0.f};
+        mutable std::mutex mutex;
+
+        void setOperation(const std::string& operation_)
+        {
+            _updateValue(operation, operation_);
+        }
+
+        void setAmount(const float amount_) { _updateValue(amount, amount_); }
+    };
+
     struct Blob
     {
         std::string type;
         std::string data;
+        Progress* progress{nullptr};
     };
     void rebuildSceneFromBlob(const Blob& blob,
                               const std::function<void()>& finishCallback)
@@ -122,8 +138,12 @@ public:
         triggerRender();
     }
 
-    void clearBlob() { _blob.data.clear(); }
-    const Blob& getBlob() const { return _blob; }
+    void clearBlob()
+    {
+        _blob.data.clear();
+        _blob.progress = nullptr;
+    }
+    Blob& getBlob() { return _blob; }
     void finishLoadCallback()
     {
         if (_finishLoadSceneCallback)
@@ -152,26 +172,13 @@ public:
     /** @return the minimum frame size in pixels supported by this engine. */
     virtual Vector2ui getMinimumFrameSize() const = 0;
 
-    struct Progress : public BaseObject
-    {
-        std::string operation;
-        float amount{0.f};
-        mutable std::mutex mutex;
-
-        template <typename T>
-        void updateValue(T& member, const T& newValue)
-        {
-            _updateValue(member, newValue);
-        }
-    };
-
     /** @return the current progress of the engine */
     const Progress& getProgress() const { return _progress; }
     Progress& getProgress() { return _progress; }
     /** Set the last operation processed by the engine. */
     void setLastOperation(const std::string& lastOperation)
     {
-        _progress.updateValue(_progress.operation, lastOperation);
+        _progress.setOperation(lastOperation);
     }
 
     /**
@@ -179,7 +186,7 @@ public:
      */
     void setLastProgress(const float lastProgress)
     {
-        _progress.updateValue(_progress.amount, lastProgress);
+        _progress.setAmount(lastProgress);
     }
 
     /**

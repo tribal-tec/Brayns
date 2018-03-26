@@ -83,6 +83,10 @@ Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
 {
     return {Response::Error{"Unsupported type", -1731, to_json(error)}};
 }
+const Response INVALID_BINARY_RECEIVE{
+    Response::Error{"Invalid binary received; no more files expected or "
+                    "current file is complete",
+                    -1732}};
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
@@ -174,6 +178,17 @@ public:
         _wsBroadcastOperations[ENDPOINT_IMAGE_JPEG]();
         _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
+
+        // broadcast request progress'
+        for (auto& i : _binaryRequests)
+        {
+            auto& request = i.second;
+            if (request.progress.isModified())
+            {
+                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request.progress);
+                request.progress.resetModified();
+            }
+        }
     }
 
     void postSceneLoading()
@@ -286,26 +301,42 @@ public:
         auto& req = _binaryRequests[request.clientID];
         if (req.params.empty() || req.params[0].size == 0)
         {
-            BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
-                         << " or cancelled?" << std::endl;
+            req.respond(INVALID_BINARY_RECEIVE);
+            _binaryRequests.erase(request.clientID);
             return {};
         }
 
-        req.data += request.message;
+        req.appendChunk(request.message);
         req.params[0].size -= request.message.size();
+
+        if (req.progress.isModified())
+        {
+            _jsonrpcServer->notify(ENDPOINT_PROGRESS, req.progress);
+            req.progress.resetModified();
+        }
+
         if (req.params[0].size == 0)
         {
             if (req.params.size() == 1)
             {
+                // last file received, start loading
+                // TODO: what do we do for multiple files? now we just load the
+                // last received one. Adding one model per file would be the
+                // best
                 _engine->rebuildSceneFromBlob(
-                    {req.params[0].type, std::move(req.data)},
+                    {req.params[0].type, std::move(req.data), &req.progress},
                     [ this, clientID = request.clientID ] {
-                        _binaryRequests[clientID].done();
+                        _binaryRequests[clientID].respond(
+                            Response{to_json(true)});
                         _binaryRequests.erase(clientID);
                     });
             }
             else
+            {
+                // prepare receiving of next file
+                req.data.clear(); // TODO: might not be needed if moved before
                 req.data.reserve(req.params[1].size);
+            }
             req.params.pop_front();
         }
 
@@ -744,7 +775,7 @@ public:
                 const std::vector<std::string> supportedTypes{"foo", "bla",
                                                               "xyz"};
 
-                BinaryRequest request;
+                BinaryRequest& request = requests[clientID];
                 request.id = requestID;
                 size_t i = 0;
                 for (const auto& param : params)
@@ -755,6 +786,7 @@ public:
                     if (unsupported || param.size == 0)
                     {
                         respond(UNSUPPORTED_TYPE({i, supportedTypes}));
+                        requests.erase(clientID);
                         return;
                     }
                     ++i;
@@ -762,8 +794,9 @@ public:
 
                 request.params.assign(params.begin(), params.end());
                 request.data.reserve(request.params[0].size);
-                request.done = [respond] { respond(Response{to_json(true)}); };
-                requests.emplace(clientID, request);
+                request.respond = respond;
+                request.progress.requestID = requestID;
+                request.updateTotalBytes();
             },
             [& requests = _binaryRequests](const std::string& requestID) {
                 for (auto& req : requests)
@@ -849,7 +882,30 @@ public:
         std::string id;
         std::deque<BinaryParam> params;
         std::string data;
-        std::function<void()> done;
+        rockets::jsonrpc::AsyncResponse respond;
+        Engine::Progress progress;
+
+        void updateTotalBytes()
+        {
+            for (const auto& param : params)
+                _totalBytes += param.size;
+        }
+
+        void appendChunk(const std::string& chunk)
+        {
+            data += chunk;
+            _receivedBytes += chunk.size();
+            progress.setAmount(_progress());
+            progress.setOperation("Receiving chunks...");
+        }
+
+    private:
+        size_t _totalBytes{0};
+        size_t _receivedBytes{0};
+        float _progress() const
+        {
+            return 0.5f * ((float)_receivedBytes / _totalBytes);
+        }
     };
 
     std::map<uintptr_t, BinaryRequest> _binaryRequests;

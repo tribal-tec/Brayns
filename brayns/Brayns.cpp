@@ -466,11 +466,6 @@ private:
 
     void _loadData(Progress& loadingProgress)
     {
-        auto& geometryParameters = _parametersManager.getGeometryParameters();
-        auto& volumeParameters = _parametersManager.getVolumeParameters();
-        auto& sceneParameters = _parametersManager.getSceneParameters();
-        auto& scene = _engine->getScene();
-
         size_t nextTic = 0;
         const size_t tic = LOADING_PROGRESS_DATA;
         auto updateProgress = [&nextTic,
@@ -485,6 +480,23 @@ private:
                 nextTic = newProgress;
             }
         };
+
+        if (!_engine->getBlob().data.empty())
+        {
+            if (_engine->getBlob().type == "xyz")
+            {
+                _loadXYZBFile(updateProgress, _engine->getBlob().data);
+                loadingProgress += tic;
+            }
+            _engine->clearBlob();
+            _engine->finishLoadCallback();
+            return;
+        }
+
+        auto& geometryParameters = _parametersManager.getGeometryParameters();
+        auto& volumeParameters = _parametersManager.getVolumeParameters();
+        auto& sceneParameters = _parametersManager.getSceneParameters();
+        auto& scene = _engine->getScene();
 
         // set environment map if applicable
         const std::string& environmentMap =
@@ -504,13 +516,6 @@ private:
             TransferFunctionLoader transferFunctionLoader;
             transferFunctionLoader.loadFromFile(
                 colorMapFilename, sceneParameters.getColorMapRange(), scene);
-        }
-
-        if (!geometryParameters.getDataBlob().empty())
-        {
-            _loadXYZBFile(updateProgress, geometryParameters.getDataBlob());
-            loadingProgress += tic;
-            geometryParameters.clearDataBlob();
         }
 
         if (!geometryParameters.getLoadCacheFile().empty())

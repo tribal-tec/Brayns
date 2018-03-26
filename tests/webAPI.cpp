@@ -248,11 +248,6 @@ BOOST_AUTO_TEST_CASE(receive_binary_second_request_with_first_one_not_finished)
         getJsonRpcClient().request<std::vector<brayns::BinaryParams>, bool>(
             "receive_binary", {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
-            process();
-    });
-
     try
     {
         makeRequest<std::vector<brayns::BinaryParams>, bool>("receive_binary",
@@ -263,8 +258,4 @@ BOOST_AUTO_TEST_CASE(receive_binary_second_request_with_first_one_not_finished)
     {
         BOOST_CHECK_EQUAL(e.code, -1730);
     }
-
-    // "cancel" the first request to finish this test
-    std::string dummyXZY(params.size, 'a');
-    getWsClient().sendBinary(dummyXZY.data(), dummyXZY.size());
 }

@@ -35,12 +35,7 @@ bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
 {
     BRAYNS_INFO << "Loading xyz file from blob" << std::endl;
 
-    SpheresMap& spheres = scene.getSpheres();
-    bool validParsing = true;
-    std::string line;
-
     std::stringstream stream(blob);
-
     size_t numlines = 0;
     {
         numlines = std::count(std::istreambuf_iterator<char>(stream),
@@ -48,6 +43,11 @@ bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
     }
     stream.seekg(0);
 
+    bool first = true;
+    uint64_t sphereID = 0;
+    size_t i = 0;
+    bool validParsing = true;
+    std::string line;
     while (validParsing && std::getline(stream, line))
     {
         std::vector<float> lineData;
@@ -62,9 +62,13 @@ bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
         case 3:
         {
             const Vector3f position(lineData[0], lineData[1], lineData[2]);
-            scene.addSphere(0,
-                            Sphere(position,
-                                   _geometryParameters.getRadiusMultiplier()));
+            const auto id = scene.addSphere(
+                0, Sphere(position, _geometryParameters.getRadiusMultiplier()));
+            if (first)
+            {
+                first = false;
+                sphereID = id;
+            }
             break;
         }
         default:
@@ -72,7 +76,22 @@ bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
             validParsing = false;
             break;
         }
-        updateProgress("Loading spheres...", spheres[0].size(), numlines);
+        updateProgress("Loading spheres...", i, numlines);
+        ++i;
+    }
+
+    const float maxDim = scene.getWorldBounds().getSize().find_max();
+    if (maxDim < 100 * _geometryParameters.getRadiusMultiplier())
+    {
+        const float newRadius = maxDim / 100.f;
+        BRAYNS_WARN << "Given radius "
+                    << _geometryParameters.getRadiusMultiplier()
+                    << " is too big for this scene, using radius " << newRadius
+                    << " now" << std::endl;
+
+        auto& spheres = scene.getSpheres()[0];
+        for (i = 0; i < numlines; ++i)
+            spheres[i + sphereID].radius = newRadius;
     }
 
     return validParsing;

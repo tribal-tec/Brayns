@@ -119,6 +119,7 @@ public:
         _rebuildScene = true;
         _blob = blob;
         _finishLoadSceneCallback = finishCallback;
+        triggerRender();
     }
 
     void clearBlob() { _blob.data.clear(); }

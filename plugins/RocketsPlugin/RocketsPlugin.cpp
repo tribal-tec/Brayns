@@ -276,11 +276,13 @@ public:
             return {};
         }
 
-        _parametersManager.getGeometryParameters().appendDataBlob(
-            request.message);
+        req.data += request.message;
         req.byteLeft[0] -= request.message.size();
         if (req.byteLeft[0] == 0)
+        {
             req.byteLeft.pop_front();
+            _parametersManager.getGeometryParameters().appendDataBlob(req.data);
+        }
 
         if (req.byteLeft.empty())
         {
@@ -288,6 +290,8 @@ public:
             req.done();
             _binaryRequests.erase(request.clientID);
         }
+        else
+            req.data.reserve(req.byteLeft[0]);
 
         return {};
     }
@@ -713,6 +717,14 @@ public:
                     return;
                 }
 
+                if(params.empty())
+                {
+                    callback(rockets::jsonrpc::Response{
+                        rockets::jsonrpc::Response::Error{
+                            "Missing params", -1731}});
+                    return;
+                }
+
                 BinaryRequest request;
                 request.id = requestID;
                 for (const auto& param : params)
@@ -733,6 +745,8 @@ public:
 
                     request.byteLeft.push_back(param.size);
                 }
+
+                request.data.reserve(request.byteLeft[0]);
 
                 request.done = [callback] {
                     callback(rockets::jsonrpc::Response{to_json(true)});
@@ -823,6 +837,7 @@ public:
     {
         std::string id;
         std::deque<size_t> byteLeft;
+        std::string data;
         std::function<void()> done;
     };
 

@@ -122,7 +122,7 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
 
 namespace brayns
 {
-struct BinaryParams
+struct BinaryParam
 {
     size_t size;
     std::string type; // file extension or MESH, POINTS, CIRCUIT
@@ -137,7 +137,7 @@ struct BinaryError
 
 namespace staticjson
 {
-inline void init(brayns::BinaryParams* s, ObjectHandler* h)
+inline void init(brayns::BinaryParam* s, ObjectHandler* h)
 {
     h->add_property("size", &s->size);
     h->add_property("type", &s->type);

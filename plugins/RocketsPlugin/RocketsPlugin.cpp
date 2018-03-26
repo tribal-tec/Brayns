@@ -69,10 +69,20 @@ const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
 const std::string METHOD_INSPECT = "inspect";
 const std::string METHOD_QUIT = "quit";
+const std::string METHOD_RECEIVE_BINARY = "receive-binary";
 const std::string METHOD_RESET_CAMERA = "reset-camera";
 const std::string METHOD_SNAPSHOT = "snapshot";
 
 const std::string JSON_TYPE = "application/json";
+
+using Response = rockets::jsonrpc::Response;
+const Response ALREADY_PENDING_REQUEST{
+    Response::Error{"Already pending binary request", -1730}};
+const Response MISSING_PARAMS{Response::Error{"Missing params", -1731}};
+Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
+{
+    return {Response::Error{"Unsupported type", -1731, to_json(error)}};
+}
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
@@ -204,7 +214,6 @@ public:
             {
                 _socketListener =
                     std::make_unique<SocketListener>(*_rocketsServer);
-                //_socketListener->setPostReceiveCallback(_engine->triggerRender);
                 _rocketsServer->setSocketListener(_socketListener.get());
             }
             catch (const std::runtime_error& e)
@@ -269,16 +278,16 @@ public:
     {
         if (_binaryRequests.count(request.clientID) == 0)
         {
-            BRAYNS_ERROR << "Missing receive-binary RPC or cancelled?"
-                         << std::endl;
+            BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
+                         << " or cancelled?" << std::endl;
             return {};
         }
 
         auto& req = _binaryRequests[request.clientID];
         if (req.params.empty() || req.params[0].size == 0)
         {
-            BRAYNS_ERROR << "Missing receive-binary RPC or cancelled?"
-                         << std::endl;
+            BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
+                         << " or cancelled?" << std::endl;
             return {};
         }
 
@@ -368,6 +377,7 @@ public:
             if (from_json(obj, request.message, postUpdateFunc))
             {
                 _engine->triggerRender();
+
                 const auto& msg =
                     rockets::jsonrpc::makeNotification(endpoint, obj);
                 _rocketsServer->broadcastText(msg, {request.clientID});
@@ -653,8 +663,10 @@ public:
 
     void _handleQuit()
     {
-        _handleRPC(METHOD_QUIT, "Quit the application",
-                   [this] { _engine->setKeepRunning(false); });
+        _handleRPC(METHOD_QUIT, "Quit the application", [engine = _engine] {
+            engine->setKeepRunning(false);
+            engine->triggerRender();
+        });
     }
 
     void _handleResetCamera()
@@ -664,6 +676,7 @@ public:
                        _engine->getCamera().reset();
                        _jsonrpcServer->notify(ENDPOINT_CAMERA,
                                               _engine->getCamera());
+                       _engine->triggerRender();
                    });
     }
 
@@ -682,23 +695,21 @@ public:
                                           &imageGenerator](FrameBufferPtr fb) {
                         try
                         {
-                            callback(rockets::jsonrpc::Response{to_json(
+                            callback(Response{to_json(
                                 imageGenerator.createImage(*fb, params.format,
                                                            params.quality))});
                         }
                         catch (const std::runtime_error& e)
                         {
-                            callback(rockets::jsonrpc::Response{
-                                rockets::jsonrpc::Response::Error{e.what(),
-                                                                  -1}});
+                            callback(Response{Response::Error{e.what(), -1}});
                         }
                     };
                     engine->snapshot(params, readyCallback);
+                    engine->triggerRender();
                 }
                 catch (const std::runtime_error& e)
                 {
-                    callback(rockets::jsonrpc::Response{
-                        rockets::jsonrpc::Response::Error{e.what(), -1}});
+                    callback(Response{Response::Error{e.what(), -1}});
                 }
             },
             [engine = _engine](const std::string&) {
@@ -708,30 +719,30 @@ public:
 
     void _handleReceiveBinary()
     {
-        RpcDocumentation doc{"Start binary send", "size", "size in bytes"};
-        _handleAsyncRPC<std::vector<BinaryParams>, bool>(
-            "receive-binary", doc,
-            [&requests = _binaryRequests](const std::vector<BinaryParams>& params, const std::string& requestID,
-                   uintptr_t clientID,
-                   rockets::jsonrpc::AsyncResponse callback) {
-                const std::vector<std::string> supportedTypes{"foo", "bla",
-                                                              "xyz"};
-
+        RpcDocumentation doc{"Start sending of files", "params",
+                             "List of file parameter: size and type"};
+        using Params = std::vector<BinaryParam>;
+        _handleAsyncRPC<Params, bool>(
+            METHOD_RECEIVE_BINARY, doc,
+            [& requests =
+                 _binaryRequests](const Params& params,
+                                  const std::string& requestID,
+                                  const uintptr_t clientID,
+                                  rockets::jsonrpc::AsyncResponse respond) {
                 if (requests.count(clientID) != 0)
                 {
-                    callback(rockets::jsonrpc::Response{
-                        rockets::jsonrpc::Response::Error{
-                            "Already pending binary request", -1730}});
+                    respond(ALREADY_PENDING_REQUEST);
                     return;
                 }
 
-                if(params.empty())
+                if (params.empty())
                 {
-                    callback(rockets::jsonrpc::Response{
-                        rockets::jsonrpc::Response::Error{
-                            "Missing params", -1731}});
+                    respond(MISSING_PARAMS);
                     return;
                 }
+
+                const std::vector<std::string> supportedTypes{"foo", "bla",
+                                                              "xyz"};
 
                 BinaryRequest request;
                 request.id = requestID;
@@ -743,12 +754,7 @@ public:
                                   param.type) == supportedTypes.end();
                     if (unsupported || param.size == 0)
                     {
-                        BinaryError error;
-                        error.index = i;
-                        error.supportedTypes = supportedTypes;
-                        callback(rockets::jsonrpc::Response{
-                            rockets::jsonrpc::Response::Error{
-                                "Unsupported type or illegal size", -1729, to_json(error)}});
+                        respond(UNSUPPORTED_TYPE({i, supportedTypes}));
                         return;
                     }
                     ++i;
@@ -756,18 +762,14 @@ public:
 
                 request.params.assign(params.begin(), params.end());
                 request.data.reserve(request.params[0].size);
-
-                request.done = [callback] {
-                    callback(rockets::jsonrpc::Response{to_json(true)});
-                };
+                request.done = [respond] { respond(Response{to_json(true)}); };
                 requests.emplace(clientID, request);
             },
-            [&params = _parametersManager.getGeometryParameters(), &requests = _binaryRequests] (const std::string& requestID){
-                for(auto& req : requests)
-                    if(req.second.id == requestID)
+            [& requests = _binaryRequests](const std::string& requestID) {
+                for (auto& req : requests)
+                    if (req.second.id == requestID)
                     {
                         requests.erase(req.first);
-                        params.clearDataBlob();
                         break;
                     }
             });
@@ -845,7 +847,7 @@ public:
     struct BinaryRequest
     {
         std::string id;
-        std::deque<BinaryParams> params;
+        std::deque<BinaryParam> params;
         std::string data;
         std::function<void()> done;
     };
@@ -876,10 +878,11 @@ void RocketsPlugin::postSceneLoading()
 void RocketsPlugin::_registerRequest(const std::string& name,
                                      const RetParamFunc& action)
 {
-    _impl->_jsonrpcServer->bind(
-        name, [action](const rockets::jsonrpc::Request& request) {
-            return rockets::jsonrpc::Response{action(request.message)};
-        });
+    _impl->_jsonrpcServer->bind(name,
+                                [action](
+                                    const rockets::jsonrpc::Request& request) {
+                                    return Response{action(request.message)};
+                                });
 }
 
 void RocketsPlugin::_registerRequest(const std::string& name,
@@ -887,7 +890,7 @@ void RocketsPlugin::_registerRequest(const std::string& name,
 {
     _impl->_jsonrpcServer->bind(name,
                                 [action](const rockets::jsonrpc::Request&) {
-                                    return rockets::jsonrpc::Response{action()};
+                                    return Response{action()};
                                 });
 }
 

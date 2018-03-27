@@ -39,7 +39,7 @@ namespace brayns
 class MeshLoader
 {
 public:
-    MeshLoader(const GeometryParameters& geometryParameters);
+    MeshLoader(GeometryParameters& geometryParameters);
 
     /** Imports meshes from a given file
      *
@@ -53,6 +53,10 @@ public:
      * @return true if the file was successfully imported. False otherwise.
      */
     bool importMeshFromFile(const std::string& filename, Scene& scene,
+                            const Matrix4f& transformation,
+                            const size_t defaultMaterial);
+
+    bool importMeshFromBlob(const std::string& blob, Scene& scene,
                             const Matrix4f& transformation,
                             const size_t defaultMaterial);
 
@@ -81,10 +85,16 @@ private:
 #if (BRAYNS_USE_ASSIMP)
     void _createMaterials(Scene& scene, const aiScene* aiScene,
                           const std::string& folder);
+
+    bool _postLoad(const aiScene* aiScene, Scene& scene,
+                   const Matrix4f& transformation, const size_t defaultMaterial,
+                   const std::string& folder = "");
+    size_t _getQuality() const;
 #endif
 
     size_t _getMaterialId(const size_t materialId,
                           const size_t defaultMaterial = NO_MATERIAL);
+
     std::map<size_t, size_t> _meshIndex;
     const GeometryParameters& _geometryParameters;
     size_t _materialOffset;

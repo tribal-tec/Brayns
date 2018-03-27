@@ -309,9 +309,11 @@ public:
         return _connectivityConfiguration._connectivityScale;
     }
 
-    void appendDataBlob(const std::string& blob) { _datablob += blob; }
-    void clearDataBlob() { _datablob.clear(); }
-    const std::string& getDataBlob() const { return _datablob; }
+    std::set<std::string>& getSupportedDataTypes()
+    {
+        return _supportedDataTypes;
+    }
+
 protected:
     bool _parse(const po::variables_map& vm) final;
 
@@ -358,9 +360,9 @@ protected:
     // System parameters
     MemoryMode _memoryMode;
 
-    ConnectivityConfiguration _connectivityConfiguration;
+    std::set<std::string> _supportedDataTypes;
 
-    std::string _datablob;
+    ConnectivityConfiguration _connectivityConfiguration;
 
     SERIALIZATION_FRIEND(GeometryParameters)
 };

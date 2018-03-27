@@ -20,10 +20,11 @@
 
 #include "MeshLoader.h"
 
-#if (BRAYNS_USE_ASSIMP)
+#ifdef BRAYNS_USE_ASSIMP
 #include <assimp/Exporter.hpp>
 #include <assimp/IOSystem.hpp> // must come before Exporter.hpp
 #include <assimp/Importer.hpp>
+#include <assimp/ProgressHandler.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <boost/filesystem.hpp>
@@ -35,6 +36,26 @@
 
 namespace brayns
 {
+#ifdef BRAYNS_USE_ASSIMP
+class ProgressWatcher : public Assimp::ProgressHandler
+{
+public:
+    ProgressWatcher(ProgressReporter& parent)
+        : _parent(parent)
+    {
+    }
+
+    bool Update(const float percentage) final
+    {
+        _parent.updateProgress("Loading mesh...", percentage * 100, 100);
+        return true;
+    }
+
+private:
+    ProgressReporter& _parent;
+};
+#endif
+
 MeshLoader::MeshLoader(GeometryParameters& geometryParameters)
     : _geometryParameters(geometryParameters)
 {
@@ -55,7 +76,7 @@ void MeshLoader::clear()
     _meshIndex.clear();
 }
 
-#if (BRAYNS_USE_ASSIMP)
+#ifdef BRAYNS_USE_ASSIMP
 bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
                                     const Matrix4f& transformation,
                                     const size_t defaultMaterial)
@@ -98,6 +119,8 @@ bool MeshLoader::importMeshFromBlob(const std::string& blob, Scene& scene,
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
+    ProgressWatcher watcher(*this);
+    importer.SetProgressHandler(&watcher);
     const aiScene* aiScene =
         importer.ReadFileFromMemory(blob.data(), blob.size(), _getQuality());
 
@@ -107,6 +130,7 @@ bool MeshLoader::importMeshFromBlob(const std::string& blob, Scene& scene,
                      << importer.GetErrorString() << std::endl;
         return false;
     }
+    importer.SetProgressHandler(nullptr);
 
     return _postLoad(aiScene, scene, transformation, defaultMaterial);
 }

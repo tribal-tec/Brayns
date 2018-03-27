@@ -512,7 +512,7 @@ private:
 
         if (!_engine->getBlob().data.empty())
         {
-            _loadDataFromBlob(loadingProgress, updateProgress);
+            _loadDataFromBlob(updateProgress);
             return;
         }
 
@@ -617,16 +617,12 @@ private:
         }
     }
 
-    void _loadDataFromBlob(Progress& loadingProgress,
-                           const Progress::UpdateCallback& updateProgress)
+    void _loadDataFromBlob(const Progress::UpdateCallback& updateProgress)
     {
         if (_engine->getBlob().type == "xyz")
             _loadXYZBBlob(updateProgress);
         else
-        {
-            _loadMeshBlob();
-            loadingProgress += LOADING_PROGRESS_DATA;
-        }
+            _loadMeshBlob(updateProgress);
         return;
     }
 
@@ -753,7 +749,7 @@ private:
             BRAYNS_ERROR << "Failed to import " << filename << std::endl;
     }
 
-    void _loadMeshBlob()
+    void _loadMeshBlob(const Progress::UpdateCallback& progressUpdate)
     {
         const auto& geometryParameters =
             _parametersManager.getGeometryParameters();
@@ -762,6 +758,7 @@ private:
             geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
                 ? NB_SYSTEM_MATERIALS
                 : NO_MATERIAL;
+        _meshLoader.setProgressCallback(progressUpdate);
         if (!_meshLoader.importMeshFromBlob(_engine->getBlob().data, scene,
                                             Matrix4f(), material))
             BRAYNS_ERROR << "Failed to import mesh blob" << std::endl;

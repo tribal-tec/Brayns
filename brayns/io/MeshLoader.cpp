@@ -40,19 +40,22 @@ namespace brayns
 class ProgressWatcher : public Assimp::ProgressHandler
 {
 public:
-    ProgressWatcher(ProgressReporter& parent)
+    ProgressWatcher(ProgressReporter& parent,
+                    const std::function<bool()>& cancelled)
         : _parent(parent)
+        , _cancelled(cancelled)
     {
     }
 
     bool Update(const float percentage) final
     {
         _parent.updateProgress("Loading mesh...", percentage * 50, 100);
-        return true;
+        return !_cancelled();
     }
 
 private:
     ProgressReporter& _parent;
+    std::function<bool()> _cancelled;
 };
 #endif
 
@@ -109,20 +112,22 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
     }
 
     boost::filesystem::path filepath = filename;
-    return _postLoad(aiScene, scene, transformation, defaultMaterial,
+    return _postLoad(aiScene, scene, transformation, defaultMaterial, {},
                      filepath.parent_path().string());
 }
 
-bool MeshLoader::importMeshFromBlob(const std::string& blob, Scene& scene,
+bool MeshLoader::importMeshFromBlob(const Blob& blob, Scene& scene,
                                     const Matrix4f& transformation,
                                     const size_t defaultMaterial)
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
-    ProgressWatcher watcher(*this);
+    const auto cancelFunc = [&blob] { return blob.cancelled(); };
+    ProgressWatcher watcher(*this, cancelFunc);
     importer.SetProgressHandler(&watcher);
     const aiScene* aiScene =
-        importer.ReadFileFromMemory(blob.data(), blob.size(), _getQuality());
+        importer.ReadFileFromMemory(blob.data.data(), blob.data.size(),
+                                    _getQuality());
 
     if (!aiScene)
     {
@@ -132,7 +137,8 @@ bool MeshLoader::importMeshFromBlob(const std::string& blob, Scene& scene,
     }
     importer.SetProgressHandler(nullptr);
 
-    return _postLoad(aiScene, scene, transformation, defaultMaterial);
+    return _postLoad(aiScene, scene, transformation, defaultMaterial,
+                     cancelFunc);
 }
 
 bool MeshLoader::exportMeshToFile(const std::string& filename,
@@ -290,6 +296,7 @@ void MeshLoader::_createMaterials(Scene& scene, const aiScene* aiScene,
 bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                            const Matrix4f& transformation,
                            const size_t defaultMaterial,
+                           const std::function<bool()>& cancelled,
                            const std::string& folder)
 {
     if (!aiScene->HasMeshes())
@@ -310,6 +317,9 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
     auto& triangleMeshes = scene.getTriangleMeshes();
     for (size_t m = 0; m < aiScene->mNumMeshes; ++m)
     {
+        if (cancelled())
+            return false;
+
         aiMesh* mesh = aiScene->mMeshes[m];
         const size_t materialId =
             _getMaterialId(mesh->mMaterialIndex, defaultMaterial);

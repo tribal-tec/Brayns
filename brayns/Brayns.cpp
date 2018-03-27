@@ -761,7 +761,7 @@ private:
                 ? NB_SYSTEM_MATERIALS
                 : NO_MATERIAL;
         _meshLoader.setProgressCallback(progressUpdate);
-        if (_meshLoader.importMeshFromBlob(_engine->getBlob().data, scene,
+        if (_meshLoader.importMeshFromBlob(_engine->getBlob(), scene,
                                            Matrix4f(), material))
             return true;
 

@@ -294,9 +294,8 @@ public:
             return responses;
         });
 
-        _rocketsServer->handleClose([& requests = _binaryRequests](
-            const uintptr_t clientID) {
-            requests.erase(clientID);
+        _rocketsServer->handleClose([this](const uintptr_t clientID) {
+            _deleteBinaryRequest(clientID);
             return std::vector<rockets::ws::Response>{};
         });
 
@@ -319,7 +318,13 @@ public:
         if (req->params.empty() || req->params[0].size == 0)
         {
             req->respond(INVALID_BINARY_RECEIVE);
-            _binaryRequests.erase(request.clientID);
+            _deleteBinaryRequest(request.clientID);
+            return {};
+        }
+
+        if (req->cancelled())
+        {
+            _deleteBinaryRequest(request.clientID);
             return {};
         }
 
@@ -347,14 +352,15 @@ public:
                 // last received one. Adding one model per file would be the
                 // best
                 _engine->rebuildSceneFromBlob(
-                {req->params[0].type, std::move(req->data), &req->progress, [req]{ return req->cancelled(); }},
-                    [ &requests = _binaryRequests, req,
+                    {req->params[0].type, std::move(req->data), &req->progress,
+                     [req] { return req->cancelled(); }},
+                    [ this, req,
                       clientID = request.clientID ](const std::string& error) {
                         if (error.empty())
                             req->respond(Response{to_json(true)});
                         else
-                            req->respond( LOADING_BINARY_FAILED(error));
-                        requests.erase(clientID);
+                            req->respond(LOADING_BINARY_FAILED(error));
+                        _deleteBinaryRequest(clientID);
                     });
             }
             else
@@ -835,15 +841,28 @@ public:
                 request->updateTotalBytes();
                 timer.start();
             },
-            [& requests = _binaryRequests](const std::string& requestID) {
-                for (auto& req : requests)
+            [this](const std::string& requestID) {
+                for (auto& req : _binaryRequests)
                     if (req.second->id == requestID)
                     {
                         req.second->_cancelled = true;
-                        requests.erase(req.first);
                         break;
                     }
             });
+    }
+
+    // no matter if properly finished or cancelled; remove it from our list and
+    // update the progress to be fulfilled
+    void _deleteBinaryRequest(const uintptr_t clientID)
+    {
+        auto i = _binaryRequests.find(clientID);
+        if (i == _binaryRequests.end())
+            return;
+
+        i->second->progress.setAmount(1.f);
+        i->second->progress.setOperation("");
+        _jsonrpcServer->notify(ENDPOINT_PROGRESS, i->second->progress);
+        _binaryRequests.erase(i);
     }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(

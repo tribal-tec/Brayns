@@ -88,6 +88,10 @@ struct Brayns::Impl : public PluginAPI
         : _engineFactory{argc, argv, _parametersManager}
         , _meshLoader(_parametersManager.getGeometryParameters())
     {
+        _parametersManager.getGeometryParameters()
+            .getSupportedDataTypes()
+            .insert("xyz");
+
         BRAYNS_INFO << "     ____                             " << std::endl;
         BRAYNS_INFO << "    / __ )_________ ___  ______  _____" << std::endl;
         BRAYNS_INFO << "   / __  / ___/ __ `/ / / / __ \\/ ___/" << std::endl;
@@ -508,8 +512,7 @@ private:
 
         if (!_engine->getBlob().data.empty())
         {
-            if (_engine->getBlob().type == "xyz")
-                _loadXYZBFile(updateProgress, _engine->getBlob().data);
+            _loadDataFromBlob(loadingProgress, updateProgress);
             return;
         }
 
@@ -614,6 +617,19 @@ private:
         }
     }
 
+    void _loadDataFromBlob(Progress& loadingProgress,
+                           const Progress::UpdateCallback& updateProgress)
+    {
+        if (_engine->getBlob().type == "xyz")
+            _loadXYZBBlob(updateProgress);
+        else
+        {
+            _loadMeshBlob();
+            loadingProgress += LOADING_PROGRESS_DATA;
+        }
+        return;
+    }
+
     /**
         Loads data from a PDB file (command line parameter --pdb-file)
     */
@@ -663,8 +679,7 @@ private:
     /**
         Loads data from a XYZR file (command line parameter --xyzr-file)
     */
-    void _loadXYZBFile(const Progress::UpdateCallback& progressUpdate,
-                       const std::string& blob = std::string())
+    void _loadXYZBFile(const Progress::UpdateCallback& progressUpdate)
     {
         // Load XYZB File
         auto& geometryParameters = _parametersManager.getGeometryParameters();
@@ -673,16 +688,19 @@ private:
                     << std::endl;
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
-        if (!blob.empty())
-        {
-            if (!xyzbLoader.importFromBlob(blob, scene))
-                BRAYNS_ERROR << "Failed to import xyz from blob" << std::endl;
-            return;
-        }
-
         if (!xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene))
             BRAYNS_ERROR << "Failed to import "
                          << geometryParameters.getXYZBFile() << std::endl;
+    }
+
+    void _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate)
+    {
+        auto& geometryParameters = _parametersManager.getGeometryParameters();
+        auto& scene = _engine->getScene();
+        XYZBLoader xyzbLoader(geometryParameters);
+        xyzbLoader.setProgressCallback(progressUpdate);
+        if (!xyzbLoader.importFromBlob(_engine->getBlob().data, scene))
+            BRAYNS_ERROR << "Failed to import xyz from blob" << std::endl;
     }
 
     /**
@@ -725,9 +743,6 @@ private:
         const auto& geometryParameters =
             _parametersManager.getGeometryParameters();
         auto& scene = _engine->getScene();
-
-        strings filters = {".obj", ".dae", ".fbx", ".ply", ".lwo",
-                           ".stl", ".3ds", ".ase", ".ifc", ".off"};
         size_t material =
             geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
                 ? NB_SYSTEM_MATERIALS
@@ -736,6 +751,20 @@ private:
         if (!_meshLoader.importMeshFromFile(filename, scene, Matrix4f(),
                                             material))
             BRAYNS_ERROR << "Failed to import " << filename << std::endl;
+    }
+
+    void _loadMeshBlob()
+    {
+        const auto& geometryParameters =
+            _parametersManager.getGeometryParameters();
+        auto& scene = _engine->getScene();
+        const size_t material =
+            geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
+                ? NB_SYSTEM_MATERIALS
+                : NO_MATERIAL;
+        if (!_meshLoader.importMeshFromBlob(_engine->getBlob().data, scene,
+                                            Matrix4f(), material))
+            BRAYNS_ERROR << "Failed to import mesh blob" << std::endl;
     }
 
 #if (BRAYNS_USE_BRION)

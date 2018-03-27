@@ -108,6 +108,13 @@ std::string hyphenatedToCamelCase(const std::string& hyphenated)
     camel[0] = toupper(camel[0]);
     return camel;
 }
+
+inline bool endsWith(const std::string& value, const std::string& ending)
+{
+    if (ending.size() > value.size())
+        return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
 }
 
 namespace brayns
@@ -199,6 +206,17 @@ public:
         _wsBroadcastOperations[ENDPOINT_CAMERA]();
         _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
+
+        // broadcast request progress'
+        for (auto& i : _binaryRequests)
+        {
+            auto& request = i.second;
+            if (request.progress.isModified())
+            {
+                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request.progress);
+                request.progress.resetModified();
+            }
+        }
     }
 
     std::string _getHttpInterface() const
@@ -759,7 +777,7 @@ public:
         using Params = std::vector<BinaryParam>;
         _handleAsyncRPC<Params, bool>(
             METHOD_RECEIVE_BINARY, doc,
-            [& requests = _binaryRequests,
+            [& requests = _binaryRequests, &geomParams = _parametersManager.getGeometryParameters(),
              &timer = _timer2 ](const Params& params,
                                 const std::string& requestID,
                                 const uintptr_t clientID,
@@ -776,24 +794,33 @@ public:
                     return;
                 }
 
-                const std::vector<std::string> supportedTypes{"foo", "bla",
-                                                              "xyz"};
+                const auto& supportedTypes = geomParams.getSupportedDataTypes();
 
                 BinaryRequest& request = requests[clientID];
                 request.id = requestID;
-                size_t i = 0;
-                for (const auto& param : params)
+                for (size_t i = 0; i < params.size(); ++i)
                 {
-                    const bool unsupported =
-                        std::find(supportedTypes.begin(), supportedTypes.end(),
-                                  param.type) == supportedTypes.end();
-                    if (unsupported || param.size == 0)
+                    const auto& param = params[i];
+                    bool supported = supportedTypes.find(param.type) != supportedTypes.end();
+                    if(supported && param.size > 0)
+                        continue;
+
+                    supported = false;
+                    for(const auto& type : supportedTypes)
                     {
-                        respond(UNSUPPORTED_TYPE({i, supportedTypes}));
+                        if(endsWith(type, param.type))
+                        {
+                            supported = true;
+                            break;
+                        }
+                    }
+
+                    if(!supported)
+                    {
+                        respond(UNSUPPORTED_TYPE({i, {supportedTypes.begin(), supportedTypes.end()}}));
                         requests.erase(clientID);
                         return;
                     }
-                    ++i;
                 }
 
                 request.params.assign(params.begin(), params.end());

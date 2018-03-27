@@ -87,6 +87,10 @@ const Response INVALID_BINARY_RECEIVE{
     Response::Error{"Invalid binary received; no more files expected or "
                     "current file is complete",
                     -1732}};
+Response LOADING_BINARY_FAILED(const std::string& error)
+{
+    return {Response::Error{"Loading data failed: " + error, -1733}};
+}
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
@@ -174,6 +178,19 @@ public:
         }
     }
 
+    void _broadcastBinaryRequestsProgress()
+    {
+        for (auto& i : _binaryRequests)
+        {
+            auto& request = i.second;
+            if (request.progress.isModified())
+            {
+                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request.progress);
+                request.progress.resetModified();
+            }
+        }
+    }
+
     void postRender()
     {
         if (!_rocketsServer || _rocketsServer->getConnectionCount() == 0)
@@ -186,16 +203,7 @@ public:
         _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
 
-        // broadcast request progress'
-        for (auto& i : _binaryRequests)
-        {
-            auto& request = i.second;
-            if (request.progress.isModified())
-            {
-                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request.progress);
-                request.progress.resetModified();
-            }
-        }
+        _broadcastBinaryRequestsProgress();
     }
 
     void postSceneLoading()
@@ -207,16 +215,7 @@ public:
         _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
 
-        // broadcast request progress'
-        for (auto& i : _binaryRequests)
-        {
-            auto& request = i.second;
-            if (request.progress.isModified())
-            {
-                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request.progress);
-                request.progress.resetModified();
-            }
-        }
+        _broadcastBinaryRequestsProgress();
     }
 
     std::string _getHttpInterface() const
@@ -327,6 +326,8 @@ public:
         req.appendChunk(request.message);
         req.params[0].size -= request.message.size();
 
+        // TODO: wrong timer again (leftover!), plus duplicate from
+        // braynsService
         if (_timer2.elapsed() >= 0.01)
         {
             if (req.progress.isModified())
@@ -347,9 +348,18 @@ public:
                 // best
                 _engine->rebuildSceneFromBlob(
                     {req.params[0].type, std::move(req.data), &req.progress},
-                    [ this, clientID = request.clientID ] {
-                        _binaryRequests[clientID].respond(
-                            Response{to_json(true)});
+                    [ this,
+                      clientID = request.clientID ](const std::string& error) {
+                        if (error.empty())
+                        {
+                            _binaryRequests[clientID].respond(
+                                Response{to_json(true)});
+                        }
+                        else
+                        {
+                            _binaryRequests[clientID].respond(
+                                LOADING_BINARY_FAILED(error));
+                        }
                         _binaryRequests.erase(clientID);
                     });
             }

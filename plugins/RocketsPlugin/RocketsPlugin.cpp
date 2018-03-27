@@ -183,10 +183,10 @@ public:
         for (auto& i : _binaryRequests)
         {
             auto& request = i.second;
-            if (request.progress.isModified())
+            if (request->progress.isModified())
             {
-                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request.progress);
-                request.progress.resetModified();
+                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request->progress);
+                request->progress.resetModified();
             }
         }
     }
@@ -316,60 +316,54 @@ public:
         }
 
         auto& req = _binaryRequests[request.clientID];
-        if (req.params.empty() || req.params[0].size == 0)
+        if (req->params.empty() || req->params[0].size == 0)
         {
-            req.respond(INVALID_BINARY_RECEIVE);
+            req->respond(INVALID_BINARY_RECEIVE);
             _binaryRequests.erase(request.clientID);
             return {};
         }
 
-        req.appendChunk(request.message);
-        req.params[0].size -= request.message.size();
+        req->appendChunk(request.message);
+        req->params[0].size -= request.message.size();
 
         // TODO: wrong timer again (leftover!), plus duplicate from
         // braynsService
         if (_timer2.elapsed() >= 0.01)
         {
-            if (req.progress.isModified())
+            if (req->progress.isModified())
             {
-                _jsonrpcServer->notify(ENDPOINT_PROGRESS, req.progress);
-                req.progress.resetModified();
+                _jsonrpcServer->notify(ENDPOINT_PROGRESS, req->progress);
+                req->progress.resetModified();
             }
             _timer2.start();
         }
 
-        if (req.params[0].size == 0)
+        if (req->params[0].size == 0)
         {
-            if (req.params.size() == 1)
+            if (req->params.size() == 1)
             {
                 // last file received, start loading
                 // TODO: what do we do for multiple files? now we just load the
                 // last received one. Adding one model per file would be the
                 // best
                 _engine->rebuildSceneFromBlob(
-                    {req.params[0].type, std::move(req.data), &req.progress},
-                    [ this,
+                {req->params[0].type, std::move(req->data), &req->progress, [req]{ return req->cancelled(); }},
+                    [ &requests = _binaryRequests, req,
                       clientID = request.clientID ](const std::string& error) {
                         if (error.empty())
-                        {
-                            _binaryRequests[clientID].respond(
-                                Response{to_json(true)});
-                        }
+                            req->respond(Response{to_json(true)});
                         else
-                        {
-                            _binaryRequests[clientID].respond(
-                                LOADING_BINARY_FAILED(error));
-                        }
-                        _binaryRequests.erase(clientID);
+                            req->respond( LOADING_BINARY_FAILED(error));
+                        requests.erase(clientID);
                     });
             }
             else
             {
                 // prepare receiving of next file
-                req.data.clear(); // TODO: might not be needed if moved before
-                req.data.reserve(req.params[1].size);
+                req->data.clear(); // TODO: might not be needed if moved before
+                req->data.reserve(req->params[1].size);
             }
-            req.params.pop_front();
+            req->params.pop_front();
         }
 
         return {};
@@ -806,8 +800,9 @@ public:
 
                 const auto& supportedTypes = geomParams.getSupportedDataTypes();
 
-                BinaryRequest& request = requests[clientID];
-                request.id = requestID;
+                requests.emplace(clientID, std::make_shared<BinaryRequest>());
+                auto request = requests[clientID];
+                request->id = requestID;
                 for (size_t i = 0; i < params.size(); ++i)
                 {
                     const auto& param = params[i];
@@ -833,17 +828,18 @@ public:
                     }
                 }
 
-                request.params.assign(params.begin(), params.end());
-                request.data.reserve(request.params[0].size);
-                request.respond = respond;
-                request.progress.requestID = requestID;
-                request.updateTotalBytes();
+                request->params.assign(params.begin(), params.end());
+                request->data.reserve(request->params[0].size);
+                request->respond = respond;
+                request->progress.requestID = requestID;
+                request->updateTotalBytes();
                 timer.start();
             },
             [& requests = _binaryRequests](const std::string& requestID) {
                 for (auto& req : requests)
-                    if (req.second.id == requestID)
+                    if (req.second->id == requestID)
                     {
+                        req.second->_cancelled = true;
                         requests.erase(req.first);
                         break;
                     }
@@ -925,8 +921,9 @@ public:
         std::deque<BinaryParam> params;
         std::string data;
         rockets::jsonrpc::AsyncResponse respond;
-        Engine::Progress progress;
-
+        Progress2 progress;
+        bool _cancelled{false};
+        bool cancelled() const { return _cancelled; }
         void updateTotalBytes()
         {
             for (const auto& param : params)
@@ -952,7 +949,7 @@ public:
 
     Timer _timer2;
 
-    std::map<uintptr_t, BinaryRequest> _binaryRequests;
+    std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

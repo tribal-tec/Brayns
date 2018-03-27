@@ -30,14 +30,15 @@
 #define SERIALIZATION_FRIEND(type) \
     friend void staticjson::init(type*, staticjson::ObjectHandler*);
 
-#include <brayns/common/mathTypes.h>
-
 #include <boost/program_options.hpp>
+#include <brayns/common/BaseObject.h>
+#include <brayns/common/mathTypes.h>
 
 #include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 typedef ::int64_t int64;
@@ -387,6 +388,30 @@ struct RenderOutput
     uint8_ts colorBuffer;
     floats depthBuffer;
     FrameBufferFormat colorBufferFormat;
+};
+
+struct Progress2 : public BaseObject
+{
+    std::string requestID;
+    std::string operation;
+    float amount{0.f};
+    mutable std::mutex mutex;
+
+    void setOperation(const std::string& operation_)
+    {
+        _updateValue(operation, operation_);
+    }
+
+    void setAmount(const float amount_) { _updateValue(amount, amount_); }
+};
+
+struct Blob
+{
+    std::string type;
+    std::string data;
+    Progress2* progress{nullptr};
+    std::function<bool()> cancelled;
+    std::string error{};
 };
 }
 

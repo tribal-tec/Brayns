@@ -194,7 +194,7 @@ inline void init(brayns::Camera* c, ObjectHandler* h)
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
-inline void init(brayns::Engine::Progress* p, ObjectHandler* h)
+inline void init(brayns::Progress2* p, ObjectHandler* h)
 {
     // TODO: requestID is already JSON'd from rockets, how to deal with that?
     h->add_property("id", &p->requestID);
@@ -479,7 +479,7 @@ inline std::string to_json(const T& obj)
     return staticjson::to_pretty_json_string(obj);
 }
 template <>
-inline std::string to_json(const brayns::Engine::Progress& obj)
+inline std::string to_json(const brayns::Progress2& obj)
 {
     std::lock_guard<std::mutex> lock(obj.mutex);
     return staticjson::to_pretty_json_string(obj);

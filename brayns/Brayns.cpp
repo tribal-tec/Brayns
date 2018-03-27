@@ -428,9 +428,9 @@ private:
         _meshLoader.clear();
         Scene& scene = _engine->getScene();
         scene.resetMaterials();
-        _loadData(loadingProgress);
+        const bool success = _loadData(loadingProgress);
 
-        if (scene.empty() && !scene.getVolumeHandler())
+        if (!success || (scene.empty() && !scene.getVolumeHandler()))
         {
             BRAYNS_INFO << "Building default scene" << std::endl;
             scene.buildDefault();
@@ -475,7 +475,7 @@ private:
         if (!_engine->getBlob().data.empty())
         {
             _engine->clearBlob();
-            _engine->finishLoadCallback();
+            _engine->finishLoadCallback(_engine->getBlob().error);
         }
     }
 
@@ -493,7 +493,7 @@ private:
         }
     }
 
-    void _loadData(Progress& loadingProgress)
+    bool _loadData(Progress& loadingProgress)
     {
         size_t nextTic = 0;
         const size_t tic = LOADING_PROGRESS_DATA;
@@ -511,10 +511,7 @@ private:
         };
 
         if (!_engine->getBlob().data.empty())
-        {
-            _loadDataFromBlob(updateProgress);
-            return;
-        }
+            return _loadDataFromBlob(updateProgress);
 
         auto& geometryParameters = _parametersManager.getGeometryParameters();
         auto& volumeParameters = _parametersManager.getVolumeParameters();
@@ -615,15 +612,15 @@ private:
                               Vector3f(volumeDimensions) *
                                   volumeElementSpacing);
         }
+        return true;
     }
 
-    void _loadDataFromBlob(const Progress::UpdateCallback& updateProgress)
+    bool _loadDataFromBlob(const Progress::UpdateCallback& updateProgress)
     {
         if (_engine->getBlob().type == "xyz")
-            _loadXYZBBlob(updateProgress);
-        else
-            _loadMeshBlob(updateProgress);
-        return;
+            return _loadXYZBBlob(updateProgress);
+
+        return _loadMeshBlob(updateProgress);
     }
 
     /**
@@ -689,14 +686,16 @@ private:
                          << geometryParameters.getXYZBFile() << std::endl;
     }
 
-    void _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate)
+    bool _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate)
     {
         auto& geometryParameters = _parametersManager.getGeometryParameters();
         auto& scene = _engine->getScene();
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
-        if (!xyzbLoader.importFromBlob(_engine->getBlob().data, scene))
-            BRAYNS_ERROR << "Failed to import xyz from blob" << std::endl;
+        if (xyzbLoader.importFromBlob(_engine->getBlob().data, scene))
+            return true;
+        _engine->getBlob().error = "Failed to import xyz from blob";
+        return false;
     }
 
     /**
@@ -749,7 +748,7 @@ private:
             BRAYNS_ERROR << "Failed to import " << filename << std::endl;
     }
 
-    void _loadMeshBlob(const Progress::UpdateCallback& progressUpdate)
+    bool _loadMeshBlob(const Progress::UpdateCallback& progressUpdate)
     {
         const auto& geometryParameters =
             _parametersManager.getGeometryParameters();
@@ -759,9 +758,12 @@ private:
                 ? NB_SYSTEM_MATERIALS
                 : NO_MATERIAL;
         _meshLoader.setProgressCallback(progressUpdate);
-        if (!_meshLoader.importMeshFromBlob(_engine->getBlob().data, scene,
-                                            Matrix4f(), material))
-            BRAYNS_ERROR << "Failed to import mesh blob" << std::endl;
+        if (_meshLoader.importMeshFromBlob(_engine->getBlob().data, scene,
+                                           Matrix4f(), material))
+            return true;
+
+        _engine->getBlob().error = "Failed to import mesh blob";
+        return false;
     }
 
 #if (BRAYNS_USE_BRION)

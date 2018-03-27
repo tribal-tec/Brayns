@@ -128,9 +128,11 @@ public:
         std::string type;
         std::string data;
         Progress* progress{nullptr};
+        std::string error{};
     };
-    void rebuildSceneFromBlob(const Blob& blob,
-                              const std::function<void()>& finishCallback)
+    void rebuildSceneFromBlob(
+        const Blob& blob,
+        const std::function<void(std::string)>& finishCallback)
     {
         _rebuildScene = true;
         _blob = blob;
@@ -144,10 +146,10 @@ public:
         _blob.progress = nullptr;
     }
     Blob& getBlob() { return _blob; }
-    void finishLoadCallback()
+    void finishLoadCallback(const std::string& error = "")
     {
         if (_finishLoadSceneCallback)
-            _finishLoadSceneCallback();
+            _finishLoadSceneCallback(error);
     }
 
     /** @return true if Brayns::buildScene() shall be called. */
@@ -267,7 +269,7 @@ protected:
     bool _rebuildScene{false};
 
     Blob _blob;
-    std::function<void()> _finishLoadSceneCallback;
+    std::function<void(std::string)> _finishLoadSceneCallback;
 
     int _snapshotSpp{0};
     int _restoreSpp{0};

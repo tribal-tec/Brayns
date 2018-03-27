@@ -47,7 +47,7 @@ public:
 
     bool Update(const float percentage) final
     {
-        _parent.updateProgress("Loading mesh...", percentage * 100, 100);
+        _parent.updateProgress("Loading mesh...", percentage * 50, 100);
         return true;
     }
 
@@ -294,10 +294,11 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
 {
     if (!aiScene->HasMeshes())
     {
-        BRAYNS_DEBUG << "Error Finding Model In file. "
-                     << "Did you export an empty scene?" << std::endl;
+        BRAYNS_DEBUG << "Error finding meshes in scene" << std::endl;
         return false;
     }
+
+    updateProgress("Post-processing mesh...", 51, 100);
 
     if (defaultMaterial == NO_MATERIAL)
         _createMaterials(scene, aiScene, folder);
@@ -373,6 +374,8 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
 
         _meshIndex[materialId] += mesh->mNumVertices;
     }
+
+    updateProgress("Post-processing mesh...", 100, 100);
 
     BRAYNS_DEBUG << "Loaded " << nbVertices << " vertices and " << nbFaces
                  << " faces" << std::endl;

@@ -31,11 +31,11 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
+bool XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
 {
     BRAYNS_INFO << "Loading xyz file from blob" << std::endl;
 
-    std::stringstream stream(blob);
+    std::stringstream stream(blob.data);
     size_t numlines = 0;
     {
         numlines = std::count(std::istreambuf_iterator<char>(stream),
@@ -50,6 +50,9 @@ bool XYZBLoader::importFromBlob(const std::string& blob, Scene& scene)
     std::string line;
     while (validParsing && std::getline(stream, line))
     {
+        if (blob.cancelled())
+            return false;
+
         std::vector<float> lineData;
         std::stringstream lineStream(line);
 

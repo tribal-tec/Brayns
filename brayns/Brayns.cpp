@@ -420,18 +420,21 @@ private:
             loadingProgress +=
                 LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP;
 
+        Scene& scene = _engine->getScene();
+
         loadingProgress.setMessage("Unloading ...");
-        _engine->getScene().unload();
+        scene.unload();
         loadingProgress += LOADING_PROGRESS_STEP;
 
         loadingProgress.setMessage("Loading data ...");
         _meshLoader.clear();
-        Scene& scene = _engine->getScene();
+
         scene.resetMaterials();
         const bool success = _loadData(loadingProgress);
 
         if (!success || (scene.empty() && !scene.getVolumeHandler()))
         {
+            scene.unload();
             BRAYNS_INFO << "Building default scene" << std::endl;
             scene.buildDefault();
         }
@@ -692,7 +695,7 @@ private:
         auto& scene = _engine->getScene();
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
-        if (xyzbLoader.importFromBlob(_engine->getBlob().data, scene))
+        if (xyzbLoader.importFromBlob(_engine->getBlob(), scene))
             return true;
         _engine->getBlob().error = "Failed to import xyz from blob";
         return false;

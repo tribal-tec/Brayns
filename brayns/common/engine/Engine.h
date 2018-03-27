@@ -108,28 +108,6 @@ public:
         _rebuildScene = rebuild;
     }
 
-    struct Progress : public BaseObject
-    {
-        std::string requestID;
-        std::string operation;
-        float amount{0.f};
-        mutable std::mutex mutex;
-
-        void setOperation(const std::string& operation_)
-        {
-            _updateValue(operation, operation_);
-        }
-
-        void setAmount(const float amount_) { _updateValue(amount, amount_); }
-    };
-
-    struct Blob
-    {
-        std::string type;
-        std::string data;
-        Progress* progress{nullptr};
-        std::string error{};
-    };
     void rebuildSceneFromBlob(
         const Blob& blob,
         const std::function<void(std::string)>& finishCallback)
@@ -175,8 +153,8 @@ public:
     virtual Vector2ui getMinimumFrameSize() const = 0;
 
     /** @return the current progress of the engine */
-    const Progress& getProgress() const { return _progress; }
-    Progress& getProgress() { return _progress; }
+    const Progress2& getProgress() const { return _progress; }
+    Progress2& getProgress() { return _progress; }
     /** Set the last operation processed by the engine. */
     void setLastOperation(const std::string& lastOperation)
     {
@@ -264,7 +242,7 @@ protected:
     FrameBufferPtr _frameBuffer;
     Statistics _statistics;
 
-    Progress _progress;
+    Progress2 _progress;
     bool _keepRunning{true};
     bool _rebuildScene{false};
 

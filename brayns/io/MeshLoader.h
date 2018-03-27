@@ -25,6 +25,7 @@
 #include <brayns/common/material/Material.h>
 #include <brayns/common/material/Texture2D.h>
 #include <brayns/common/types.h>
+#include <brayns/io/ProgressReporter.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 #include <string>
@@ -36,7 +37,7 @@ namespace brayns
 /** Loads meshes from files using the assimp library
  * http://assimp.sourceforge.net
  */
-class MeshLoader
+class MeshLoader : public ProgressReporter
 {
 public:
     MeshLoader(GeometryParameters& geometryParameters);
@@ -82,7 +83,7 @@ public:
     std::string getMeshFilenameFromGID(const uint64_t gid);
 
 private:
-#if (BRAYNS_USE_ASSIMP)
+#ifdef BRAYNS_USE_ASSIMP
     void _createMaterials(Scene& scene, const aiScene* aiScene,
                           const std::string& folder);
 

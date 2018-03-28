@@ -809,6 +809,7 @@ public:
                     }
 
                     // try exact pattern match
+                    // TODO: proper regex check for *.obj and obj cases
                     bool supported = supportedTypes.find(param.type) != supportedTypes.end();
                     if(supported)
                         continue;

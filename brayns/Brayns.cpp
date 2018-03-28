@@ -435,6 +435,7 @@ private:
         if (!success || (scene.empty() && !scene.getVolumeHandler()))
         {
             scene.unload();
+            _meshLoader.clear();
             BRAYNS_INFO << "Building default scene" << std::endl;
             scene.buildDefault();
         }
@@ -514,7 +515,15 @@ private:
         };
 
         if (!_engine->getBlob().data.empty())
-            return _loadDataFromBlob(updateProgress);
+        {
+            const auto success = _loadDataFromBlob(updateProgress);
+            if (!success)
+            {
+                _engine->clearBlob();
+                _engine->finishLoadCallback(_engine->getBlob().error);
+            }
+            return success;
+        }
 
         auto& geometryParameters = _parametersManager.getGeometryParameters();
         auto& volumeParameters = _parametersManager.getVolumeParameters();

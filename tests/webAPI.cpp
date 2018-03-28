@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(receive_binary_illegal_no_params)
     }
 }
 
-BOOST_AUTO_TEST_CASE(receive_binary_single_file_unsupported)
+BOOST_AUTO_TEST_CASE(receive_binary_missing_params)
 {
     brayns::BinaryParam params;
     try
@@ -135,23 +135,45 @@ BOOST_AUTO_TEST_CASE(receive_binary_single_file_unsupported)
     catch (const rockets::jsonrpc::response_error& e)
     {
         BOOST_CHECK_EQUAL(e.code, -1731);
+        BOOST_CHECK(e.data.empty());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_invalid_size)
+{
+    brayns::BinaryParam params;
+    params.type = "xyz";
+    params.size = 0;
+    try
+    {
+        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+                                                            {params});
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1731);
+        BOOST_CHECK(e.data.empty());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_unsupported_type)
+{
+    brayns::BinaryParam params;
+    params.type = "blub";
+    try
+    {
+        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+                                                            {params});
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1732);
         BOOST_REQUIRE(!e.data.empty());
         brayns::BinaryError error;
         BOOST_CHECK(from_json(error, e.data));
         BOOST_CHECK_EQUAL(error.index, 0);
-        BOOST_CHECK_EQUAL(error.supportedTypes.size(), 3);
+        BOOST_CHECK_GT(error.supportedTypes.size(), 0);
     }
-
-    params.type = "blub";
-    BOOST_CHECK_THROW((makeRequest<std::vector<brayns::BinaryParam>, bool>(
-                          "receive-binary", {params})),
-                      rockets::jsonrpc::response_error);
-
-    params.type = "xyz";
-    params.size = 0;
-    BOOST_CHECK_THROW((makeRequest<std::vector<brayns::BinaryParam>, bool>(
-                          "receive-binary", {params})),
-                      rockets::jsonrpc::response_error);
 }
 
 BOOST_AUTO_TEST_CASE(receive_binary_multiple_files_one_unsupported)
@@ -171,7 +193,7 @@ BOOST_AUTO_TEST_CASE(receive_binary_multiple_files_one_unsupported)
         brayns::BinaryError error;
         BOOST_CHECK(from_json(error, e.data));
         BOOST_CHECK_EQUAL(error.index, 1); // fails on the first wrong param
-        BOOST_CHECK_EQUAL(error.supportedTypes.size(), 3);
+        BOOST_CHECK_GT(error.supportedTypes.size(), 0);
     }
 }
 

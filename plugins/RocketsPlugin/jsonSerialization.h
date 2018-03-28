@@ -124,13 +124,13 @@ namespace brayns
 {
 struct BinaryParam
 {
-    size_t size;
+    size_t size{0};
     std::string type; // file extension or MESH, POINTS, CIRCUIT
 };
 
 struct BinaryError
 {
-    size_t index; // which file param had error
+    size_t index{0}; // which file param had error
     std::vector<std::string> supportedTypes;
 };
 }

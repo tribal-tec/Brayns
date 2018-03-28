@@ -5,7 +5,7 @@
 # See: https://docs.docker.com/engine/userguide/eng-image/multistage-build/#use-multi-stage-builds
 
 # Image where Brayns is built
-FROM debian:9.3-slim as builder
+FROM ubuntu:bionic as builder
 LABEL maintainer="bbp-svc-viz@groupes.epfl.ch"
 ARG DIST_PATH=/app/dist
 
@@ -120,28 +120,28 @@ RUN cksum ${BRAYNS_SRC}/.gitsubprojects \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
     -DBUILD_PYTHON_BINDINGS=OFF \
+    -DCOMMON_DISABLE_WERROR=TRUE \
  && ninja mvd-tool Brayns-install \
  && rm -rf ${DIST_PATH}/include ${DIST_PATH}/share
 
 # Final image, containing only Brayns and libraries required to run it
-FROM debian:9.3-slim
+FROM ubuntu:bionic
 ARG DIST_PATH=/app/dist
 
 RUN apt-get update \
  && apt-get -y --no-install-recommends install \
-    libassimp3v5 \
-    libboost-filesystem1.62.0 \
-    libboost-program-options1.62.0 \
-    libboost-regex1.62.0 \
-    libboost-serialization1.62.0 \
-    libboost-system1.62.0 \
-    libboost-iostreams1.62.0 \
+    libassimp4 \
+    libboost-filesystem1.65.1 \
+    libboost-program-options1.65.1 \
+    libboost-regex1.65.1 \
+    libboost-serialization1.65.1 \
+    libboost-system1.65.1 \
+    libboost-iostreams1.65.1 \
     libgomp1 \
     libhdf5-100 \
     libhdf5-cpp-100 \
     libmagick++-6.q16-7 \
-    libmagickwand-6.q16-3 \
-    libturbojpeg0 \
+    libturbojpeg \
     libuv1 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

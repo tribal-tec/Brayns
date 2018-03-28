@@ -143,7 +143,7 @@ bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
 
     const aiScene* aiScene =
         importer.ReadFileFromMemory(blob.data.data(), blob.data.size(),
-                                    _getQuality());
+                                    _getQuality(), blob.type.c_str());
 
     if (!aiScene)
     {

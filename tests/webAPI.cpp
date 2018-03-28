@@ -332,3 +332,27 @@ BOOST_AUTO_TEST_CASE(receive_binary_second_request_with_first_one_not_finished)
         BOOST_CHECK_EQUAL(e.code, -1730);
     }
 }
+
+BOOST_AUTO_TEST_CASE(receive_binary_send_more_files_than_in_request)
+{
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_send_more_bytes_although_file_is_complete)
+{
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_cancel_while_loading)
+{
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_close_client_while_pending_request)
+{
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_multiple_xyz)
+{
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_obj)
+{
+}

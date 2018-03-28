@@ -51,7 +51,7 @@ ENV PATH $PATH:${ISPC_PATH}
 
 # Install embree
 # https://github.com/embree/embree/releases
-ARG EMBREE_VERSION=2.17.1
+ARG EMBREE_VERSION=2.17.4
 ARG EMBREE_FILE=embree-${EMBREE_VERSION}.x86_64.linux.tar.gz
 
 RUN mkdir -p ${DIST_PATH} \
@@ -59,21 +59,16 @@ RUN mkdir -p ${DIST_PATH} \
   && tar zxvf ${EMBREE_FILE} -C ${DIST_PATH} --strip-components=1 \
   && rm -rf ${DIST_PATH}/bin ${DIST_PATH}/doc
 
+
 # Install OSPRay
 # https://github.com/ospray/ospray/releases
-ARG OSPRAY_VERSION=1.4.3
-ARG OSPRAY_SRC=/app/ospray
+ARG OSPRAY_VERSION=1.5.0
+ARG OSPRAY_FILE=ospray-${OSPRAY_VERSION}.x86_64.linux.tar.gz
 
-RUN mkdir -p ${OSPRAY_SRC} \
- && git clone https://github.com/ospray/ospray.git ${OSPRAY_SRC} \
- && cd ${OSPRAY_SRC} \
- && git checkout v${OSPRAY_VERSION} \
- && mkdir -p build \
- && cd build \
- && CMAKE_PREFIX_PATH=${DIST_PATH} cmake .. -GNinja \
-    -DOSPRAY_ENABLE_APPS=OFF \
-    -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
- && ninja install
+RUN mkdir -p ${DIST_PATH} \
+  && wget https://github.com/ospray/ospray/releases/download/v${OSPRAY_VERSION}/${OSPRAY_FILE} \
+  && tar zxvf ${OSPRAY_FILE} -C ${DIST_PATH} --strip-components=1 \
+  && rm -rf ${DIST_PATH}/bin ${DIST_PATH}/doc
 
 # Install libwebsockets (2.0 from Debian is not reliable)
 # https://github.com/warmcat/libwebsockets/releases

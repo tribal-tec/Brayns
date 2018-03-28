@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE(receive_binary_multiple_files_one_unsupported)
     }
 }
 
-BOOST_AUTO_TEST_CASE(receive_binary)
+BOOST_AUTO_TEST_CASE(receive_binary_xyz)
 {
     brayns::BinaryParam params;
     params.size = [] {
@@ -237,6 +237,57 @@ BOOST_AUTO_TEST_CASE(receive_binary)
 
     asyncWait.get();
     BOOST_CHECK(responseFuture.get());
+}
+
+BOOST_AUTO_TEST_CASE(receive_binary_broken_xyz)
+{
+    brayns::BinaryParam params;
+    params.size = [] {
+        std::ifstream file(BRAYNS_TESTDATA + std::string("broken.xyz"),
+                           std::ios::binary | std::ios::ate);
+        return file.tellg();
+    }();
+    params.type = "xyz";
+
+    auto responseFuture =
+        getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
+            "receive-binary", {params});
+
+    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
+        while (!is_ready(responseFuture))
+            process();
+    });
+
+    std::ifstream file(BRAYNS_TESTDATA + std::string("broken.xyz"),
+                       std::ios::binary);
+
+    std::vector<char> buffer(1024, 0);
+
+    while (file.read(buffer.data(), buffer.size()))
+    {
+        const std::streamsize size = file.gcount();
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    // read & send last chunk
+    const std::streamsize size = file.gcount();
+    if (size != 0)
+    {
+        file.read(buffer.data(), size);
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    asyncWait.get();
+    try
+    {
+        responseFuture.get();
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1734);
+        BOOST_CHECK_EQUAL(e.what(),
+                          "Invalid content in line 1: 2.500000 3.437500");
+    }
 }
 
 BOOST_AUTO_TEST_CASE(receive_binary_cancel)

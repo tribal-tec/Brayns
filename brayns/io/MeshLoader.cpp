@@ -37,6 +37,10 @@
 namespace brayns
 {
 #ifdef BRAYNS_USE_ASSIMP
+class CancelledException : public std::runtime_error
+{
+    using runtime_error::runtime_error;
+};
 class ProgressWatcher : public Assimp::ProgressHandler
 {
 public:
@@ -50,7 +54,12 @@ public:
     bool Update(const float percentage) final
     {
         _parent.updateProgress("Loading mesh...", percentage * 50, 100);
-        return !_cancelled();
+
+        // return value for cancelling is not evaluated, hence throwing an
+        // exception...
+        if (_cancelled())
+            throw CancelledException("User cancelled loading");
+        return true;
     }
 
 private:
@@ -111,31 +120,42 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
         return false;
     }
 
+    if (!aiScene->HasMeshes())
+    {
+        BRAYNS_DEBUG << "Error finding meshes in scene" << std::endl;
+        return false;
+    }
+
     boost::filesystem::path filepath = filename;
     return _postLoad(aiScene, scene, transformation, defaultMaterial, {},
                      filepath.parent_path().string());
 }
 
-bool MeshLoader::importMeshFromBlob(const Blob& blob, Scene& scene,
+bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
                                     const Matrix4f& transformation,
                                     const size_t defaultMaterial)
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
     const auto cancelFunc = [&blob] { return blob.cancelled(); };
-    ProgressWatcher watcher(*this, cancelFunc);
-    importer.SetProgressHandler(&watcher);
+    auto watcher = new ProgressWatcher(*this, cancelFunc);
+    importer.SetProgressHandler(watcher);
+
     const aiScene* aiScene =
         importer.ReadFileFromMemory(blob.data.data(), blob.data.size(),
                                     _getQuality());
 
     if (!aiScene)
     {
-        BRAYNS_DEBUG << "Error parsing mesh from blob: "
-                     << importer.GetErrorString() << std::endl;
+        blob.error = importer.GetErrorString();
         return false;
     }
-    importer.SetProgressHandler(nullptr);
+
+    if (!aiScene->HasMeshes())
+    {
+        blob.error = "No meshes found";
+        return false;
+    }
 
     return _postLoad(aiScene, scene, transformation, defaultMaterial,
                      cancelFunc);
@@ -299,12 +319,6 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                            const std::function<bool()>& cancelled,
                            const std::string& folder)
 {
-    if (!aiScene->HasMeshes())
-    {
-        BRAYNS_DEBUG << "Error finding meshes in scene" << std::endl;
-        return false;
-    }
-
     updateProgress("Post-processing mesh...", 51, 100);
 
     if (defaultMaterial == NO_MATERIAL)

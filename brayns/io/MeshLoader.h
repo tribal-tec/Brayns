@@ -57,7 +57,7 @@ public:
                             const Matrix4f& transformation,
                             const size_t defaultMaterial);
 
-    bool importMeshFromBlob(const Blob& blob, Scene& scene,
+    bool importMeshFromBlob(Blob& blob, Scene& scene,
                             const Matrix4f& transformation,
                             const size_t defaultMaterial);
 

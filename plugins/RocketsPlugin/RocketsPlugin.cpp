@@ -89,7 +89,7 @@ const Response INVALID_BINARY_RECEIVE{
                     -1732}};
 Response LOADING_BINARY_FAILED(const std::string& error)
 {
-    return {Response::Error{"Loading data failed: " + error, -1733}};
+    return {Response::Error{error, -1733}};
 }
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
@@ -954,7 +954,7 @@ public:
             data += chunk;
             _receivedBytes += chunk.size();
             progress.setAmount(_progress());
-            progress.setOperation("Receiving chunks...");
+            progress.setOperation("Receiving data...");
         }
 
     private:

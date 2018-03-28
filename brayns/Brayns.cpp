@@ -695,10 +695,7 @@ private:
         auto& scene = _engine->getScene();
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
-        if (xyzbLoader.importFromBlob(_engine->getBlob(), scene))
-            return true;
-        _engine->getBlob().error = "Failed to import xyz from blob";
-        return false;
+        return xyzbLoader.importFromBlob(_engine->getBlob(), scene);
     }
 
     /**
@@ -761,12 +758,8 @@ private:
                 ? NB_SYSTEM_MATERIALS
                 : NO_MATERIAL;
         _meshLoader.setProgressCallback(progressUpdate);
-        if (_meshLoader.importMeshFromBlob(_engine->getBlob(), scene,
-                                           Matrix4f(), material))
-            return true;
-
-        _engine->getBlob().error = "Failed to import mesh blob";
-        return false;
+        return _meshLoader.importMeshFromBlob(_engine->getBlob(), scene,
+                                              Matrix4f(), material);
     }
 
 #if (BRAYNS_USE_BRION)

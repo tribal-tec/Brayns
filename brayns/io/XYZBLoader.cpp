@@ -31,7 +31,7 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
+bool XYZBLoader::importFromBlob(Blob& blob, Scene& scene)
 {
     BRAYNS_INFO << "Loading xyz file from blob" << std::endl;
 
@@ -43,12 +43,14 @@ bool XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
     }
     stream.seekg(0);
 
-    bool first = true;
-    uint64_t sphereID = 0;
+    const size_t materialID = 0;
+    auto& spheres = scene.getSpheres()[materialID];
+    const size_t startOffset = spheres.size();
+    spheres.reserve(spheres.size() + numlines);
+
     size_t i = 0;
-    bool validParsing = true;
     std::string line;
-    while (validParsing && std::getline(stream, line))
+    while (std::getline(stream, line))
     {
         if (blob.cancelled())
             return false;
@@ -65,22 +67,17 @@ bool XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
         case 3:
         {
             const Vector3f position(lineData[0], lineData[1], lineData[2]);
-            const auto id = scene.addSphere(
-                0, Sphere(position, _geometryParameters.getRadiusMultiplier()));
-            if (first)
-            {
-                first = false;
-                sphereID = id;
-            }
+            scene.addSphere(materialID,
+                            {position,
+                             _geometryParameters.getRadiusMultiplier()});
             break;
         }
         default:
-            BRAYNS_ERROR << "Invalid line: " << line << std::endl;
-            validParsing = false;
-            break;
+            blob.error = "Invalid content in line " + std::to_string(i + 1) +
+                         ": " + line;
+            return false;
         }
-        updateProgress("Loading spheres...", i, numlines);
-        ++i;
+        updateProgress("Loading spheres...", i++, numlines);
     }
 
     const float maxDim = scene.getWorldBounds().getSize().find_max();
@@ -92,12 +89,11 @@ bool XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
                     << " is too big for this scene, using radius " << newRadius
                     << " now" << std::endl;
 
-        auto& spheres = scene.getSpheres()[0];
         for (i = 0; i < numlines; ++i)
-            spheres[i + sphereID].radius = newRadius;
+            spheres[i + startOffset].radius = newRadius;
     }
 
-    return validParsing;
+    return true;
 }
 
 bool XYZBLoader::importFromFile(const std::string& filename, Scene& scene)

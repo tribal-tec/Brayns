@@ -81,15 +81,15 @@ const Response ALREADY_PENDING_REQUEST{
 const Response MISSING_PARAMS{Response::Error{"Missing params", -1731}};
 Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
 {
-    return {Response::Error{"Unsupported type", -1731, to_json(error)}};
+    return {Response::Error{"Unsupported type", -1732, to_json(error)}};
 }
 const Response INVALID_BINARY_RECEIVE{
     Response::Error{"Invalid binary received; no more files expected or "
                     "current file is complete",
-                    -1732}};
+                    -1733}};
 Response LOADING_BINARY_FAILED(const std::string& error)
 {
-    return {Response::Error{error, -1733}};
+    return {Response::Error{error, -1734}};
 }
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
@@ -345,6 +345,7 @@ public:
                 // TODO: what do we do for multiple files? now we just load the
                 // last received one. Adding one model per file would be the
                 // best
+                request->fullyReceived();
                 _engine->rebuildSceneFromBlob(
                     {request->params[0].type, std::move(request->data),
                      &request->progress,
@@ -801,10 +802,15 @@ public:
                 for (size_t i = 0; i < params.size(); ++i)
                 {
                     const auto& param = params[i];
+                    if(param.type.empty() || param.size == 0)
+                    {
+                        respond(MISSING_PARAMS);
+                        return;
+                    }
 
                     // try exact pattern match
                     bool supported = supportedTypes.find(param.type) != supportedTypes.end();
-                    if(supported && param.size > 0)
+                    if(supported)
                         continue;
 
                     // fallback to match "ends with extension"
@@ -950,12 +956,13 @@ public:
             return !cancelled();
         }
 
+        void fullyReceived() { _fullyReceived = true; }
         void cancel()
         {
             _cancelled = true;
 
             // once we're processed by the async loading, wait here
-            if (data.empty())
+            if (_fullyReceived)
             {
                 std::unique_lock<std::mutex> lock(_mutex);
                 _cond.wait(lock);
@@ -1006,6 +1013,7 @@ public:
         bool _cancelled{false};
         std::mutex _mutex;
         std::condition_variable _cond;
+        bool _fullyReceived{false};
     };
 
     Timer _timer2;

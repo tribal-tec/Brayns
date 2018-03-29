@@ -127,6 +127,12 @@ Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
     return result;
 }
 
+// TODO: refactor to snapshotTask (how about generic tasks? data blob might be
+// very similar) to have progress and cancel handling unified. And later, allow
+// for multiple snapshot tasks. To be queued at last, parallel execution is
+// another story. So maybe tasks can be a general thing, and execution is always
+// async and does not obstruct other tasks or "normal" execution. Dispatching by
+// type in the engine. Forwarded to plugins?
 void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
 {
     if (_snapshotFrameBuffer)

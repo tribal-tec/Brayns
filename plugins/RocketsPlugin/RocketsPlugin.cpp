@@ -763,6 +763,7 @@ public:
                             callback(Response{Response::Error{e.what(), -1}});
                         }
                     };
+                    // TODO: snapshot progress needs request ID
                     engine->snapshot(params, readyCallback);
                     engine->triggerRender();
                 }
@@ -863,6 +864,10 @@ public:
                 }
             });
     }
+
+    // TODO: RPC for remote file loading
+    // TODO: need an API for finding the (best) suitable loader giving just a
+    // filename (folder?).
 
     // no matter if properly finished or cancelled; remove it from our list and
     // update the progress to be fulfilled

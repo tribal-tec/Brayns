@@ -5,7 +5,7 @@
 # See: https://docs.docker.com/engine/userguide/eng-image/multistage-build/#use-multi-stage-builds
 
 # Image where Brayns is built
-FROM ubuntu:bionic as builder
+FROM debian:buster-slim as builder
 LABEL maintainer="bbp-svc-viz@groupes.epfl.ch"
 ARG DIST_PATH=/app/dist
 
@@ -59,16 +59,21 @@ RUN mkdir -p ${DIST_PATH} \
   && tar zxvf ${EMBREE_FILE} -C ${DIST_PATH} --strip-components=1 \
   && rm -rf ${DIST_PATH}/bin ${DIST_PATH}/doc
 
-
 # Install OSPRay
 # https://github.com/ospray/ospray/releases
 ARG OSPRAY_VERSION=1.5.0
-ARG OSPRAY_FILE=ospray-${OSPRAY_VERSION}.x86_64.linux.tar.gz
+ARG OSPRAY_SRC=/app/ospray
 
-RUN mkdir -p ${DIST_PATH} \
-  && wget https://github.com/ospray/ospray/releases/download/v${OSPRAY_VERSION}/${OSPRAY_FILE} \
-  && tar zxvf ${OSPRAY_FILE} -C ${DIST_PATH} --strip-components=1 \
-  && rm -rf ${DIST_PATH}/bin ${DIST_PATH}/doc
+RUN mkdir -p ${OSPRAY_SRC} \
+ && git clone https://github.com/ospray/ospray.git ${OSPRAY_SRC} \
+ && cd ${OSPRAY_SRC} \
+ && git checkout v${OSPRAY_VERSION} \
+ && mkdir -p build \
+ && cd build \
+ && CMAKE_PREFIX_PATH=${DIST_PATH} cmake .. -GNinja \
+    -DOSPRAY_ENABLE_APPS=OFF \
+    -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
+ && ninja install
 
 # Install libwebsockets (2.0 from Debian is not reliable)
 # https://github.com/warmcat/libwebsockets/releases
@@ -120,23 +125,23 @@ RUN cksum ${BRAYNS_SRC}/.gitsubprojects \
  && rm -rf ${DIST_PATH}/include ${DIST_PATH}/share
 
 # Final image, containing only Brayns and libraries required to run it
-FROM ubuntu:bionic
+FROM debian:buster-slim
 ARG DIST_PATH=/app/dist
 
 RUN apt-get update \
  && apt-get -y --no-install-recommends install \
     libassimp4 \
-    libboost-filesystem1.65.1 \
-    libboost-program-options1.65.1 \
-    libboost-regex1.65.1 \
-    libboost-serialization1.65.1 \
-    libboost-system1.65.1 \
-    libboost-iostreams1.65.1 \
+    libboost-filesystem1.62.0 \
+    libboost-program-options1.62.0 \
+    libboost-regex1.62.0 \
+    libboost-serialization1.62.0 \
+    libboost-system1.62.0 \
+    libboost-iostreams1.62.0 \
     libgomp1 \
     libhdf5-100 \
     libhdf5-cpp-100 \
-    libmagick++-6.q16-7 \
-    libturbojpeg \
+    libmagick++-6.q16-8 \
+    libturbojpeg0 \
     libuv1 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

@@ -52,6 +52,7 @@ if(libuv_FOUND)
   endif()
   include_directories(SYSTEM uvw/src)
   list(APPEND LCOV_EXCLUDE 'uvw/*')
+  # TODO: use tag v1.6.0_libuv-v1.18 for Docker
 endif()
 
 # HTTP messaging

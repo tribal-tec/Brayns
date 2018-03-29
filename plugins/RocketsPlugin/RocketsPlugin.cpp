@@ -91,6 +91,8 @@ Response LOADING_BINARY_FAILED(const std::string& error)
 {
     return {Response::Error{error, -1734}};
 }
+const Response SNAPSHOT_PENDING{
+    Response::Error{"Snapshot is pending, rejecting data upload", -1735}};
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
@@ -744,8 +746,8 @@ public:
         _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
             [ engine = _engine, &imageGenerator = _imageGenerator ](
-                const SnapshotParams& params, const std::string&, uintptr_t,
-                rockets::jsonrpc::AsyncResponse callback) {
+                const SnapshotParams& params, const std::string&,
+                const uintptr_t, rockets::jsonrpc::AsyncResponse callback) {
                 try
                 {
                     auto readyCallback = [callback, params,
@@ -782,10 +784,16 @@ public:
         _handleAsyncRPC<Params, bool>(
             METHOD_RECEIVE_BINARY, doc,
             [& requests = _binaryRequests, &geomParams = _parametersManager.getGeometryParameters(),
-             &timer = _timer2 ](const Params& params,
+             &timer = _timer2, engine = _engine ](const Params& params,
                                 const std::string& requestID,
                                 const uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond) {
+                if(engine->snapshotPending())
+                {
+                    respond(SNAPSHOT_PENDING);
+                    return;
+                }
+
                 if (requests.count(clientID) != 0)
                 {
                     respond(ALREADY_PENDING_REQUEST);
@@ -940,6 +948,7 @@ public:
 
     struct BinaryRequest
     {
+        BinaryRequest() { progress.setOperation("Waiting for data..."); }
         std::string id;
         std::deque<BinaryParam> params;
         std::string data;

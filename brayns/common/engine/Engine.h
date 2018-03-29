@@ -211,6 +211,7 @@ public:
      * render() continues normally.
      */
     void cancelSnapshot() { _snapshotCancelled = true; }
+    bool snapshotPending() const { return !!_snapshotFrameBuffer; }
     /**
      * @return true if render() calls shall be continued, based on current
      *         accumulation and snapshot settings.

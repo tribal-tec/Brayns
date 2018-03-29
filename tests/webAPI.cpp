@@ -356,3 +356,7 @@ BOOST_AUTO_TEST_CASE(receive_binary_multiple_xyz)
 BOOST_AUTO_TEST_CASE(receive_binary_obj)
 {
 }
+
+BOOST_AUTO_TEST_CASE(receive_binary_reject_if_snapshot_is_pending)
+{
+}

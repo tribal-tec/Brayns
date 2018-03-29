@@ -405,6 +405,8 @@ struct Progress2 : public BaseObject
     void setAmount(const float amount_) { _updateValue(amount, amount_); }
 };
 
+class Task;
+
 struct Blob
 {
     std::string type;

@@ -206,6 +206,8 @@ public:
      */
     void snapshot(const SnapshotParams& params, SnapshotReadyCallback cb);
 
+    Task snapshot(const SnapshotParams& params);
+
     /**
      * Cancel a current pending snapshot. Will reset the framebuffer, so that
      * render() continues normally.

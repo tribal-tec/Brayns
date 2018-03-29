@@ -30,6 +30,8 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
+#include <brayns/common/tasks/Task.h>
+
 namespace brayns
 {
 Engine::Engine(ParametersManager& parametersManager)
@@ -155,6 +157,21 @@ void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
 
     setLastOperation("Render snapshot ...");
     setLastProgress(0.f);
+}
+
+Task Engine::snapshot(const SnapshotParams& )
+{
+    class Func : public transwarp::functor
+    {
+    public:
+        FrameBufferPtr operator()()
+        {
+            std::cout << "snapshot!" << std::endl;
+            return nullptr;
+        }
+    };
+    Task task(Func{});
+    return task;
 }
 
 bool Engine::continueRendering() const

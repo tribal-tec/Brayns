@@ -27,6 +27,7 @@
 #include "jsonUtils.h"
 
 #include <brayns/common/Timer.h>
+#include <brayns/common/tasks/Task.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
@@ -765,6 +766,9 @@ public:
                     };
                     // TODO: snapshot progress needs request ID
                     engine->snapshot(params, readyCallback);
+                    auto task = engine->snapshot(params);
+                    // std::cout << result ? result.getSize().x() : "nada" <<
+                    // std::endl;
                     engine->triggerRender();
                 }
                 catch (const std::runtime_error& e)

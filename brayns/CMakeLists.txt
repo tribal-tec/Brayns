@@ -15,7 +15,7 @@ set(BRAYNS_SOURCES Brayns.cpp)
 
 set(BRAYNS_LINK_LIBRARIES
   PUBLIC braynsParameters braynsCommon
-  PRIVATE braynsIO braynsPlugins braynsPluginAPI)
+  PRIVATE braynsIO braynsPlugins braynsPluginAPI ${OSPRAY_COMMON_LIBRARY})
 
 if(TARGET Lunchbox)
   list(APPEND BRAYNS_LINK_LIBRARIES PRIVATE Lunchbox)

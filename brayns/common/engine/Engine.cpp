@@ -98,19 +98,12 @@ void Engine::commit()
 
 void Engine::render()
 {
-    auto fb = _snapshotFrameBuffer ? _snapshotFrameBuffer : _frameBuffer;
-    _renderers[_activeRenderer]->render(fb);
+    _renderers[_activeRenderer]->render(_frameBuffer);
 }
 
 void Engine::postRender()
 {
-    if (!_snapshotFrameBuffer)
-    {
-        _writeFrameToFile();
-        return;
-    }
-
-    _processSnapshot();
+    _writeFrameToFile();
 }
 
 Renderer& Engine::getRenderer()
@@ -135,30 +128,6 @@ Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
 // another story. So maybe tasks can be a general thing, and execution is always
 // async and does not obstruct other tasks or "normal" execution. Dispatching by
 // type in the engine. Forwarded to plugins?
-// void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
-//{
-//    if (_snapshotFrameBuffer)
-//        throw std::runtime_error("Already a snapshot pending");
-
-//    _cb = cb;
-//    _snapshotSpp = params.samplesPerPixel;
-
-//    _snapshotFrameBuffer =
-//        createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
-
-//    _snapshotCamera = createCamera(getCamera().getType());
-//    *_snapshotCamera = getCamera();
-//    _snapshotCamera->setAspectRatio(float(params.size.x()) / params.size.y());
-//    _snapshotCamera->commit();
-//    _restoreSpp =
-//        _parametersManager.getRenderingParameters().getSamplesPerPixel();
-//    _parametersManager.getRenderingParameters().setSamplesPerPixel(1);
-//    _renderers[_activeRenderer]->setCamera(_snapshotCamera);
-
-//    setLastOperation("Render snapshot ...");
-//    setLastProgress(0.f);
-//}
-
 std::shared_ptr<TaskT<FrameBufferPtr>> Engine::snapshot(
     const SnapshotParams& params) const
 {
@@ -213,39 +182,10 @@ std::shared_ptr<TaskT<FrameBufferPtr>> Engine::snapshot(
 
 bool Engine::continueRendering() const
 {
-    if (_snapshotFrameBuffer)
-    {
-        if (_snapshotSpp < 2)
-            return false;
-        return _snapshotFrameBuffer->numAccumFrames() < size_t(_snapshotSpp);
-    }
-
     return _renderers.at(_activeRenderer)->getVariance() > 1 &&
            _frameBuffer->getAccumulation() &&
            (_frameBuffer->numAccumFrames() <
             _parametersManager.getRenderingParameters().getMaxAccumFrames());
-}
-
-void Engine::_processSnapshot()
-{
-    setLastProgress(float(_snapshotFrameBuffer->numAccumFrames()) /
-                    _snapshotSpp);
-    if (_snapshotFrameBuffer->numAccumFrames() == size_t(_snapshotSpp) ||
-        _snapshotCancelled)
-    {
-        if (_snapshotCancelled)
-            setLastProgress(1.f);
-        else
-            _cb(_snapshotFrameBuffer);
-
-        _renderers[_activeRenderer]->setCamera(_camera);
-        _parametersManager.getRenderingParameters().setSamplesPerPixel(
-            _restoreSpp);
-
-        _snapshotCamera.reset();
-        _snapshotFrameBuffer.reset();
-        _snapshotCancelled = false;
-    }
 }
 
 void Engine::_writeFrameToFile()

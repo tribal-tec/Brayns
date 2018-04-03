@@ -185,7 +185,6 @@ std::shared_ptr<TaskT<FrameBufferPtr>> Engine::snapshot(
             }
 
             progress("Render snapshot ...", 1.f);
-            done();
             return _frameBuffer;
         }
 
@@ -193,7 +192,6 @@ std::shared_ptr<TaskT<FrameBufferPtr>> Engine::snapshot(
         RendererPtr _renderer;
         CameraPtr _camera;
         FrameBufferPtr _frameBuffer;
-        SnapshotReadyCallback _cb;
         const int _spp;
     };
 

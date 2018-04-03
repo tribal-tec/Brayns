@@ -249,7 +249,7 @@ public:
             {
                 _socketListener =
                     std::make_unique<SocketListener>(*_rocketsServer);
-                _rocketsServer->setSocketListener(_socketListener.get());
+                //_rocketsServer->setSocketListener(_socketListener.get());
             }
             catch (const std::runtime_error& e)
             {
@@ -762,10 +762,8 @@ public:
                 const uintptr_t, rockets::jsonrpc::AsyncResponse callback) {
                 try
                 {
-                    auto task = engine->snapshot(params);
                     auto readyCallback = [callback, params,
-                            &imageGenerator, done = [&]{ tasks.erase(requestID);}, task] {
-                        auto fb = task->get();
+                            &imageGenerator, done = [&]{ tasks.erase(requestID);}] (FrameBufferPtr fb){
                         try
                         {
                             callback(Response{to_json(
@@ -779,9 +777,10 @@ public:
                         done();
                     };
 
+                    auto task = std::make_shared<TaskCallbackT<FrameBufferPtr>>(engine->snapshot(params), readyCallback);
+
                     task->setRequestID(requestID);
-                    task->done = readyCallback;
-                    task->progressUpdated = progressCallback;
+                    task->setProgressUpdatedCallback(progressCallback);
                     task->schedule();
                     tasks.emplace(requestID, task);
                     //auto task = engine->snapshot(params);
@@ -800,6 +799,7 @@ public:
                 if(i!=tasks.end())
                 {
                     i->second->cancel();
+                    i->second->wait();
                     tasks.erase(i);
                 }
             });

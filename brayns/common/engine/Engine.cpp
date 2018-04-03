@@ -135,43 +135,82 @@ Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
 // another story. So maybe tasks can be a general thing, and execution is always
 // async and does not obstruct other tasks or "normal" execution. Dispatching by
 // type in the engine. Forwarded to plugins?
-void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
+// void Engine::snapshot(const SnapshotParams& params, SnapshotReadyCallback cb)
+//{
+//    if (_snapshotFrameBuffer)
+//        throw std::runtime_error("Already a snapshot pending");
+
+//    _cb = cb;
+//    _snapshotSpp = params.samplesPerPixel;
+
+//    _snapshotFrameBuffer =
+//        createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
+
+//    _snapshotCamera = createCamera(getCamera().getType());
+//    *_snapshotCamera = getCamera();
+//    _snapshotCamera->setAspectRatio(float(params.size.x()) / params.size.y());
+//    _snapshotCamera->commit();
+//    _restoreSpp =
+//        _parametersManager.getRenderingParameters().getSamplesPerPixel();
+//    _parametersManager.getRenderingParameters().setSamplesPerPixel(1);
+//    _renderers[_activeRenderer]->setCamera(_snapshotCamera);
+
+//    setLastOperation("Render snapshot ...");
+//    setLastProgress(0.f);
+//}
+
+std::shared_ptr<TaskT<FrameBufferPtr>> Engine::snapshot(
+    const SnapshotParams& params) const
 {
-    if (_snapshotFrameBuffer)
-        throw std::runtime_error("Already a snapshot pending");
-
-    _cb = cb;
-    _snapshotSpp = params.samplesPerPixel;
-
-    _snapshotFrameBuffer =
-        createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
-
-    _snapshotCamera = createCamera(getCamera().getType());
-    *_snapshotCamera = getCamera();
-    _snapshotCamera->setAspectRatio(float(params.size.x()) / params.size.y());
-    _snapshotCamera->commit();
-    _restoreSpp =
-        _parametersManager.getRenderingParameters().getSamplesPerPixel();
-    _parametersManager.getRenderingParameters().setSamplesPerPixel(1);
-    _renderers[_activeRenderer]->setCamera(_snapshotCamera);
-
-    setLastOperation("Render snapshot ...");
-    setLastProgress(0.f);
-}
-
-Task Engine::snapshot(const SnapshotParams& )
-{
-    class Func : public transwarp::functor
+    class Func : public TaskFunctor
     {
     public:
+        Func(RendererPtr renderer, CameraPtr camera, FrameBufferPtr frameBuffer,
+             const int spp)
+            : _renderer(renderer)
+            , _camera(camera)
+            , _frameBuffer(frameBuffer)
+            , _spp(spp)
+        {
+        }
+
         FrameBufferPtr operator()()
         {
-            std::cout << "snapshot!" << std::endl;
-            return nullptr;
+            while (_frameBuffer->numAccumFrames() != size_t(_spp))
+            {
+                transwarp_cancel_point();
+                _renderer->render(_frameBuffer);
+                progress("Render snapshot ...",
+                         float(_frameBuffer->numAccumFrames()) / _spp);
+            }
+
+            progress("Render snapshot ...", 1.f);
+            done();
+            return _frameBuffer;
         }
+
+    private:
+        RendererPtr _renderer;
+        CameraPtr _camera;
+        FrameBufferPtr _frameBuffer;
+        SnapshotReadyCallback _cb;
+        const int _spp;
     };
-    Task task(Func{});
-    return task;
+
+    auto frameBuffer =
+        createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
+    auto camera = createCamera(getCamera().getType());
+    *camera = getCamera();
+    camera->setAspectRatio(float(params.size.x()) / params.size.y());
+    camera->commit();
+
+    auto renderer = createRenderer(_activeRenderer);
+    renderer->setCamera(camera);
+    renderer->setScene(_scene);
+    renderer->commit();
+
+    return std::make_shared<TaskT<FrameBufferPtr>>(
+        Func{renderer, camera, frameBuffer, params.samplesPerPixel});
 }
 
 bool Engine::continueRendering() const

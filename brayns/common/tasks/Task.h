@@ -154,6 +154,7 @@ public:
     }
 
     void wait() final { _consumer->wait(); }
+    void get() { _consumer->get(); }
     void setRequestID(const std::string& requestID)
     {
         _task->setRequestID(requestID);

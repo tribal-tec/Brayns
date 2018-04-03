@@ -38,61 +38,57 @@ struct SnapshotParams
     size_t quality{100};
 };
 
-std::shared_ptr<TaskT<ImageGenerator::ImageBase64>> createSnapshotTask(
-    const SnapshotParams& params, Engine& engine,
-    ImageGenerator& imageGenerator)
+class SnapshotTask : public TaskFunctor
 {
-    class Func : public TaskFunctor
+public:
+    SnapshotTask(Engine& engine, const SnapshotParams& params,
+                 ImageGenerator& imageGenerator)
+        : _frameBuffer(engine.createFrameBuffer(params.size,
+                                                FrameBufferFormat::rgba_i8,
+                                                true))
+        , _camera(engine.createCamera(engine.getCamera().getType()))
+        , _renderer(engine.createRenderer(engine.getActiveRenderer()))
+        , _params(params)
+        , _imageGenerator(imageGenerator)
     {
-    public:
-        Func(RendererPtr renderer, CameraPtr camera, FrameBufferPtr frameBuffer,
-             const SnapshotParams& params, ImageGenerator& imageGenerator)
-            : _renderer(renderer)
-            , _camera(camera)
-            , _frameBuffer(frameBuffer)
-            , _params(params)
-            , _imageGenerator(imageGenerator)
+        *_camera = engine.getCamera();
+        _camera->setAspectRatio(float(params.size.x()) / params.size.y());
+        _camera->commit();
+
+        _renderer->setCamera(_camera);
+        _renderer->setScene(engine.getScenePtr());
+        _renderer->commit();
+    }
+
+    ImageGenerator::ImageBase64 operator()()
+    {
+        while (_frameBuffer->numAccumFrames() !=
+               size_t(_params.samplesPerPixel))
         {
+            transwarp_cancel_point();
+            _renderer->render(_frameBuffer);
+            progress("Render snapshot ...",
+                     float(_frameBuffer->numAccumFrames()) /
+                         _params.samplesPerPixel);
         }
 
-        ImageGenerator::ImageBase64 operator()()
-        {
-            while (_frameBuffer->numAccumFrames() !=
-                   size_t(_params.samplesPerPixel))
-            {
-                transwarp_cancel_point();
-                _renderer->render(_frameBuffer);
-                progress("Render snapshot ...",
-                         float(_frameBuffer->numAccumFrames()) /
-                             _params.samplesPerPixel);
-            }
+        progress("Render snapshot ...", 1.f);
+        return _imageGenerator.createImage(*_frameBuffer, _params.format,
+                                           _params.quality);
+    }
 
-            progress("Render snapshot ...", 1.f);
-            return _imageGenerator.createImage(*_frameBuffer, _params.format,
-                                               _params.quality);
-        }
+private:
+    FrameBufferPtr _frameBuffer;
+    CameraPtr _camera;
+    RendererPtr _renderer;
+    SnapshotParams _params;
+    ImageGenerator& _imageGenerator;
+};
 
-    private:
-        RendererPtr _renderer;
-        CameraPtr _camera;
-        FrameBufferPtr _frameBuffer;
-        SnapshotParams _params;
-        ImageGenerator& _imageGenerator;
-    };
-
-    auto frameBuffer =
-        engine.createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
-    auto camera = engine.createCamera(engine.getCamera().getType());
-    *camera = engine.getCamera();
-    camera->setAspectRatio(float(params.size.x()) / params.size.y());
-    camera->commit();
-
-    auto renderer = engine.createRenderer(engine.getActiveRenderer());
-    renderer->setCamera(camera);
-    renderer->setScene(engine.getScenePtr());
-    renderer->commit();
-
+auto createSnapshotTask(const SnapshotParams& params, Engine& engine,
+                        ImageGenerator& imageGenerator)
+{
     return std::make_shared<TaskT<ImageGenerator::ImageBase64>>(
-        Func{renderer, camera, frameBuffer, params, imageGenerator});
+        SnapshotTask{engine, params, imageGenerator});
 }
 }

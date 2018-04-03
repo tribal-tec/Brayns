@@ -37,6 +37,7 @@
 #include <brayns/version.h>
 
 #include "ImageGenerator.h"
+#include "SnapshotTask.h"
 #include "base64/base64.h"
 
 #ifdef __GNUC__
@@ -132,13 +133,6 @@ struct BinaryError
 {
     size_t index{0}; // which file param had error
     std::vector<std::string> supportedTypes;
-};
-struct SnapshotParams
-{
-    int samplesPerPixel{1};
-    Vector2ui size;
-    std::string format; // ImageMagick formats apply
-    size_t quality{100};
 };
 }
 

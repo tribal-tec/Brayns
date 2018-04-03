@@ -122,64 +122,6 @@ Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
     return result;
 }
 
-// TODO: refactor to snapshotTask (how about generic tasks? data blob might be
-// very similar) to have progress and cancel handling unified. And later, allow
-// for multiple snapshot tasks. To be queued at last, parallel execution is
-// another story. So maybe tasks can be a general thing, and execution is always
-// async and does not obstruct other tasks or "normal" execution. Dispatching by
-// type in the engine. Forwarded to plugins?
-std::shared_ptr<TaskT<FrameBufferPtr>> Engine::snapshot(
-    const SnapshotParams& params) const
-{
-    class Func : public TaskFunctor
-    {
-    public:
-        Func(RendererPtr renderer, CameraPtr camera, FrameBufferPtr frameBuffer,
-             const int spp)
-            : _renderer(renderer)
-            , _camera(camera)
-            , _frameBuffer(frameBuffer)
-            , _spp(spp)
-        {
-        }
-
-        FrameBufferPtr operator()()
-        {
-            while (_frameBuffer->numAccumFrames() != size_t(_spp))
-            {
-                transwarp_cancel_point();
-                _renderer->render(_frameBuffer);
-                progress("Render snapshot ...",
-                         float(_frameBuffer->numAccumFrames()) / _spp);
-            }
-
-            progress("Render snapshot ...", 1.f);
-            return _frameBuffer;
-        }
-
-    private:
-        RendererPtr _renderer;
-        CameraPtr _camera;
-        FrameBufferPtr _frameBuffer;
-        const int _spp;
-    };
-
-    auto frameBuffer =
-        createFrameBuffer(params.size, FrameBufferFormat::rgba_i8, true);
-    auto camera = createCamera(getCamera().getType());
-    *camera = getCamera();
-    camera->setAspectRatio(float(params.size.x()) / params.size.y());
-    camera->commit();
-
-    auto renderer = createRenderer(_activeRenderer);
-    renderer->setCamera(camera);
-    renderer->setScene(_scene);
-    renderer->commit();
-
-    return std::make_shared<TaskT<FrameBufferPtr>>(
-        Func{renderer, camera, frameBuffer, params.samplesPerPixel});
-}
-
 bool Engine::continueRendering() const
 {
     return _renderers.at(_activeRenderer)->getVariance() > 1 &&

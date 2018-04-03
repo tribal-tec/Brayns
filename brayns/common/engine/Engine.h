@@ -22,6 +22,7 @@
 #define ENGINE_H
 
 #include <brayns/common/Statistics.h>
+#include <brayns/common/tasks/Task.h>
 
 #include <functional>
 #include <mutex>
@@ -204,9 +205,10 @@ public:
      * @throws std::runtime_error if a previous snapshot creation has not been
      *                            finished yet
      */
-    void snapshot(const SnapshotParams& params, SnapshotReadyCallback cb);
+    // void snapshot(const SnapshotParams& params, SnapshotReadyCallback cb);
 
-    Task snapshot(const SnapshotParams& params);
+    std::shared_ptr<TaskT<FrameBufferPtr>> snapshot(
+        const SnapshotParams& params) const;
 
     /**
      * Cancel a current pending snapshot. Will reset the framebuffer, so that
@@ -224,10 +226,12 @@ public:
     /** Factory method to create an engine-specific framebuffer. */
     virtual FrameBufferPtr createFrameBuffer(
         const Vector2ui& frameSize, FrameBufferFormat frameBufferFormat,
-        bool accumulation) = 0;
+        bool accumulation) const = 0;
 
     /** Factory method to create an engine-specific camera. */
-    virtual CameraPtr createCamera(const CameraType type) = 0;
+    virtual CameraPtr createCamera(const CameraType type) const = 0;
+
+    virtual RendererPtr createRenderer(const RendererType type) const = 0;
 
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);

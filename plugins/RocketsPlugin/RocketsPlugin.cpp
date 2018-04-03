@@ -744,15 +744,28 @@ public:
     {
         RpcDocumentation doc{"Make a snapshot of the current view", "settings",
                              "Snapshot settings for quality and size"};
+
+        auto progressCallback = [& server =
+                                     _jsonrpcServer](Progress2 & progress)
+        {
+            if (progress.isModified())
+            {
+                server->notify(ENDPOINT_PROGRESS, progress);
+                progress.resetModified();
+            }
+        };
+
         _handleAsyncRPC<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
-            [ engine = _engine, &imageGenerator = _imageGenerator ](
-                const SnapshotParams& params, const std::string&,
+            [ &tasks = _tasks, engine = _engine, &imageGenerator = _imageGenerator,progressCallback ](
+                const SnapshotParams& params, const std::string& requestID,
                 const uintptr_t, rockets::jsonrpc::AsyncResponse callback) {
                 try
                 {
+                    auto task = engine->snapshot(params);
                     auto readyCallback = [callback, params,
-                                          &imageGenerator](FrameBufferPtr fb) {
+                            &imageGenerator, done = [&]{ tasks.erase(requestID);}, task] {
+                        auto fb = task->get();
                         try
                         {
                             callback(Response{to_json(
@@ -763,21 +776,32 @@ public:
                         {
                             callback(Response{Response::Error{e.what(), -1}});
                         }
+                        done();
                     };
-                    // TODO: snapshot progress needs request ID
-                    engine->snapshot(params, readyCallback);
-                    auto task = engine->snapshot(params);
+
+                    task->setRequestID(requestID);
+                    task->done = readyCallback;
+                    task->progressUpdated = progressCallback;
+                    task->schedule();
+                    tasks.emplace(requestID, task);
+                    //auto task = engine->snapshot(params);
                     // std::cout << result ? result.getSize().x() : "nada" <<
                     // std::endl;
-                    engine->triggerRender();
+                    //engine->triggerRender();
                 }
                 catch (const std::runtime_error& e)
                 {
                     callback(Response{Response::Error{e.what(), -1}});
                 }
             },
-            [engine = _engine](const std::string&) {
-                engine->cancelSnapshot();
+            [&tasks = _tasks](const std::string& requestID) {
+                //engine->cancelSnapshot();
+                auto i = tasks.find(requestID);
+                if(i!=tasks.end())
+                {
+                    i->second->cancel();
+                    tasks.erase(i);
+                }
             });
     }
 
@@ -1038,6 +1062,8 @@ public:
     Timer _timer2;
 
     std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
+
+    std::map<std::string, TaskPtr> _tasks;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

@@ -406,6 +406,7 @@ struct Progress2 : public BaseObject
 };
 
 class Task;
+using TaskPtr = std::shared_ptr<Task>;
 
 struct Blob
 {

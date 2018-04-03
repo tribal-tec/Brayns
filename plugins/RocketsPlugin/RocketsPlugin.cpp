@@ -498,18 +498,18 @@ public:
         auto action =
             [& tasks = _tasks, userTask = taskFunc,
              progressCallback ](P params, std::string requestID, uintptr_t,
-                                rockets::jsonrpc::AsyncResponse callback)
+                                rockets::jsonrpc::AsyncResponse respond)
         {
             try
             {
-                auto readyCallback = [callback, &tasks, requestID](R result) {
+                auto readyCallback = [respond, &tasks, requestID](R result) {
                     try
                     {
-                        callback(Response{to_json(result)});
+                        respond(Response{to_json(result)});
                     }
                     catch (const std::runtime_error& e)
                     {
-                        callback(Response{Response::Error{e.what(), -1}});
+                        respond(Response{Response::Error{e.what(), -1}});
                     }
                     tasks.erase(requestID);
                 };
@@ -524,7 +524,7 @@ public:
             }
             catch (const std::runtime_error& e)
             {
-                callback(Response{Response::Error{e.what(), -1}});
+                respond(Response{Response::Error{e.what(), -1}});
             }
         };
         auto cancel = [& tasks = _tasks](const std::string& requestID)
@@ -799,66 +799,6 @@ public:
                    });
     }
 
-    std::shared_ptr<TaskT<ImageGenerator::ImageBase64>> _createSnapshotTask(
-        const SnapshotParams& params)
-    {
-        class Func : public TaskFunctor
-        {
-        public:
-            Func(RendererPtr renderer, CameraPtr camera,
-                 FrameBufferPtr frameBuffer, const SnapshotParams& params,
-                 ImageGenerator& imageGenerator)
-                : _renderer(renderer)
-                , _camera(camera)
-                , _frameBuffer(frameBuffer)
-                , _params(params)
-                , _imageGenerator(imageGenerator)
-            {
-            }
-
-            ImageGenerator::ImageBase64 operator()()
-            {
-                while (_frameBuffer->numAccumFrames() !=
-                       size_t(_params.samplesPerPixel))
-                {
-                    transwarp_cancel_point();
-                    _renderer->render(_frameBuffer);
-                    progress("Render snapshot ...",
-                             float(_frameBuffer->numAccumFrames()) /
-                                 _params.samplesPerPixel);
-                }
-
-                progress("Render snapshot ...", 1.f);
-                return _imageGenerator.createImage(*_frameBuffer,
-                                                   _params.format,
-                                                   _params.quality);
-            }
-
-        private:
-            RendererPtr _renderer;
-            CameraPtr _camera;
-            FrameBufferPtr _frameBuffer;
-            SnapshotParams _params;
-            ImageGenerator& _imageGenerator;
-        };
-
-        auto frameBuffer =
-            _engine->createFrameBuffer(params.size, FrameBufferFormat::rgba_i8,
-                                       true);
-        auto camera = _engine->createCamera(_engine->getCamera().getType());
-        *camera = _engine->getCamera();
-        camera->setAspectRatio(float(params.size.x()) / params.size.y());
-        camera->commit();
-
-        auto renderer = _engine->createRenderer(_engine->getActiveRenderer());
-        renderer->setCamera(camera);
-        renderer->setScene(_engine->getScenePtr());
-        renderer->commit();
-
-        return std::make_shared<TaskT<ImageGenerator::ImageBase64>>(
-            Func{renderer, camera, frameBuffer, params, _imageGenerator});
-    }
-
     // TODO: refactor to snapshotTask (how about generic tasks? data blob might
     // be
     // very similar) to have progress and cancel handling unified. And later,
@@ -875,7 +815,8 @@ public:
                              "Snapshot settings for quality and size"};
         _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
-            std::bind(&Impl::_createSnapshotTask, this, std::placeholders::_1));
+            std::bind(createSnapshotTask, std::placeholders::_1,
+                      std::ref(*_engine), std::ref(_imageGenerator)));
     }
 
     void _handleReceiveBinary()

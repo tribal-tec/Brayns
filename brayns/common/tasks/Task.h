@@ -53,9 +53,10 @@ public:
     virtual void wait() = 0;
 
 protected:
-    static tw::parallel& executor()
+    static tw::executor& executor()
     {
-        static tw::parallel _executor{4};
+        static tw::parallel _executor{1};
+        //        static tw::sequential _executor;
         return _executor;
     }
 };

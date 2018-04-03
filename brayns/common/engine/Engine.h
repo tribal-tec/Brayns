@@ -185,8 +185,6 @@ public:
      */
     bool getKeepRunning() const { return _keepRunning; }
     Statistics& getStatistics() { return _statistics; }
-    using SnapshotReadyCallback = std::function<void(FrameBufferPtr)>;
-
     /**
      * Setup render of a snapshot with the given parameters. Calls to render()
      * start updating the framebuffer that will be provided in the ready
@@ -205,17 +203,9 @@ public:
      * @throws std::runtime_error if a previous snapshot creation has not been
      *                            finished yet
      */
-    // void snapshot(const SnapshotParams& params, SnapshotReadyCallback cb);
-
     std::shared_ptr<TaskT<FrameBufferPtr>> snapshot(
         const SnapshotParams& params) const;
 
-    /**
-     * Cancel a current pending snapshot. Will reset the framebuffer, so that
-     * render() continues normally.
-     */
-    void cancelSnapshot() { _snapshotCancelled = true; }
-    bool snapshotPending() const { return !!_snapshotFrameBuffer; }
     /**
      * @return true if render() calls shall be continued, based on current
      *         accumulation and snapshot settings.
@@ -237,7 +227,6 @@ protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
 
-    void _processSnapshot();
     void _writeFrameToFile();
 
     ParametersManager& _parametersManager;
@@ -255,13 +244,6 @@ protected:
 
     Blob _blob;
     std::function<void(std::string)> _finishLoadSceneCallback;
-
-    int _snapshotSpp{0};
-    int _restoreSpp{0};
-    SnapshotReadyCallback _cb;
-    FrameBufferPtr _snapshotFrameBuffer;
-    CameraPtr _snapshotCamera;
-    bool _snapshotCancelled{false};
 };
 }
 

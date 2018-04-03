@@ -92,8 +92,8 @@ Response LOADING_BINARY_FAILED(const std::string& error)
 {
     return {Response::Error{error, -1734}};
 }
-const Response SNAPSHOT_PENDING{
-    Response::Error{"Snapshot is pending, rejecting data upload", -1735}};
+// const Response SNAPSHOT_PENDING{
+//    Response::Error{"Snapshot is pending, rejecting data upload", -1735}};
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
@@ -817,11 +817,11 @@ public:
                                 const std::string& requestID,
                                 const uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond) {
-                if(engine->snapshotPending())
-                {
-                    respond(SNAPSHOT_PENDING);
-                    return;
-                }
+//                if(engine->snapshotPending())
+//                {
+//                    respond(SNAPSHOT_PENDING);
+//                    return;
+//                }
 
                 if (requests.count(clientID) != 0)
                 {

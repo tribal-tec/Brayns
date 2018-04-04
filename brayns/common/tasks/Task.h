@@ -121,13 +121,31 @@ public:
     // std::unique_ptr<Impl> _impl;
 };
 
+class TaskRuntimeError : public std::runtime_error
+{
+public:
+    TaskRuntimeError(const std::string& message, const int code = -1,
+                     const std::string& data = "")
+        : std::runtime_error(message.c_str())
+        , _code(code)
+        , _data(data)
+    {
+    }
+
+    int code() const { return _code; }
+    const std::string& data() const { return _data; }
+private:
+    const int _code;
+    const std::string _data;
+};
+
 template <typename T>
 class TaskCallbackT : public Task
 {
 public:
     template <typename F>
     TaskCallbackT(F&& functor, const std::function<void(T)>& callback,
-                  const std::function<void(std::string)>& errorCallback)
+                  const std::function<void(TaskRuntimeError)>& errorCallback)
         : _task(std::make_shared<TaskT<T>>(functor))
         , _consumer(tw::make_task(tw::wait,
                                   [ callback, errorCallback, &task = _task ] {
@@ -135,9 +153,13 @@ public:
                                       {
                                           callback(task->get());
                                       }
+                                      catch (const TaskRuntimeError& e)
+                                      {
+                                          errorCallback(e);
+                                      }
                                       catch (const std::exception& e)
                                       {
-                                          errorCallback(e.what());
+                                          errorCallback({e.what()});
                                       }
                                   },
                                   _task->impl()))
@@ -146,7 +168,7 @@ public:
 
     TaskCallbackT(std::shared_ptr<TaskT<T>> task,
                   const std::function<void(T)>& callback,
-                  const std::function<void(std::string)>& errorCallback)
+                  const std::function<void(TaskRuntimeError)>& errorCallback)
         : _task(task)
         , _consumer(tw::make_task(tw::wait,
                                   [ callback, errorCallback, &task = _task ] {
@@ -154,9 +176,13 @@ public:
                                       {
                                           callback(task->get());
                                       }
+                                      catch (const TaskRuntimeError& e)
+                                      {
+                                          errorCallback(e);
+                                      }
                                       catch (const std::exception& e)
                                       {
-                                          errorCallback(e.what());
+                                          errorCallback({e.what()});
                                       }
                                   },
                                   _task->impl()))

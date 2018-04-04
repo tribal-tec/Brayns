@@ -514,9 +514,10 @@ public:
                     tasks.erase(requestID);
                 };
 
-                auto errorCallback = [respond, &tasks,
-                                      requestID](const std::string& error) {
-                    respond(Response{Response::Error{error, -1}});
+                auto errorCallback = [respond, &tasks, requestID](
+                    const TaskRuntimeError& error) {
+                    respond(Response{Response::Error{error.what(), error.code(),
+                                                     error.data()}});
                     tasks.erase(requestID);
                 };
 
@@ -807,10 +808,6 @@ public:
     }
 
     // Forwarded to plugins?
-    // TODO: error handling from functor? throw will break promise, but no
-    // .get()
-    // anywhere now... async(.get()) for each request to respond result and
-    // errors
     void _handleSnapshot()
     {
         RpcDocumentation doc{"Make a snapshot of the current view", "settings",

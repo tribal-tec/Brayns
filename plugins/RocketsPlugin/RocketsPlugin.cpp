@@ -27,6 +27,7 @@
 #include "jsonUtils.h"
 
 #include <brayns/common/Timer.h>
+#include <brayns/common/tasks/ReceiveBinaryTask.h>
 #include <brayns/common/tasks/Task.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/pluginapi/PluginAPI.h>
@@ -80,10 +81,10 @@ using Response = rockets::jsonrpc::Response;
 const Response ALREADY_PENDING_REQUEST{
     Response::Error{"Already pending binary request", -1730}};
 const Response MISSING_PARAMS{Response::Error{"Missing params", -1731}};
-Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
-{
-    return {Response::Error{"Unsupported type", -1732, to_json(error)}};
-}
+// Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
+//{
+//    return {Response::Error{"Unsupported type", -1732, to_json(error)}};
+//}
 const Response INVALID_BINARY_RECEIVE{
     Response::Error{"Invalid binary received; no more files expected or "
                     "current file is complete",
@@ -114,13 +115,6 @@ std::string hyphenatedToCamelCase(const std::string& hyphenated)
     }
     camel[0] = toupper(camel[0]);
     return camel;
-}
-
-inline bool endsWith(const std::string& value, const std::string& ending)
-{
-    if (ending.size() > value.size())
-        return false;
-    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 }
 
@@ -310,6 +304,13 @@ public:
     rockets::ws::Response _processWebsocketBinaryMessage(
         const rockets::ws::Request& wsRequest)
     {
+        // auto task = _loadDataTask.front();
+        // task->appendChunk(wsRequest.message);
+        // if (_chunkReceived)
+        //    _chunkReceived(wsRequest.message);
+        _chunks += wsRequest.message;
+        return {};
+#if 0
         if (_binaryRequests.count(wsRequest.clientID) == 0)
         {
             BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
@@ -370,6 +371,7 @@ public:
         }
 
         return {};
+#endif
     }
 
     void _broadcastWebsocketMessages()
@@ -488,6 +490,7 @@ public:
         auto progressCallback = [& server =
                                      _jsonrpcServer](Progress2 & progress)
         {
+            // TODO: timer to avoid spam!
             if (progress.isModified())
             {
                 server->notify(ENDPOINT_PROGRESS, progress);
@@ -521,18 +524,22 @@ public:
                     tasks.erase(requestID);
                 };
 
-                auto task = std::make_shared<TaskCallbackT<R>>(userTask(params),
-                                                               readyCallback,
-                                                               errorCallback);
+                auto theTask = userTask(params);
+                auto task =
+                    std::make_shared<TaskCallbackT<R>>(theTask, readyCallback,
+                                                       errorCallback);
 
                 task->setRequestID(requestID);
                 task->setProgressUpdatedCallback(progressCallback);
+
+                // theTask->schedule();
                 task->schedule();
                 tasks.emplace(requestID, task);
             }
-            catch (const std::runtime_error& e)
+            catch (const TaskRuntimeError& error)
             {
-                respond(Response{Response::Error{e.what(), -1}});
+                respond(Response{
+                    Response::Error{error.what(), error.code(), error.data()}});
             }
         };
         auto cancel = [& tasks = _tasks](const std::string& requestID)
@@ -817,11 +824,24 @@ public:
             std::bind(createSnapshotTask, std::placeholders::_1,
                       std::ref(*_engine), std::ref(_imageGenerator)));
     }
-
+    // TODO: executor of size 1 for binary tasks, so multiple ones can be
+    // scheduled w/o
+    // rejecting them, but only 1 will be executed at a time. so task API must
+    // be enhanced
+    // with a custom executor that lives here.
     void _handleReceiveBinary()
     {
         RpcDocumentation doc{"Start sending of files", "params",
                              "List of file parameter: size and type"};
+
+        _handleTask<BinaryParams, bool>(
+            METHOD_RECEIVE_BINARY, doc,
+            std::bind(createReceiveBinaryTask, std::placeholders::_1,
+                      _parametersManager.getGeometryParameters()
+                          .getSupportedDataTypes(),
+                      std::ref(_chunks)));
+
+#if 0
         using Params = std::vector<BinaryParam>;
         _handleAsyncRPC<Params, bool>(
             METHOD_RECEIVE_BINARY, doc,
@@ -904,6 +924,7 @@ public:
                     }
                 }
             });
+#endif
     }
 
     // TODO: RPC for remote file loading
@@ -1077,6 +1098,9 @@ public:
     std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
 
     std::map<std::string, TaskPtr> _tasks;
+    // std::vector<std::shared_ptr<LoadDataTask>> _loadDataTask;
+    // std::function<void(std::string)> _chunkReceived;
+    std::string _chunks;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

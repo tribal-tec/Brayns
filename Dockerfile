@@ -95,6 +95,7 @@ RUN mkdir -p ${LWS_SRC} \
     -DLWS_WITH_ZIP_FOPS=OFF \
     -DLWS_WITHOUT_EXTENSIONS=ON \
     -DLWS_WITHOUT_TESTAPPS=ON \
+    -DLWS_WITH_LIBUV=ON \
     -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
  && ninja install \
  && rm -rf ${DIST_PATH}/lib/cmake/libwebsockets

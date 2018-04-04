@@ -82,6 +82,23 @@ public:
         _task = tw::make_task(tw::root, functor);
     }
 
+    template <typename TaskType, typename Functor, typename... Parents>
+    TaskT(TaskType type, Functor&& functor, std::shared_ptr<Parents>... parents)
+    {
+        if (std::is_base_of<TaskFunctor, Functor>::value)
+        {
+            auto& taskFunctor = static_cast<TaskFunctor&>(functor);
+            taskFunctor.progressFunc = [this](const std::string& message,
+                                              const float amount) {
+                _progress.setOperation(message);
+                _progress.setAmount(amount);
+                if (progressUpdated)
+                    progressUpdated(_progress);
+            };
+        }
+        _task = tw::make_task(type, functor, parents...);
+    }
+
     void schedule() final
     {
         _progress.setOperation("Scheduling task ...");
@@ -204,7 +221,6 @@ public:
     }
 
     void wait() final { _consumer->wait(); }
-    void get() { _consumer->get(); }
     void setRequestID(const std::string& requestID)
     {
         _task->setRequestID(requestID);

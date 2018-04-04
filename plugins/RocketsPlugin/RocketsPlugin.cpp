@@ -514,8 +514,15 @@ public:
                     tasks.erase(requestID);
                 };
 
+                auto errorCallback = [respond, &tasks,
+                                      requestID](const std::string& error) {
+                    respond(Response{Response::Error{error, -1}});
+                    tasks.erase(requestID);
+                };
+
                 auto task = std::make_shared<TaskCallbackT<R>>(userTask(params),
-                                                               readyCallback);
+                                                               readyCallback,
+                                                               errorCallback);
 
                 task->setRequestID(requestID);
                 task->setProgressUpdatedCallback(progressCallback);

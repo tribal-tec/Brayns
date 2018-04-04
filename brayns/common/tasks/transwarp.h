@@ -118,14 +118,14 @@ public:
          std::shared_ptr<std::string> name,
          std::shared_ptr<std::string> executor,
          std::vector<std::shared_ptr<node>> parents) noexcept
-        : id_(id)
-        , type_(type)
-        , name_(std::move(name))
-        , executor_(std::move(executor))
-        , parents_(std::move(parents))
-        , priority_(0)
-        , custom_data_(nullptr)
-        , canceled_(false)
+        : id_(id),
+          type_(type),
+          name_(std::move(name)),
+          executor_(std::move(executor)),
+          parents_(std::move(parents)),
+          priority_(0),
+          custom_data_(nullptr),
+          canceled_(false)
     {
     }
 
@@ -135,14 +135,14 @@ public:
          std::shared_ptr<std::string> executor,
          std::vector<std::shared_ptr<node>> parents, std::size_t priority,
          std::shared_ptr<void> custom_data) noexcept
-        : id_(id)
-        , type_(type)
-        , name_(std::move(name))
-        , executor_(std::move(executor))
-        , parents_(std::move(parents))
-        , priority_(priority)
-        , custom_data_(std::move(custom_data))
-        , canceled_(false)
+        : id_(id),
+          type_(type),
+          name_(std::move(name)),
+          executor_(std::move(executor)),
+          parents_(std::move(parents)),
+          priority_(priority),
+          custom_data_(std::move(custom_data)),
+          canceled_(false)
     {
     }
 
@@ -227,8 +227,8 @@ public:
     // cppcheck-suppress passedByValue
     edge(std::shared_ptr<transwarp::node> parent,
          std::shared_ptr<transwarp::node> child) noexcept
-        : parent_(std::move(parent))
-        , child_(std::move(child))
+        : parent_(std::move(parent)),
+          child_(std::move(child))
     {
     }
 
@@ -713,7 +713,7 @@ struct call_with_futures_impl<transwarp::wait_type, true, total, n...>
     template <typename T, typename... Args>
     static void wait(const T& arg, const Args&... args)
     {
-        arg.get();
+        arg.wait();
         wait(args...);
     }
     static void wait() {}
@@ -867,11 +867,7 @@ struct parent_visitor
 // Applies final bookkeeping to the task
 struct final_visitor
 {
-    final_visitor() noexcept
-        : id_(0)
-    {
-    }
-
+    final_visitor() noexcept : id_(0) {}
     void operator()(transwarp::itask& task) noexcept
     {
         task.set_node_id(id_++);
@@ -904,8 +900,8 @@ struct graph_visitor
 struct schedule_visitor
 {
     schedule_visitor(bool reset, transwarp::executor* executor) noexcept
-        : reset_(reset)
-        , executor_(executor)
+        : reset_(reset),
+          executor_(executor)
     {
     }
 
@@ -931,11 +927,7 @@ struct reset_visitor
 // Cancels or resumes the given task
 struct cancel_visitor
 {
-    explicit cancel_visitor(bool enabled) noexcept
-        : enabled_(enabled)
-    {
-    }
-
+    explicit cancel_visitor(bool enabled) noexcept : enabled_(enabled) {}
     void operator()(transwarp::itask& task) const noexcept
     {
         task.cancel(enabled_);
@@ -1638,12 +1630,10 @@ private:
 template <typename TaskType, typename Functor, typename... Parents>
 auto make_task(TaskType, std::string name, Functor&& functor,
                std::shared_ptr<Parents>... parents)
-    -> decltype(
-        std::make_shared<
-            transwarp::task_impl<TaskType, typename std::decay<Functor>::type,
-                                 typename Parents::result_type...>>(
-            std::move(name), std::forward<Functor>(functor),
-            std::move(parents)...))
+    -> decltype(std::make_shared<transwarp::task_impl<
+                    TaskType, typename std::decay<Functor>::type,
+                    typename Parents::result_type...>>(
+        std::move(name), std::forward<Functor>(functor), std::move(parents)...))
 {
     return std::make_shared<
         transwarp::task_impl<TaskType, typename std::decay<Functor>::type,

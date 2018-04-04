@@ -126,16 +126,40 @@ class TaskCallbackT : public Task
 {
 public:
     template <typename F>
-    TaskCallbackT(F&& functor, std::function<void(T)> callback)
+    TaskCallbackT(F&& functor, const std::function<void(T)>& callback,
+                  const std::function<void(std::string)>& errorCallback)
         : _task(std::make_shared<TaskT<T>>(functor))
-        , _consumer(tw::make_task(tw::consume, callback, _task->impl()))
+        , _consumer(tw::make_task(tw::wait,
+                                  [ callback, errorCallback, &task = _task ] {
+                                      try
+                                      {
+                                          callback(task->get());
+                                      }
+                                      catch (const std::exception& e)
+                                      {
+                                          errorCallback(e.what());
+                                      }
+                                  },
+                                  _task->impl()))
     {
     }
 
     TaskCallbackT(std::shared_ptr<TaskT<T>> task,
-                  std::function<void(T)> callback)
+                  const std::function<void(T)>& callback,
+                  const std::function<void(std::string)>& errorCallback)
         : _task(task)
-        , _consumer(tw::make_task(tw::consume, callback, _task->impl()))
+        , _consumer(tw::make_task(tw::wait,
+                                  [ callback, errorCallback, &task = _task ] {
+                                      try
+                                      {
+                                          callback(task->get());
+                                      }
+                                      catch (const std::exception& e)
+                                      {
+                                          errorCallback(e.what());
+                                      }
+                                  },
+                                  _task->impl()))
     {
     }
 

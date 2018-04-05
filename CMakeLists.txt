@@ -55,6 +55,8 @@ if(libuv_FOUND)
   # TODO: use tag v1.6.0_libuv-v1.18 for Docker
 endif()
 
+add_subdirectory(async++)
+
 # HTTP messaging
 common_find_package(LibJpegTurbo)
 common_find_package(Rockets)

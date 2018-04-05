@@ -88,13 +88,8 @@ private:
 auto createSnapshotTask(const SnapshotParams& params, Engine& engine,
                         ImageGenerator& imageGenerator)
 {
-#ifdef tw
-    return std::make_shared<TaskT<ImageGenerator::ImageBase64>>(
-        SnapshotTask{engine, params, imageGenerator});
-#else
     using SnapshotTask = SimpleTask<ImageGenerator::ImageBase64>;
     return std::make_shared<SnapshotTask>(
         SnapshotFunctor{engine, params, imageGenerator});
-#endif
 }
 }

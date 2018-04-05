@@ -847,10 +847,8 @@ public:
                       std::ref(*_engine), std::ref(_imageGenerator)));
     }
     // TODO: executor of size 1 for binary tasks, so multiple ones can be
-    // scheduled w/o
-    // rejecting them, but only 1 will be executed at a time. so task API must
-    // be enhanced
-    // with a custom executor that lives here.
+    // scheduled w/o rejecting them, but only 1 will be executed at a time. so
+    // task API must be enhanced with a custom executor that lives here.
     void _handleReceiveBinary()
     {
         RpcDocumentation doc{"Start sending of files", "params",

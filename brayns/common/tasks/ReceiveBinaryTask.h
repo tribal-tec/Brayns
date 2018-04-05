@@ -40,6 +40,7 @@ struct BinaryError
 };
 
 const TaskRuntimeError MISSING_PARAMS{"Missing params", -1731};
+// TODO: to_json is not known here...
 TaskRuntimeError UNSUPPORTED_TYPE(const BinaryError& /*error*/)
 {
     return {"Unsupported type", -1732, "\"how?\"" /*to_json(error)*/};
@@ -102,17 +103,17 @@ public:
         }
         _updateTotalBytes();
 
+        // chunk event task is set() from appendBlob() once all data has been
+        // received, then loading starts.
         chunks.resize(params.size());
-
         for (size_t i = 0; i < params.size(); ++i)
-        {
             tasks.push_back(chunks[i].get_task().then(LoadData{_cancelToken}));
-        }
 
+        // wait for load data of all files
         _task = async::when_all(tasks).then(
             [](std::vector<async::task<void>> tasks_) {
                 for (auto& task : tasks_)
-                    task.get(); // exception are propagated to caller
+                    task.get(); // exception is propagated to caller
                 return true;
             });
     }
@@ -163,28 +164,7 @@ private:
 auto createReceiveBinaryTask(const BinaryParams& params,
                              const std::set<std::string>& supportedTypes)
 {
-// how to share progress between all those tasks?
-// this tasks here has the load tasks as parents and waits for them?
-
-// how to handle multiple files/chunks? variadic unpack? chunk reuse from
-// rockets plugin?
-
-// final functor error propagation? now returns true all the time
-
-#ifdef tw
-    auto finalFunctor = ReceiveBinaryTask{params, supportedTypes};
-
-    auto composeChunksTask = std::make_shared<TaskT<std::string>>(
-        ComposeChunks{finalFunctor.getTotalBytes(), chunks});
-
-    auto loadDataTask =
-        std::make_shared<TaskT<void>>(tw::consume, LoadData{},
-                                      composeChunksTask->impl());
-
-    return std::make_shared<TaskT<bool>>(tw::wait, finalFunctor,
-                                         loadDataTask->impl());
-#else
+    // TODO how to share progress between all chunk receive & load tasks?
     return std::make_shared<ReceiveBinaryTask>(params, supportedTypes);
-#endif
 }
 }

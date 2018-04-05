@@ -177,15 +177,16 @@ public:
 
     void _broadcastBinaryRequestsProgress()
     {
-        for (auto& i : _binaryRequests)
-        {
-            auto& request = i.second;
-            if (request->progress.isModified())
-            {
-                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request->progress);
-                request->progress.resetModified();
-            }
-        }
+        //        for (auto& i : _binaryRequests)
+        //        {
+        //            auto& request = i.second;
+        //            if (request->progress.isModified())
+        //            {
+        //                _jsonrpcServer->notify(ENDPOINT_PROGRESS,
+        //                request->progress);
+        //                request->progress.resetModified();
+        //            }
+        //        }
     }
 
     void postRender()
@@ -292,7 +293,7 @@ public:
         });
 
         _rocketsServer->handleClose([this](const uintptr_t clientID) {
-            _deleteBinaryRequest(clientID);
+            //_deleteBinaryRequest(clientID);
             return std::vector<rockets::ws::Response>{};
         });
 
@@ -304,13 +305,6 @@ public:
     rockets::ws::Response _processWebsocketBinaryMessage(
         const rockets::ws::Request& wsRequest)
     {
-        // auto task = _loadDataTask.front();
-        // task->appendChunk(wsRequest.message);
-        // if (_chunkReceived)
-        //    _chunkReceived(wsRequest.message);
-        _chunks += wsRequest.message;
-        return {};
-#if 0
         if (_binaryRequests.count(wsRequest.clientID) == 0)
         {
             BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
@@ -318,7 +312,12 @@ public:
             return {};
         }
 
-        auto request = _binaryRequests[wsRequest.clientID];
+        auto request = std::dynamic_pointer_cast<ReceiveBinaryTask>(
+            _binaryRequests[wsRequest.clientID]);
+        if (request)
+            request->appendBlob(wsRequest.message);
+        return {};
+#if 0
         if (!request->valid())
         {
             request->finish();
@@ -500,8 +499,8 @@ public:
         };
 
         auto action =
-            [& tasks = _tasks, createUserTask,
-             progressCallback ](P params, std::string requestID, uintptr_t,
+            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask,
+             progressCallback ](P params, std::string requestID, uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond)
         {
             try
@@ -525,8 +524,8 @@ public:
 
                 auto userTask = createUserTask(params);
                 auto task = userTask->task().then(
-                    [readyCallback, errorCallback, &tasks,
-                     requestID](typename SimpleTask<R>::Type task2) {
+                    [readyCallback, errorCallback, &tasks, &binaryRequests,
+                     requestID, clientID](typename SimpleTask<R>::Type task2) {
                         try
                         {
                             readyCallback(task2.get());
@@ -535,12 +534,17 @@ public:
                         {
                             errorCallback(e);
                         }
+                        catch (const std::exception& e)
+                        {
+                            errorCallback({e.what()});
+                        }
                         catch (const async::task_canceled&)
                         {
                             // no response needed
                             std::cout << "Cancelled" << std::endl;
                         }
                         tasks.erase(requestID);
+                        binaryRequests.erase(clientID);
                     });
 
                 userTask->setRequestID(requestID);
@@ -550,6 +554,10 @@ public:
 
                 tasks.emplace(requestID,
                               std::make_pair(std::move(task), userTask));
+
+                // TODO: check is_same receiveBinaryTask; needs generic
+                // signature here!
+                binaryRequests.emplace(clientID, userTask);
             }
             catch (const TaskRuntimeError& error)
             {
@@ -845,15 +853,14 @@ public:
     // with a custom executor that lives here.
     void _handleReceiveBinary()
     {
-//        RpcDocumentation doc{"Start sending of files", "params",
-//                             "List of file parameter: size and type"};
+        RpcDocumentation doc{"Start sending of files", "params",
+                             "List of file parameter: size and type"};
 
-//        _handleTask<BinaryParams, bool>(
-//            METHOD_RECEIVE_BINARY, doc,
-//            std::bind(createReceiveBinaryTask, std::placeholders::_1,
-//                      _parametersManager.getGeometryParameters()
-//                          .getSupportedDataTypes(),
-//                      std::ref(_chunks)));
+        _handleTask<BinaryParams, bool>(
+            METHOD_RECEIVE_BINARY, doc,
+            std::bind(createReceiveBinaryTask, std::placeholders::_1,
+                      _parametersManager.getGeometryParameters()
+                          .getSupportedDataTypes()));
 
 #if 0
         using Params = std::vector<BinaryParam>;
@@ -947,16 +954,17 @@ public:
 
     // no matter if properly finished or cancelled; remove it from our list and
     // update the progress to be fulfilled
-    void _deleteBinaryRequest(const uintptr_t clientID)
-    {
-        auto i = _binaryRequests.find(clientID);
-        if (i == _binaryRequests.end())
-            return;
+    //    void _deleteBinaryRequest(const uintptr_t clientID)
+    //    {
+    //        auto i = _binaryRequests.find(clientID);
+    //        if (i == _binaryRequests.end())
+    //            return;
 
-        if (i->second->progress.isModified())
-            _jsonrpcServer->notify(ENDPOINT_PROGRESS, i->second->progress);
-        _binaryRequests.erase(i);
-    }
+    //        if (i->second->progress.isModified())
+    //            _jsonrpcServer->notify(ENDPOINT_PROGRESS,
+    //            i->second->progress);
+    //        _binaryRequests.erase(i);
+    //    }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request& request)
@@ -1109,10 +1117,11 @@ public:
 
     Timer _timer2;
 
-    std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
+    // std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
 
     // std::map<std::string, TaskPtr> _tasks;
     std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
+    std::map<uintptr_t, TaskPtr> _binaryRequests;
     // std::vector<std::shared_ptr<LoadDataTask>> _loadDataTask;
     // std::function<void(std::string)> _chunkReceived;
     std::string _chunks;

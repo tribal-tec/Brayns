@@ -42,7 +42,7 @@ struct BinaryError
 const TaskRuntimeError MISSING_PARAMS{"Missing params", -1731};
 TaskRuntimeError UNSUPPORTED_TYPE(const BinaryError& /*error*/)
 {
-    return {"Unsupported type", -1732, "how?" /*to_json(error)*/};
+    return {"Unsupported type", -1732, "\"how?\"" /*to_json(error)*/};
 }
 
 inline bool endsWith(const std::string& value, const std::string& ending)
@@ -52,49 +52,22 @@ inline bool endsWith(const std::string& value, const std::string& ending)
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-class ComposeChunks : public TaskFunctor
-{
-public:
-    ComposeChunks(const size_t totalBytes, std::string& chunks)
-        : _totalBytes(totalBytes)
-        , _data(chunks)
-    {
-        //        chunkReceived =
-        //            std::bind(&ComposeChunks::appendChunk, this,
-        //            std::placeholders::_1);
-    }
-
-    ~ComposeChunks() {}
-    std::string operator()()
-    {
-        // TODO: wish to use condition.wait, but copy ctor is not permitted.
-        while (!_allReceived())
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-        return _data;
-    }
-
-private:
-    bool _allReceived() const { return _data.size() == _totalBytes; }
-    size_t _totalBytes{0};
-    std::string& _data;
-};
-
 class LoadData : public TaskFunctor
 {
 public:
+    using TaskFunctor::TaskFunctor;
     void operator()(const std::string& data)
     {
         std::cout << "Got data " << data.size() << std::endl;
     }
 };
 
-class ReceiveBinaryTask : public TaskFunctor
+class ReceiveBinaryTask : public SimpleTask<bool>
 {
 public:
     ReceiveBinaryTask(const BinaryParams& params,
                       const std::set<std::string>& supportedTypes)
-        : _params(params.begin(), params.end())
+        : _params(params)
     {
         if (params.empty())
             throw MISSING_PARAMS;
@@ -127,57 +100,68 @@ public:
                 throw UNSUPPORTED_TYPE(
                     {i, {supportedTypes.begin(), supportedTypes.end()}});
         }
-
-        // auto request = std::make_shared<BinaryRequest>();
-        // request->id = requestID;
-        //_data.reserve(_params[0].size); // prepare for first file
-        // request->respond = respond;
-        // request->progress.requestID = requestID;
         _updateTotalBytes();
 
-#if 0
-        auto receiveChunks = [] { return std::string("chunk");};
-        auto loadData = [](const std::string& data) { std::cout << "Data: " << data << std::endl;};
-        auto receiveBinary = [] { return true; };
+        chunks.resize(params.size());
 
-        namespace tw =  transwarp;
-        auto task1 = tw::make_task(tw::root, receiveChunks);
-        auto task2 = tw::make_task(tw::consume, loadData, task1);
-        auto task3 = tw::make_task(tw::wait, receiveBinary, task2);
-        tw::parallel executor{4};
-        task3->schedule_all(executor);
-#endif
+        for (size_t i = 0; i < params.size(); ++i)
+        {
+            tasks.push_back(chunks[i].get_task().then(LoadData{_cancelToken}));
+        }
+
+        _task = async::when_all(tasks).then(
+            [](std::vector<async::task<void>> tasks_) {
+                for (auto& task : tasks_)
+                    task.get(); // exception are propagated to caller
+                return true;
+            });
     }
-
-    bool operator()()
-    {
-        // transwarp_cancel_point();
-        // progress("Render snapshot ...", 1.f);
-
-        std::cout << "Loaded all the shit" << std::endl;
-
-        return false;
-    }
-
-    // auto getParents() { return _loadTasks.front(); }
 
     size_t getTotalBytes() const { return _totalBytes; }
+    void appendBlob(const std::string& blob)
+    {
+        if (_index >= _params.size())
+            throw std::runtime_error("No more data expected");
+
+        _blob += blob;
+
+        if (_blob.size() == _params[_index].size)
+        {
+            chunks[_index].set(_blob);
+
+            ++_index;
+
+            if (_index < _params.size())
+            {
+                _blob.clear();
+                _blob.reserve(_params[_index].size);
+            }
+        }
+    }
+
 private:
+    std::vector<async::task<void>> tasks;
+    std::vector<async::event_task<std::string>> chunks;
+    std::string _blob;
+    size_t _index{0};
+
+    void _cancel() final
+    {
+        for (auto& i : chunks)
+            i.set_exception(std::make_exception_ptr(async::task_canceled()));
+    }
     void _updateTotalBytes()
     {
         for (const auto& param : _params)
             _totalBytes += param.size;
     }
 
-    std::deque<BinaryParam> _params;
-    // std::string _data;
+    BinaryParams _params;
     size_t _totalBytes{0};
-    // std::vector<std::shared_ptr<TaskT<void>>> _loadTasks;
 };
 
 auto createReceiveBinaryTask(const BinaryParams& params,
-                             const std::set<std::string>& supportedTypes,
-                             std::string& chunks)
+                             const std::set<std::string>& supportedTypes)
 {
 // how to share progress between all those tasks?
 // this tasks here has the load tasks as parents and waits for them?
@@ -200,6 +184,7 @@ auto createReceiveBinaryTask(const BinaryParams& params,
     return std::make_shared<TaskT<bool>>(tw::wait, finalFunctor,
                                          loadDataTask->impl());
 #else
+    return std::make_shared<ReceiveBinaryTask>(params, supportedTypes);
 #endif
 }
 }

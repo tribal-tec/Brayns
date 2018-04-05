@@ -179,14 +179,15 @@ auto createReceiveBinaryTask(const BinaryParams& params,
                              const std::set<std::string>& supportedTypes,
                              std::string& chunks)
 {
-    // how to share progress between all those tasks?
-    // this tasks here has the load tasks as parents and waits for them?
+// how to share progress between all those tasks?
+// this tasks here has the load tasks as parents and waits for them?
 
-    // how to handle multiple files/chunks? variadic unpack? chunk reuse from
-    // rockets plugin?
+// how to handle multiple files/chunks? variadic unpack? chunk reuse from
+// rockets plugin?
 
-    // final functor error propagation? now returns true all the time
+// final functor error propagation? now returns true all the time
 
+#ifdef tw
     auto finalFunctor = ReceiveBinaryTask{params, supportedTypes};
 
     auto composeChunksTask = std::make_shared<TaskT<std::string>>(
@@ -198,5 +199,7 @@ auto createReceiveBinaryTask(const BinaryParams& params,
 
     return std::make_shared<TaskT<bool>>(tw::wait, finalFunctor,
                                          loadDataTask->impl());
+#else
+#endif
 }
 }

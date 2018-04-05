@@ -484,8 +484,9 @@ public:
     }
 
     template <class P, class R>
-    void _handleTask(const std::string& method, const RpcDocumentation& doc,
-                     std::function<std::shared_ptr<TaskT<R>>(P)> taskFunc)
+    void _handleTask(
+        const std::string& method, const RpcDocumentation& doc,
+        std::function<std::shared_ptr<SimpleTask<R>>(P)> createUserTask)
     {
         auto progressCallback = [& server =
                                      _jsonrpcServer](Progress2 & progress)
@@ -499,13 +500,13 @@ public:
         };
 
         auto action =
-            [& tasks = _tasks, userTask = taskFunc,
+            [& tasks = _tasks, createUserTask,
              progressCallback ](P params, std::string requestID, uintptr_t,
                                 rockets::jsonrpc::AsyncResponse respond)
         {
             try
             {
-                auto readyCallback = [respond, &tasks, requestID](R result) {
+                auto readyCallback = [respond](R result) {
                     try
                     {
                         respond(Response{to_json(result)});
@@ -514,27 +515,41 @@ public:
                     {
                         respond(Response{Response::Error{e.what(), -1}});
                     }
-                    tasks.erase(requestID);
                 };
 
-                auto errorCallback = [respond, &tasks, requestID](
-                    const TaskRuntimeError& error) {
+                auto errorCallback = [respond](const TaskRuntimeError& error) {
                     respond(Response{Response::Error{error.what(), error.code(),
                                                      error.data()}});
-                    tasks.erase(requestID);
+
                 };
 
-                auto theTask = userTask(params);
-                auto task =
-                    std::make_shared<TaskCallbackT<R>>(theTask, readyCallback,
-                                                       errorCallback);
+                auto userTask = createUserTask(params);
+                auto task = userTask->task().then(
+                    [readyCallback, errorCallback, &tasks,
+                     requestID](typename SimpleTask<R>::Type task2) {
+                        try
+                        {
+                            readyCallback(task2.get());
+                        }
+                        catch (const TaskRuntimeError& e)
+                        {
+                            errorCallback(e);
+                        }
+                        catch (const async::task_canceled&)
+                        {
+                            // no response needed
+                            std::cout << "Cancelled" << std::endl;
+                        }
+                        tasks.erase(requestID);
+                    });
 
-                task->setRequestID(requestID);
-                task->setProgressUpdatedCallback(progressCallback);
+                userTask->setRequestID(requestID);
+                userTask->setProgressUpdatedCallback(progressCallback);
 
-                // theTask->schedule();
-                task->schedule();
-                tasks.emplace(requestID, task);
+                userTask->schedule();
+
+                tasks.emplace(requestID,
+                              std::make_pair(std::move(task), userTask));
             }
             catch (const TaskRuntimeError& error)
             {
@@ -547,9 +562,8 @@ public:
             auto i = tasks.find(requestID);
             if (i != tasks.end())
             {
-                i->second->cancel();
-                i->second->wait();
-                tasks.erase(i);
+                i->second.second->cancel();
+                i->second.first.wait();
             }
         };
         _handleAsyncRPC<P, R>(method, doc, action, cancel);
@@ -831,15 +845,15 @@ public:
     // with a custom executor that lives here.
     void _handleReceiveBinary()
     {
-        RpcDocumentation doc{"Start sending of files", "params",
-                             "List of file parameter: size and type"};
+//        RpcDocumentation doc{"Start sending of files", "params",
+//                             "List of file parameter: size and type"};
 
-        _handleTask<BinaryParams, bool>(
-            METHOD_RECEIVE_BINARY, doc,
-            std::bind(createReceiveBinaryTask, std::placeholders::_1,
-                      _parametersManager.getGeometryParameters()
-                          .getSupportedDataTypes(),
-                      std::ref(_chunks)));
+//        _handleTask<BinaryParams, bool>(
+//            METHOD_RECEIVE_BINARY, doc,
+//            std::bind(createReceiveBinaryTask, std::placeholders::_1,
+//                      _parametersManager.getGeometryParameters()
+//                          .getSupportedDataTypes(),
+//                      std::ref(_chunks)));
 
 #if 0
         using Params = std::vector<BinaryParam>;
@@ -1097,7 +1111,8 @@ public:
 
     std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
 
-    std::map<std::string, TaskPtr> _tasks;
+    // std::map<std::string, TaskPtr> _tasks;
+    std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
     // std::vector<std::shared_ptr<LoadDataTask>> _loadDataTask;
     // std::function<void(std::string)> _chunkReceived;
     std::string _chunks;

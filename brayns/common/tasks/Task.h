@@ -24,15 +24,43 @@
 
 #include <memory>
 
+#ifdef tw
 #include "transwarp.h"
 namespace tw = transwarp;
+#else
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+#include <async++.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+#endif
 
 namespace brayns
 {
 using ProgressFunc = std::function<void(std::string, float)>;
-/**
- *
- */
+
+class TaskRuntimeError : public std::runtime_error
+{
+public:
+    TaskRuntimeError(const std::string& message, const int code = -1,
+                     const std::string& data = "")
+        : std::runtime_error(message.c_str())
+        , _code(code)
+        , _data(data)
+    {
+    }
+
+    int code() const { return _code; }
+    const std::string& data() const { return _data; }
+private:
+    const int _code;
+    const std::string _data;
+};
+
+#ifdef tw
 class TaskFunctor : public transwarp::functor
 {
 public:
@@ -138,24 +166,6 @@ public:
     // std::unique_ptr<Impl> _impl;
 };
 
-class TaskRuntimeError : public std::runtime_error
-{
-public:
-    TaskRuntimeError(const std::string& message, const int code = -1,
-                     const std::string& data = "")
-        : std::runtime_error(message.c_str())
-        , _code(code)
-        , _data(data)
-    {
-    }
-
-    int code() const { return _code; }
-    const std::string& data() const { return _data; }
-private:
-    const int _code;
-    const std::string _data;
-};
-
 template <typename T>
 class TaskCallbackT : public Task
 {
@@ -235,4 +245,101 @@ private:
     std::shared_ptr<TaskT<T>> _task;
     std::shared_ptr<tw::task<void>> _consumer;
 };
+#else
+class TaskFunctor
+{
+public:
+    TaskFunctor() = default;
+    TaskFunctor(async::cancellation_token& cancelToken)
+        : _cancelToken(&cancelToken)
+
+    {
+    }
+    void progress(const std::string& message, const float amount)
+    {
+        if (progressFunc)
+            progressFunc(message, amount);
+    }
+
+    void cancelCheck()
+    {
+        if (_cancelToken)
+            async::interruption_point(*_cancelToken);
+    }
+
+    ProgressFunc progressFunc;
+    void setCancelToken(async::cancellation_token& cancelToken)
+    {
+        _cancelToken = &cancelToken;
+    }
+
+private:
+    async::cancellation_token* _cancelToken{nullptr};
+};
+
+class Task
+{
+public:
+    virtual ~Task() = default;
+    void cancel()
+    {
+        _cancelToken.cancel();
+        _cancel();
+    }
+    virtual void wait() = 0;
+
+    void setProgressUpdatedCallback(const std::function<void(Progress2&)>& cb)
+    {
+        progressUpdated = cb;
+    }
+
+    void setRequestID(const std::string& requestID)
+    {
+        _progress.requestID = requestID;
+    }
+
+protected:
+    async::cancellation_token _cancelToken;
+    Progress2 _progress;
+    std::function<void(Progress2&)> progressUpdated;
+
+private:
+    virtual void _cancel() {}
+};
+
+template <typename T>
+class SimpleTask : public Task
+{
+public:
+    using Type = async::task<T>;
+
+    SimpleTask() = default;
+    template <typename F>
+    SimpleTask(F&& functor)
+    {
+        if (std::is_base_of<TaskFunctor, F>::value)
+        {
+            auto& taskFunctor = static_cast<TaskFunctor&>(functor);
+            taskFunctor.progressFunc = [this](const std::string& message,
+                                              const float amount) {
+                _progress.setOperation(message);
+                _progress.setAmount(amount);
+                if (progressUpdated)
+                    progressUpdated(_progress);
+            };
+            taskFunctor.setCancelToken(_cancelToken);
+        }
+
+        _task = _e.get_task().then(functor);
+    }
+
+    void schedule() { _e.set(); }
+    void wait() final { _task.wait(); }
+    auto operator-> () { return &_task; }
+    auto& task() { return _task; }
+protected:
+    async::event_task<void> _e;
+    Type _task;
+};
+#endif
 }

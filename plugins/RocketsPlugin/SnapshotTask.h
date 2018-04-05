@@ -38,11 +38,11 @@ struct SnapshotParams
     size_t quality{100};
 };
 
-class SnapshotTask : public TaskFunctor
+class SnapshotFunctor : public TaskFunctor
 {
 public:
-    SnapshotTask(Engine& engine, const SnapshotParams& params,
-                 ImageGenerator& imageGenerator)
+    SnapshotFunctor(Engine& engine, const SnapshotParams& params,
+                    ImageGenerator& imageGenerator)
         : _frameBuffer(engine.createFrameBuffer(params.size,
                                                 FrameBufferFormat::rgba_i8,
                                                 true))
@@ -65,7 +65,7 @@ public:
         while (_frameBuffer->numAccumFrames() !=
                size_t(_params.samplesPerPixel))
         {
-            transwarp_cancel_point();
+            cancelCheck();
             _renderer->render(_frameBuffer);
             progress("Render snapshot ...",
                      float(_frameBuffer->numAccumFrames()) /
@@ -88,7 +88,13 @@ private:
 auto createSnapshotTask(const SnapshotParams& params, Engine& engine,
                         ImageGenerator& imageGenerator)
 {
+#ifdef tw
     return std::make_shared<TaskT<ImageGenerator::ImageBase64>>(
         SnapshotTask{engine, params, imageGenerator});
+#else
+    using SnapshotTask = SimpleTask<ImageGenerator::ImageBase64>;
+    return std::make_shared<SnapshotTask>(
+        SnapshotFunctor{engine, params, imageGenerator});
+#endif
 }
 }

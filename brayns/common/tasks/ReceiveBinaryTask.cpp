@@ -70,20 +70,12 @@ ReceiveBinaryTask::ReceiveBinaryTask(
     }
     _updateTotalBytes();
 
-    auto progressFunc = [this](const std::string& message, const float amount) {
-        _progress.setOperation(message);
-        _progress.setAmount(amount);
-        if (progressUpdated)
-            progressUpdated(_progress);
-    };
-
     // chunk event task is set() from appendBlob() once all data has been
     // received, then loading starts.
     chunks.resize(params.size());
     for (size_t i = 0; i < params.size(); ++i)
         tasks.push_back(chunks[i].get_task().then(
-            LoadDataFunctor{_cancelToken, progressFunc, params[i].type,
-                            engine}));
+            _setupFunctor(LoadDataFunctor{params[i].type, engine})));
 
     // wait for load data of all files
     auto allLoaded =
@@ -117,7 +109,7 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
 
     _progress.setAmount(_progressBytes());
     _progress.setOperation("Receiving data ...");
-    progressUpdated(_progress);
+    progressUpdated(_progress, false);
 
     if (_blob.size() == _params[_index].size)
     {

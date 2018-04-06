@@ -483,17 +483,17 @@ public:
     }
 
     template <class P, class R>
-    void _handleTask(
-        const std::string& method, const RpcDocumentation& doc,
-        std::function<std::shared_ptr<SimpleTask<R>>(P)> createUserTask)
+    void _handleTask(const std::string& method, const RpcDocumentation& doc,
+                     std::function<std::shared_ptr<TaskT<R>>(P)> createUserTask)
     {
         _timer2.start();
         auto progressCallback =
-            [& server = _jsonrpcServer, &timer = _timer2 ](Progress2 & progress)
+            [& server = _jsonrpcServer, &timer = _timer2 ](Progress2 & progress,
+                                                           bool force = false)
         {
             // TODO: wrong timer again (leftover!), plus duplicate from
             // braynsService
-            if (timer.elapsed() >= 0.01)
+            if (timer.elapsed() >= 0.01 || force)
             {
                 if (progress.isModified())
                 {
@@ -531,9 +531,9 @@ public:
                 auto userTask = createUserTask(params);
                 auto task = userTask->task().then(
                     [readyCallback, errorCallback, &tasks, &binaryRequests,
-                     requestID, clientID](typename SimpleTask<R>::Type task2) {
-                        // TODO
-                        // progress.setAmount(1.f);
+                     requestID, clientID,
+                     userTask](typename TaskT<R>::Type task2) {
+                        userTask->progress("Done", 1.f);
 
                         try
                         {
@@ -583,7 +583,8 @@ public:
             if (i != tasks.end())
             {
                 i->second.second->cancel();
-                i->second.first.wait();
+                i->second.first.wait(); // TODO: when task in finshed, this
+                                        // waits forever??
             }
         };
         _handleAsyncRPC<P, R>(method, doc, action, cancel);

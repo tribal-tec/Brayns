@@ -31,9 +31,7 @@ namespace brayns
 class LoadDataFunctor : public TaskFunctor
 {
 public:
-    LoadDataFunctor(async::cancellation_token& cancelToken,
-                    const ProgressFunc& progressFunc, const std::string& type,
-                    EnginePtr engine);
+    LoadDataFunctor(const std::string& type, EnginePtr engine);
     void operator()(const std::string& data);
 
 private:

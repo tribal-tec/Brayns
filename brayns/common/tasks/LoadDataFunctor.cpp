@@ -37,14 +37,10 @@ namespace brayns
 const size_t LOADING_PROGRESS_DATA = 100;
 const size_t LOADING_PROGRESS_STEP = 10;
 
-LoadDataFunctor::LoadDataFunctor(async::cancellation_token& cancelToken,
-                                 const ProgressFunc& progressFunc,
-                                 const std::string& type, EnginePtr engine)
-    : TaskFunctor(cancelToken, progressFunc)
-    , _engine(engine)
+LoadDataFunctor::LoadDataFunctor(const std::string& type, EnginePtr engine)
+    : _engine(engine)
     , _meshLoader(engine->getParametersManager().getGeometryParameters())
 {
-    _blob.progressFunc = progressFunc;
     _blob.type = type;
 }
 
@@ -54,6 +50,7 @@ void LoadDataFunctor::operator()(const std::string& data)
     std::lock_guard<std::mutex> lock{_engine->dataMutex()};
 
     _blob.cancelCheck = std::bind(&LoadDataFunctor::cancelCheck, this);
+    _blob.progressFunc = _progressFunc;
     _blob.data = std::move(data);
 
     Progress loadingProgress(

@@ -162,7 +162,9 @@ struct Brayns::Impl : public PluginAPI
 
     bool preRender()
     {
-        std::lock_guard<std::mutex> lock{_engine->dataMutex()};
+        std::unique_lock<std::mutex> lock{_engine->dataMutex()};
+        if (!lock.owns_lock())
+            return false;
 
         if (!isLoadingFinished())
         {

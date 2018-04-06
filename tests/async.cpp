@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(bla)
         }
     };
 
-    class LoadDataFromBlobTask : public brayns::SimpleTask<void>
+    class LoadDataFromBlobTask : public brayns::TaskT<void>
     {
     public:
         LoadDataFromBlobTask(std::vector<size_t> params)
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(bla)
             for (size_t i = 0; i < params.size(); ++i)
             {
                 tasks.push_back(
-                    chunks[i].get_task().then(LoadFunctor{_cancelToken}));
+                    chunks[i].get_task().then(_setupFunctor(LoadFunctor{})));
             }
 
             _task = async::when_all(tasks).then(
@@ -168,8 +168,7 @@ BOOST_AUTO_TEST_CASE(snapshot)
     //        Type _task;
     //    };
 
-    using SnapshotTask =
-        brayns::SimpleTask<brayns::ImageGenerator::ImageBase64>;
+    using SnapshotTask = brayns::TaskT<brayns::ImageGenerator::ImageBase64>;
     SnapshotTask task{SnapShotFunctor{10}};
     task.cancel();
 

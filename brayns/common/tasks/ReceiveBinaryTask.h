@@ -32,7 +32,7 @@ struct BinaryParam
 
 using BinaryParams = std::vector<BinaryParam>;
 
-class ReceiveBinaryTask : public SimpleTask<bool>
+class ReceiveBinaryTask : public TaskT<bool>
 {
 public:
     ReceiveBinaryTask(const BinaryParams& params,

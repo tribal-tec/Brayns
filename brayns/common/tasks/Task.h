@@ -59,12 +59,6 @@ class TaskFunctor
 {
 public:
     TaskFunctor() = default;
-    TaskFunctor(async::cancellation_token& cancelToken,
-                const ProgressFunc& progressFunc)
-        : _cancelToken(&cancelToken)
-        , _progressFunc(progressFunc)
-    {
-    }
 
     void progress(const std::string& message, const float amount)
     {
@@ -87,7 +81,7 @@ public:
         _cancelToken = &cancelToken;
     }
 
-private:
+protected:
     async::cancellation_token* _cancelToken{nullptr};
     ProgressFunc _progressFunc;
 };
@@ -103,11 +97,13 @@ public:
     }
     virtual void wait() = 0;
 
-    void setProgressUpdatedCallback(const std::function<void(Progress2&)>& cb)
+    virtual void schedule() {}
+    void setProgressUpdatedCallback(
+        const std::function<void(Progress2&, bool)>& cb)
     {
         progressUpdated = cb;
         if (cb)
-            cb(_progress);
+            cb(_progress, false);
     }
 
     void setRequestID(const std::string& requestID)
@@ -115,24 +111,46 @@ public:
         _progress.requestID = requestID;
     }
 
+    void progress(const std::string& message, const float amount)
+    {
+        _progress.setOperation(message);
+        _progress.setAmount(amount);
+        if (progressUpdated)
+            progressUpdated(_progress, true);
+    }
+
 protected:
     async::cancellation_token _cancelToken;
     Progress2 _progress{"Scheduling task ..."};
-    std::function<void(Progress2&)> progressUpdated;
+    std::function<void(Progress2&, bool)> progressUpdated;
 
 private:
     virtual void _cancel() {}
 };
 
 template <typename T>
-class SimpleTask : public Task
+class TaskT : public Task
 {
 public:
     using Type = async::task<T>;
 
-    SimpleTask() = default;
+    TaskT() = default;
+
     template <typename F>
-    SimpleTask(F&& functor)
+    TaskT(F&& functor)
+    {
+        _setupFunctor(functor);
+        _task = async::spawn(functor);
+    }
+
+    void wait() final { _task.wait(); }
+    auto operator-> () { return &_task; }
+    auto& task() { return _task; }
+protected:
+    Type _task;
+
+    template <typename F>
+    auto&& _setupFunctor(F&& functor)
     {
         if (std::is_base_of<TaskFunctor, F>::value)
         {
@@ -142,20 +160,27 @@ public:
                     _progress.setOperation(message);
                     _progress.setAmount(amount);
                     if (progressUpdated)
-                        progressUpdated(_progress);
+                        progressUpdated(_progress, false);
                 });
             taskFunctor.setCancelToken(_cancelToken);
         }
+        return std::move(functor);
+    }
+};
 
-        _task = _e.get_task().then(functor);
+template <typename T>
+class DelayedTask : public TaskT<T>
+{
+public:
+    template <typename F>
+    DelayedTask(F&& functor)
+    {
+        TaskT<T>::_task = _e.get_task().then(
+            TaskT<T>::template _setupFunctor(std::move(functor)));
     }
 
-    void schedule() { _e.set(); }
-    void wait() final { _task.wait(); }
-    auto operator-> () { return &_task; }
-    auto& task() { return _task; }
-protected:
+    void schedule() final { _e.set(); }
+private:
     async::event_task<void> _e;
-    Type _task;
 };
 }

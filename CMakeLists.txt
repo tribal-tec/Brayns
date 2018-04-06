@@ -55,6 +55,7 @@ if(libuv_FOUND)
   # TODO: use tag v1.6.0_libuv-v1.18 for Docker
 endif()
 
+set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(async++)
 
 # HTTP messaging

@@ -27,6 +27,7 @@
 #include <brayns/common/renderer/Renderer.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/tasks/ReceiveBinaryTask.h>
+#include <brayns/common/tasks/errors.h>
 #include <brayns/common/transferFunction/TransferFunction.h>
 #include <brayns/parameters/AnimationParameters.h>
 #include <brayns/parameters/ApplicationParameters.h>
@@ -121,21 +122,6 @@ STATICJSON_DECLARE_ENUM(brayns::EngineType,
     reinterpret_cast<std::array<float, 2>*>(&(vec).array[0])
 #define Vector3fArray(vec) \
     reinterpret_cast<std::array<float, 3>*>(&(vec).array[0])
-
-// namespace brayns
-//{
-// struct BinaryParam
-//{
-//    size_t size{0};
-//    std::string type; // file extension or MESH, POINTS, CIRCUIT
-//};
-
-// struct BinaryError
-//{
-//    size_t index{0}; // which file param had error
-//    std::vector<std::string> supportedTypes;
-//};
-//}
 
 namespace staticjson
 {

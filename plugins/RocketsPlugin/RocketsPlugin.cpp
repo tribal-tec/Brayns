@@ -487,14 +487,20 @@ public:
         const std::string& method, const RpcDocumentation& doc,
         std::function<std::shared_ptr<SimpleTask<R>>(P)> createUserTask)
     {
-        auto progressCallback = [& server =
-                                     _jsonrpcServer](Progress2 & progress)
+        _timer2.start();
+        auto progressCallback =
+            [& server = _jsonrpcServer, &timer = _timer2 ](Progress2 & progress)
         {
-            // TODO: timer to avoid spam!
-            if (progress.isModified())
+            // TODO: wrong timer again (leftover!), plus duplicate from
+            // braynsService
+            if (timer.elapsed() >= 0.01)
             {
-                server->notify(ENDPOINT_PROGRESS, progress);
-                progress.resetModified();
+                if (progress.isModified())
+                {
+                    server->notify(ENDPOINT_PROGRESS, progress);
+                    progress.resetModified();
+                }
+                timer.start();
             }
         };
 
@@ -503,6 +509,12 @@ public:
              progressCallback ](P params, std::string requestID, uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond)
         {
+            auto errorCallback = [respond](const TaskRuntimeError& error) {
+                respond(Response{
+                    Response::Error{error.what(), error.code(), error.data()}});
+
+            };
+
             try
             {
                 auto readyCallback = [respond](R result) {
@@ -514,12 +526,6 @@ public:
                     {
                         respond(Response{Response::Error{e.what(), -1}});
                     }
-                };
-
-                auto errorCallback = [respond](const TaskRuntimeError& error) {
-                    respond(Response{Response::Error{error.what(), error.code(),
-                                                     error.data()}});
-
                 };
 
                 auto userTask = createUserTask(params);
@@ -562,10 +568,13 @@ public:
                 // signature here!
                 binaryRequests.emplace(clientID, userTask);
             }
-            catch (const TaskRuntimeError& error)
+            catch (const TaskRuntimeError& e)
             {
-                respond(Response{
-                    Response::Error{error.what(), error.code(), error.data()}});
+                errorCallback(e);
+            }
+            catch (const std::exception& e)
+            {
+                errorCallback({e.what()});
             }
         };
         auto cancel = [& tasks = _tasks](const std::string& requestID)
@@ -863,7 +872,8 @@ public:
             METHOD_RECEIVE_BINARY, doc,
             std::bind(createReceiveBinaryTask, std::placeholders::_1,
                       _parametersManager.getGeometryParameters()
-                          .getSupportedDataTypes()));
+                          .getSupportedDataTypes(),
+                      _engine));
 
 #if 0
         using Params = std::vector<BinaryParam>;
@@ -1123,6 +1133,7 @@ public:
     // TODO: pair stuff looks wrong, extend Task.h??
     std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
     std::map<uintptr_t, TaskPtr> _binaryRequests;
+    Timer _timer2;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

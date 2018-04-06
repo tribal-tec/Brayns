@@ -22,6 +22,8 @@ set(BRAYNSCOMMON_SOURCES
   light/Light.cpp
   light/PointLight.cpp
   light/DirectionalLight.cpp
+  tasks/LoadDataFunctor.cpp
+  tasks/ReceiveBinaryTask.cpp
   utils/Utils.cpp
 )
 
@@ -54,7 +56,8 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   Statistics.h
   Timer.h
   transferFunction/TransferFunction.h
-  tasks/LoadDataTask.h
+  tasks/errors.h
+  tasks/LoadDataFunctor.h
   tasks/ReceiveBinaryTask.h
   tasks/Task.h
   types.h

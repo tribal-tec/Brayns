@@ -52,8 +52,7 @@ bool XYZBLoader::importFromBlob(Blob& blob, Scene& scene)
     std::string line;
     while (std::getline(stream, line))
     {
-        if (blob.cancelled())
-            return false;
+        blob.cancelCheck();
 
         std::vector<float> lineData;
         std::stringstream lineStream(line);

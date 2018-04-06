@@ -195,6 +195,8 @@ public:
 
     virtual RendererPtr createRenderer(const RendererType type) const = 0;
 
+    auto& dataMutex() { return _dataMutex; }
+    auto& getParametersManager() { return _parametersManager; }
 protected:
     void _render(const RenderInput& renderInput, RenderOutput& renderOutput);
     void _render();
@@ -216,6 +218,9 @@ protected:
 
     Blob _blob;
     std::function<void(std::string)> _finishLoadSceneCallback;
+
+    // protect render() vs preRender() when doing all the commit()
+    std::mutex _dataMutex;
 };
 }
 

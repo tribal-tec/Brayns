@@ -59,15 +59,17 @@ class TaskFunctor
 {
 public:
     TaskFunctor() = default;
-    TaskFunctor(async::cancellation_token& cancelToken)
+    TaskFunctor(async::cancellation_token& cancelToken,
+                const ProgressFunc& progressFunc)
         : _cancelToken(&cancelToken)
-
+        , _progressFunc(progressFunc)
     {
     }
+
     void progress(const std::string& message, const float amount)
     {
-        if (progressFunc)
-            progressFunc(message, amount);
+        if (_progressFunc)
+            _progressFunc(message, amount);
     }
 
     void cancelCheck()
@@ -76,7 +78,10 @@ public:
             async::interruption_point(*_cancelToken);
     }
 
-    ProgressFunc progressFunc;
+    void setProgressFunc(const ProgressFunc& progressFunc)
+    {
+        _progressFunc = progressFunc;
+    }
     void setCancelToken(async::cancellation_token& cancelToken)
     {
         _cancelToken = &cancelToken;
@@ -84,6 +89,7 @@ public:
 
 private:
     async::cancellation_token* _cancelToken{nullptr};
+    ProgressFunc _progressFunc;
 };
 
 class Task
@@ -131,13 +137,13 @@ public:
         if (std::is_base_of<TaskFunctor, F>::value)
         {
             auto& taskFunctor = static_cast<TaskFunctor&>(functor);
-            taskFunctor.progressFunc = [this](const std::string& message,
-                                              const float amount) {
-                _progress.setOperation(message);
-                _progress.setAmount(amount);
-                if (progressUpdated)
-                    progressUpdated(_progress);
-            };
+            taskFunctor.setProgressFunc(
+                [this](const std::string& message, const float amount) {
+                    _progress.setOperation(message);
+                    _progress.setAmount(amount);
+                    if (progressUpdated)
+                        progressUpdated(_progress);
+                });
             taskFunctor.setCancelToken(_cancelToken);
         }
 

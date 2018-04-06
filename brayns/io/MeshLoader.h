@@ -89,7 +89,7 @@ private:
 
     bool _postLoad(const aiScene* aiScene, Scene& scene,
                    const Matrix4f& transformation, const size_t defaultMaterial,
-                   const std::function<bool()>& cancelled = {},
+                   const std::function<void()>& cancelPoint = {},
                    const std::string& folder = "");
     size_t _getQuality() const;
 #endif

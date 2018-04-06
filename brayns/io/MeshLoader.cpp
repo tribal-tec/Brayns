@@ -37,17 +37,13 @@
 namespace brayns
 {
 #ifdef BRAYNS_USE_ASSIMP
-class CancelledException : public std::runtime_error
-{
-    using runtime_error::runtime_error;
-};
 class ProgressWatcher : public Assimp::ProgressHandler
 {
 public:
     ProgressWatcher(ProgressReporter& parent,
-                    const std::function<bool()>& cancelled)
+                    const std::function<void()>& cancelCheck)
         : _parent(parent)
-        , _cancelled(cancelled)
+        , _cancelCheck(cancelCheck)
     {
     }
 
@@ -57,14 +53,13 @@ public:
 
         // return value for cancelling is not evaluated, hence throwing an
         // exception...
-        if (_cancelled())
-            throw CancelledException("User cancelled loading");
+        _cancelCheck();
         return true;
     }
 
 private:
     ProgressReporter& _parent;
-    std::function<bool()> _cancelled;
+    std::function<void()> _cancelCheck;
 };
 #endif
 
@@ -137,8 +132,7 @@ bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
-    const auto cancelFunc = [&blob] { return blob.cancelled(); };
-    auto watcher = new ProgressWatcher(*this, cancelFunc);
+    auto watcher = new ProgressWatcher(*this, blob.cancelCheck);
     importer.SetProgressHandler(watcher);
 
     const aiScene* aiScene =
@@ -158,7 +152,7 @@ bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
     }
 
     return _postLoad(aiScene, scene, transformation, defaultMaterial,
-                     cancelFunc);
+                     blob.cancelCheck);
 }
 
 bool MeshLoader::exportMeshToFile(const std::string& filename,
@@ -316,7 +310,7 @@ void MeshLoader::_createMaterials(Scene& scene, const aiScene* aiScene,
 bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                            const Matrix4f& transformation,
                            const size_t defaultMaterial,
-                           const std::function<bool()>& cancelled,
+                           const std::function<void()>& cancelPoint,
                            const std::string& folder)
 {
     updateProgress("Post-processing mesh...", 51, 100);
@@ -331,8 +325,7 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
     auto& triangleMeshes = scene.getTriangleMeshes();
     for (size_t m = 0; m < aiScene->mNumMeshes; ++m)
     {
-        if (cancelled())
-            return false;
+        cancelPoint();
 
         aiMesh* mesh = aiScene->mMeshes[m];
         const size_t materialId =

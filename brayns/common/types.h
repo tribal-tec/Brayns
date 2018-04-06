@@ -390,6 +390,8 @@ struct RenderOutput
     FrameBufferFormat colorBufferFormat;
 };
 
+class Progress;
+
 struct Progress2 : public BaseObject
 {
     Progress2() = default;
@@ -418,7 +420,8 @@ struct Blob
     std::string type;
     std::string data;
     Progress2* progress{nullptr};
-    std::function<bool()> cancelled;
+    std::function<void(std::string, float)> progressFunc;
+    std::function<void()> cancelCheck;
     std::string error{};
 };
 }

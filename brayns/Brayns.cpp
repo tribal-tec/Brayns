@@ -162,7 +162,7 @@ struct Brayns::Impl : public PluginAPI
 
     bool preRender()
     {
-        std::lock_guard<std::mutex> lock{_renderMutex};
+        std::lock_guard<std::mutex> lock{_engine->dataMutex()};
 
         if (!isLoadingFinished())
         {
@@ -354,7 +354,7 @@ struct Brayns::Impl : public PluginAPI
 
     void render()
     {
-        std::lock_guard<std::mutex> lock{_renderMutex};
+        std::lock_guard<std::mutex> lock{_engine->dataMutex()};
 
         _renderTimer.start();
         _engine->render();
@@ -393,7 +393,7 @@ private:
     void _loadScene()
     {
         // fix race condition: we have to wait until rendering is finished
-        std::lock_guard<std::mutex> lock{_renderMutex};
+        std::lock_guard<std::mutex> lock{_engine->dataMutex()};
 
         Progress loadingProgress(
             "Loading scene ...",
@@ -1349,9 +1349,6 @@ private:
     float _eyeSeparation{0.0635f};
 
     std::future<void> _dataLoadingFuture;
-
-    // protect render() vs preRender() when doing all the commit()
-    std::mutex _renderMutex;
 
     Timer _renderTimer;
     int64_t _fpsUpdateElapsed{0};

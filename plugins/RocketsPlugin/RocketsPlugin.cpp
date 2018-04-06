@@ -80,19 +80,19 @@ const std::string JSON_TYPE = "application/json";
 using Response = rockets::jsonrpc::Response;
 const Response ALREADY_PENDING_REQUEST{
     Response::Error{"Already pending binary request", -1730}};
-const Response MISSING_PARAMS{Response::Error{"Missing params", -1731}};
+// const Response MISSING_PARAMS{Response::Error{"Missing params", -1731}};
 // Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
 //{
 //    return {Response::Error{"Unsupported type", -1732, to_json(error)}};
 //}
-const Response INVALID_BINARY_RECEIVE{
-    Response::Error{"Invalid binary received; no more files expected or "
-                    "current file is complete",
-                    -1733}};
-Response LOADING_BINARY_FAILED(const std::string& error)
-{
-    return {Response::Error{error, -1734}};
-}
+// const Response INVALID_BINARY_RECEIVE{
+//    Response::Error{"Invalid binary received; no more files expected or "
+//                    "current file is complete",
+//                    -1733}};
+// Response LOADING_BINARY_FAILED(const std::string& error)
+//{
+//    return {Response::Error{error, -1734}};
+//}
 // const Response SNAPSHOT_PENDING{
 //    Response::Error{"Snapshot is pending, rejecting data upload", -1735}};
 
@@ -526,6 +526,9 @@ public:
                 auto task = userTask->task().then(
                     [readyCallback, errorCallback, &tasks, &binaryRequests,
                      requestID, clientID](typename SimpleTask<R>::Type task2) {
+                        // TODO
+                        // progress.setAmount(1.f);
+
                         try
                         {
                             readyCallback(task2.get());
@@ -849,6 +852,8 @@ public:
     // TODO: executor of size 1 for binary tasks, so multiple ones can be
     // scheduled w/o rejecting them, but only 1 will be executed at a time. so
     // task API must be enhanced with a custom executor that lives here.
+    // EDIT: still needed? the tasks are just waiting for data, so all should be
+    // fine
     void _handleReceiveBinary()
     {
         RpcDocumentation doc{"Start sending of files", "params",
@@ -950,7 +955,8 @@ public:
     // TODO: need an API for finding the (best) suitable loader giving just a
     // filename (folder?).
 
-    // no matter if properly finished or cancelled; remove it from our list and
+    // TODO: no matter if properly finished or cancelled; remove it from our
+    // list and
     // update the progress to be fulfilled
     //    void _deleteBinaryRequest(const uintptr_t clientID)
     //    {
@@ -1033,6 +1039,7 @@ public:
     Timer _timer;
     float _leftover{0.f};
 
+    // TODO: move what's needed to new task
     struct BinaryRequest
     {
         BinaryRequest() { progress.setOperation("Waiting for data..."); }
@@ -1046,7 +1053,7 @@ public:
         {
             if (params.empty() || params[0].size == 0)
             {
-                respond(INVALID_BINARY_RECEIVE);
+                // respond(INVALID_BINARY_RECEIVE);
                 return false;
             }
 
@@ -1080,8 +1087,8 @@ public:
             {
                 if (error.empty())
                     respond(Response{to_json(true)});
-                else
-                    respond(LOADING_BINARY_FAILED(error));
+                /*else
+                    respond(LOADING_BINARY_FAILED(error))*/;
             }
         }
         bool cancelled() const { return _cancelled; }
@@ -1113,16 +1120,9 @@ public:
         bool _fullyReceived{false};
     };
 
-    Timer _timer2;
-
-    // std::map<uintptr_t, std::shared_ptr<BinaryRequest>> _binaryRequests;
-
-    // std::map<std::string, TaskPtr> _tasks;
+    // TODO: pair stuff looks wrong, extend Task.h??
     std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
     std::map<uintptr_t, TaskPtr> _binaryRequests;
-    // std::vector<std::shared_ptr<LoadDataTask>> _loadDataTask;
-    // std::function<void(std::string)> _chunkReceived;
-    std::string _chunks;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

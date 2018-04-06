@@ -100,6 +100,8 @@ public:
     void setProgressUpdatedCallback(const std::function<void(Progress2&)>& cb)
     {
         progressUpdated = cb;
+        if (cb)
+            cb(_progress);
     }
 
     void setRequestID(const std::string& requestID)
@@ -109,7 +111,7 @@ public:
 
 protected:
     async::cancellation_token _cancelToken;
-    Progress2 _progress;
+    Progress2 _progress{"Scheduling task ..."};
     std::function<void(Progress2&)> progressUpdated;
 
 private:

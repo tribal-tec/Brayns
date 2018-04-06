@@ -45,6 +45,14 @@ TaskRuntimeError UNSUPPORTED_TYPE(const BinaryError& /*error*/)
 {
     return {"Unsupported type", -1732, "\"how?\"" /*to_json(error)*/};
 }
+const TaskRuntimeError INVALID_BINARY_RECEIVE{
+    "Invalid binary received; no more files expected or "
+    "current file is complete",
+    -1733};
+TaskRuntimeError LOADING_BINARY_FAILED(const std::string& error)
+{
+    return {error, -1734};
+}
 
 inline bool endsWith(const std::string& value, const std::string& ending)
 {
@@ -59,7 +67,15 @@ public:
     using TaskFunctor::TaskFunctor;
     void operator()(const std::string& data)
     {
+        // while(true)
+        {
+            cancelCheck();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
         std::cout << "Got data " << data.size() << std::endl;
+
+        // TODO call the actual loading
+        // throw LOADING_BINARY_FAILED(error);
     }
 };
 
@@ -110,10 +126,20 @@ public:
             tasks.push_back(chunks[i].get_task().then(LoadData{_cancelToken}));
 
         // wait for load data of all files
-        _task = async::when_all(tasks).then(
-            [](std::vector<async::task<void>> tasks_) {
-                for (auto& task : tasks_)
-                    task.get(); // exception is propagated to caller
+        auto allLoaded = async::when_all(tasks).then(
+            [](std::vector<async::task<void>> results) {
+                for (auto& result : results)
+                    result.get(); // exception is propagated to caller
+                return true;
+            });
+        bla.emplace_back(_errorEvent.get_task());
+        bla.emplace_back(std::move(allLoaded));
+
+        // either finish with success or error from loading, or external error
+        _task = async::when_any(bla).then(
+            [](async::when_any_result<std::vector<async::task<bool>>> result) {
+                result.tasks[result.index].get(); // exception is propagated to
+                                                  // caller
                 return true;
             });
     }
@@ -122,9 +148,18 @@ public:
     void appendBlob(const std::string& blob)
     {
         if (_index >= _params.size())
-            throw std::runtime_error("No more data expected");
+        {
+            _errorEvent.set_exception(
+                std::make_exception_ptr(INVALID_BINARY_RECEIVE));
+            return;
+        }
 
         _blob += blob;
+        _receivedBytes += blob.size();
+
+        _progress.setAmount(_progressBytes());
+        _progress.setOperation("Receiving data ...");
+        progressUpdated(_progress);
 
         if (_blob.size() == _params[_index].size)
         {
@@ -143,6 +178,8 @@ public:
 private:
     std::vector<async::task<void>> tasks;
     std::vector<async::event_task<std::string>> chunks;
+    async::event_task<bool> _errorEvent;
+    std::vector<async::task<bool>> bla;
     std::string _blob;
     size_t _index{0};
 
@@ -156,9 +193,14 @@ private:
         for (const auto& param : _params)
             _totalBytes += param.size;
     }
+    float _progressBytes() const
+    {
+        return 0.5f * ((float)_receivedBytes / _totalBytes);
+    }
 
     BinaryParams _params;
     size_t _totalBytes{0};
+    size_t _receivedBytes{0};
 };
 
 auto createReceiveBinaryTask(const BinaryParams& params,

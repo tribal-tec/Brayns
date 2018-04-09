@@ -95,6 +95,7 @@ ReceiveBinaryTask::ReceiveBinaryTask(
             return true;
         });
 }
+
 void ReceiveBinaryTask::appendBlob(const std::string& blob)
 {
     if (_index >= _params.size())

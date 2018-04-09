@@ -63,32 +63,26 @@ ReceiveBinaryTask::ReceiveBinaryTask(
 
     _updateTotalBytes();
 
-    // chunk event task is set() from appendBlob() once all data has been
-    // received, then loading starts.
-    _chunks.resize(params.size());
     for (size_t i = 0; i < params.size(); ++i)
-        _loadTasks.push_back(_chunks[i].get_task().then(
-            _setupFunctor(LoadDataFunctor{params[i].type, engine})));
+    {
+        datas.push_back({});
+        dataAvailableTasks.push_back(
+            tw::make_task(tw::root, [& val = datas[i]] { return val; }));
+        tasks.push_back(tw::make_task(
+            tw::consume, _setupFunctor(LoadDataFunctor{params[i].type, engine}),
+            dataAvailableTasks[i]));
+    }
 
     // wait for load data of all files
-    auto allLoaded =
-        async::when_all(_loadTasks)
-            .then([](std::vector<async::task<void>> results) {
-                for (auto& result : results)
-                    result.get(); // exception is propagated to caller
-            });
+    // TODO: runtime list of parents?
+    _task = tw::make_task(tw::accept,
+                          [](std::shared_future<void> result) {
+                              result.get(); // exception is propagated to caller
+                              return true;
+                          },
+                          tasks[0]);
 
-    // either finish with success/error from loading, or cancel
-    _finishTasks.emplace_back(_errorEvent.get_task());
-    _finishTasks.emplace_back(std::move(allLoaded));
-    _task = async::when_any(_finishTasks)
-                .then([](async::when_any_result<std::vector<async::task<void>>>
-                             results) {
-                    results.tasks[results.index].get(); // exception is
-                                                        // propagated to
-                                                        // caller
-                    return true;
-                });
+// TODO: error from chunk receive with consume_any
 }
 
 void ReceiveBinaryTask::appendBlob(const std::string& blob)
@@ -96,8 +90,6 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
     if (_index >= _params.size() ||
         (_blob.size() + blob.size() > _params[_index].size))
     {
-        _errorEvent.set_exception(
-            std::make_exception_ptr(INVALID_BINARY_RECEIVE));
         return;
     }
 
@@ -109,7 +101,9 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
 
     if (_blob.size() == _params[_index].size)
     {
-        _chunks[_index].set(_blob);
+        datas[_index] = _blob;
+        dataAvailableTasks[_index]->schedule(executor());
+        tasks[_index]->schedule(executor());
 
         ++_index;
 

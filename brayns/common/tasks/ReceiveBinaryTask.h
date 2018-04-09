@@ -43,18 +43,12 @@ public:
     void appendBlob(const std::string& blob);
 
 private:
-    std::vector<async::task<void>> _loadTasks;
-    std::vector<async::event_task<std::string>> _chunks;
-    async::event_task<void> _errorEvent;
-    std::vector<async::task<void>> _finishTasks;
+    std::vector<std::shared_ptr<tw::task<void>>> tasks;
+    std::vector<std::shared_ptr<tw::task<std::string>>> dataAvailableTasks;
+    std::vector<std::string> datas;
     std::string _blob;
     size_t _index{0};
 
-    void _cancel() final
-    {
-        for (auto& i : _chunks)
-            i.set_exception(std::make_exception_ptr(async::task_canceled()));
-    }
     void _updateTotalBytes()
     {
         for (const auto& param : _params)

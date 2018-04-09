@@ -22,14 +22,8 @@
 
 #include <brayns/common/types.h>
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-#include <async++.h>
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+#include <brayns/common/tasks/transwarp.h>
+namespace tw = transwarp;
 
 namespace brayns
 {
@@ -51,7 +45,7 @@ private:
     const std::string _data;
 };
 
-class TaskFunctor
+class TaskFunctor : public tw::functor
 {
 public:
     TaskFunctor() = default;
@@ -64,8 +58,7 @@ public:
 
     void cancelCheck()
     {
-        if (_cancelToken)
-            async::interruption_point(*_cancelToken);
+        transwarp_cancel_point();
     }
 
     using ProgressFunc = std::function<void(std::string, float)>;
@@ -74,13 +67,8 @@ public:
     {
         _progressFunc = progressFunc;
     }
-    void setCancelToken(async::cancellation_token& cancelToken)
-    {
-        _cancelToken = &cancelToken;
-    }
 
 protected:
-    async::cancellation_token* _cancelToken{nullptr};
     ProgressFunc _progressFunc;
 };
 
@@ -90,7 +78,6 @@ public:
     virtual ~Task() = default;
     void cancel()
     {
-        _cancelToken.cancel();
         _cancel();
     }
     virtual void wait() = 0;
@@ -109,7 +96,6 @@ public:
 
     Progress2& getProgress() { return _progress; }
 protected:
-    async::cancellation_token _cancelToken;
     Progress2 _progress{"Scheduling task ..."};
 
 private:
@@ -120,7 +106,12 @@ template <typename T>
 class TaskT : public Task
 {
 public:
-    using Type = async::task<T>;
+    static tw::executor& executor()
+    {
+        static tw::parallel _executor{4};
+        //        static tw::sequential _executor;
+        return _executor;
+    }
 
     TaskT() = default;
 
@@ -128,14 +119,16 @@ public:
     TaskT(F&& functor)
     {
         _setupFunctor(functor);
-        _task = async::spawn(functor);
+        _task = tw::make_task(tw::root, functor);
+        _task->schedule(executor());
     }
 
-    void wait() final { _task.wait(); }
+    void wait() final { _task->wait(); }
     auto operator-> () { return &_task; }
-    auto& task() { return _task; }
+    auto task() { return _task; }
 protected:
-    Type _task;
+    void _cancel() final { _task->cancel(true); }
+    std::shared_ptr<tw::task<T>> _task;
 
     template <typename F>
     auto&& _setupFunctor(F&& functor)
@@ -148,7 +141,6 @@ protected:
                 progress.setOperation(message);
                 progress.setAmount(amount);
             });
-            taskFunctor.setCancelToken(_cancelToken);
         }
         return std::move(functor);
     }
@@ -161,12 +153,11 @@ public:
     template <typename F>
     DelayedTask(F&& functor)
     {
-        TaskT<T>::_task = _e.get_task().then(
-            TaskT<T>::template _setupFunctor(std::move(functor)));
+        TaskT<T>::_task =
+            tw::make_task(tw::root,
+                          TaskT<T>::template _setupFunctor(std::move(functor)));
     }
 
-    void schedule() final { _e.set(); }
-private:
-    async::event_task<void> _e;
+    void schedule() final { TaskT<T>::_task->schedule(TaskT<T>::executor()); }
 };
 }

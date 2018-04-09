@@ -254,6 +254,17 @@ bool LoadDataFunctor::_loadData(Progress& loadingProgress)
 bool LoadDataFunctor::_loadDataFromBlob(
     const Progress::UpdateCallback& updateProgress)
 {
+    // for unit tests
+    if (_blob.type == "forever")
+    {
+        for (;;)
+        {
+            _blob.cancelCheck();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return false;
+    }
+
     if (_blob.type == "xyz")
         return _loadXYZBBlob(updateProgress);
 

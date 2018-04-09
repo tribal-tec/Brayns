@@ -32,6 +32,7 @@ class LoadDataFunctor : public TaskFunctor
 {
 public:
     LoadDataFunctor(const std::string& type, EnginePtr engine);
+    ~LoadDataFunctor();
     void operator()(const std::string& data);
 
 private:
@@ -39,6 +40,8 @@ private:
     bool _loadDataFromBlob(const Progress::UpdateCallback& updateProgress);
     bool _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate);
     bool _loadMeshBlob(const Progress::UpdateCallback& progressUpdate);
+
+    void _postLoad(Progress& loadingProgress);
 
     EnginePtr _engine;
     Blob _blob;

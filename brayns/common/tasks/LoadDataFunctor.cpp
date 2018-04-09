@@ -44,6 +44,23 @@ LoadDataFunctor::LoadDataFunctor(const std::string& type, EnginePtr engine)
     _blob.type = type;
 }
 
+LoadDataFunctor::~LoadDataFunctor()
+{
+    Scene& scene = _engine->getScene();
+
+    // load default if we got cancelled
+    if (scene.empty())
+    {
+        _meshLoader.clear();
+        BRAYNS_INFO << "Building default scene" << std::endl;
+        scene.buildDefault();
+
+        Progress dummy("", 0, [](const std::string&, const float) {});
+
+        _postLoad(dummy);
+    }
+}
+
 void LoadDataFunctor::operator()(const std::string& data)
 {
     // fix race condition: we have to wait until rendering is finished
@@ -95,32 +112,7 @@ void LoadDataFunctor::operator()(const std::string& data)
         scene.buildDefault();
     }
 
-    scene.buildEnvironment();
-
-    const auto& geomParams =
-        _engine->getParametersManager().getGeometryParameters();
-    loadingProgress.setMessage("Building geometry ...");
-    scene.buildGeometry();
-    if (geomParams.getLoadCacheFile().empty() &&
-        !geomParams.getSaveCacheFile().empty())
-    {
-        scene.saveToCacheFile();
-    }
-
-    loadingProgress += LOADING_PROGRESS_STEP;
-
-    loadingProgress.setMessage("Building acceleration structure ...");
-    scene.commit();
-    loadingProgress += LOADING_PROGRESS_STEP;
-
-    loadingProgress.setMessage("Done");
-    BRAYNS_INFO << "Now rendering ..." << std::endl;
-
-    const auto frameSize = Vector2f(_engine->getFrameBuffer().getSize());
-
-    auto& camera = _engine->getCamera();
-    camera.setInitialState(_engine->getScene().getWorldBounds());
-    camera.setAspectRatio(frameSize.x() / frameSize.y());
+    _postLoad(loadingProgress);
 
     if (!success)
         throw LOADING_BINARY_FAILED(_blob.error);
@@ -294,5 +286,37 @@ bool LoadDataFunctor::_loadMeshBlob(
             : NO_MATERIAL;
     _meshLoader.setProgressCallback(progressUpdate);
     return _meshLoader.importMeshFromBlob(_blob, scene, Matrix4f(), material);
+}
+
+void LoadDataFunctor::_postLoad(Progress& loadingProgress)
+{
+    Scene& scene = _engine->getScene();
+
+    scene.buildEnvironment();
+
+    const auto& geomParams =
+        _engine->getParametersManager().getGeometryParameters();
+    loadingProgress.setMessage("Building geometry ...");
+    scene.buildGeometry();
+    if (geomParams.getLoadCacheFile().empty() &&
+        !geomParams.getSaveCacheFile().empty())
+    {
+        scene.saveToCacheFile();
+    }
+
+    loadingProgress += LOADING_PROGRESS_STEP;
+
+    loadingProgress.setMessage("Building acceleration structure ...");
+    scene.commit();
+    loadingProgress += LOADING_PROGRESS_STEP;
+
+    loadingProgress.setMessage("Done");
+    BRAYNS_INFO << "Now rendering ..." << std::endl;
+
+    const auto frameSize = Vector2f(_engine->getFrameBuffer().getSize());
+
+    auto& camera = _engine->getCamera();
+    camera.setInitialState(_engine->getScene().getWorldBounds());
+    camera.setAspectRatio(frameSize.x() / frameSize.y());
 }
 }

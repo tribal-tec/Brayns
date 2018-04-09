@@ -162,10 +162,6 @@ struct Brayns::Impl : public PluginAPI
 
     bool preRender()
     {
-        std::unique_lock<std::mutex> lock{_engine->dataMutex()};
-        if (!lock.owns_lock())
-            return false;
-
         if (!isLoadingFinished())
         {
 #ifdef BRAYNS_USE_LUNCHBOX
@@ -178,6 +174,11 @@ struct Brayns::Impl : public PluginAPI
         }
 
         _extensionPluginFactory.preRender();
+
+        std::unique_lock<std::mutex> lock{_engine->dataMutex(),
+                                          std::defer_lock};
+        if (!lock.try_lock())
+            return false;
 
         Scene& scene = _engine->getScene();
 

@@ -50,7 +50,7 @@ ReceiveBinaryTask::ReceiveBinaryTask(
         // TODO: proper regex check for *.obj and obj cases
         bool supported =
             supportedTypes.find(param.type) != supportedTypes.end();
-        if (supported)
+        if (supported || param.type == "forever")
             continue;
 
         // fallback to match "ends with extension"
@@ -98,7 +98,8 @@ ReceiveBinaryTask::ReceiveBinaryTask(
 
 void ReceiveBinaryTask::appendBlob(const std::string& blob)
 {
-    if (_index >= _params.size())
+    if (_index >= _params.size() ||
+        (_blob.size() + blob.size() > _params[_index].size))
     {
         _errorEvent.set_exception(
             std::make_exception_ptr(INVALID_BINARY_RECEIVE));

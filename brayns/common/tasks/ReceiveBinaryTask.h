@@ -74,7 +74,6 @@ auto createReceiveBinaryTask(const BinaryParams& params,
                              const std::set<std::string>& supportedTypes,
                              EnginePtr engine)
 {
-    // TODO how to share progress between all chunk receive & load tasks?
     return std::make_shared<ReceiveBinaryTask>(params, supportedTypes, engine);
 }
 }

@@ -175,20 +175,6 @@ public:
         }
     }
 
-    void _broadcastBinaryRequestsProgress()
-    {
-        //        for (auto& i : _binaryRequests)
-        //        {
-        //            auto& request = i.second;
-        //            if (request->progress.isModified())
-        //            {
-        //                _jsonrpcServer->notify(ENDPOINT_PROGRESS,
-        //                request->progress);
-        //                request->progress.resetModified();
-        //            }
-        //        }
-    }
-
     void postRender()
     {
         if (!_rocketsServer || _rocketsServer->getConnectionCount() == 0)
@@ -200,8 +186,6 @@ public:
         _wsBroadcastOperations[ENDPOINT_IMAGE_JPEG]();
         _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
-
-        _broadcastBinaryRequestsProgress();
     }
 
     void postSceneLoading()
@@ -212,8 +196,6 @@ public:
         _wsBroadcastOperations[ENDPOINT_CAMERA]();
         _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
-
-        _broadcastBinaryRequestsProgress();
     }
 
     std::string _getHttpInterface() const
@@ -318,60 +300,6 @@ public:
         if (request)
             request->appendBlob(wsRequest.message);
         return {};
-#if 0
-        if (!request->valid())
-        {
-            request->finish();
-            _deleteBinaryRequest(wsRequest.clientID);
-            return {};
-        }
-
-        request->appendChunk(wsRequest.message);
-        request->params[0].size -= wsRequest.message.size();
-
-        // TODO: wrong timer again (leftover!), plus duplicate from
-        // braynsService
-        if (_timer2.elapsed() >= 0.01)
-        {
-            if (request->progress.isModified())
-            {
-                _jsonrpcServer->notify(ENDPOINT_PROGRESS, request->progress);
-                request->progress.resetModified();
-            }
-            _timer2.start();
-        }
-
-        if (request->params[0].size == 0)
-        {
-            if (request->params.size() == 1)
-            {
-                // last file received, start loading
-                // TODO: what do we do for multiple files? now we just load the
-                // last received one. Adding one model per file would be the
-                // best
-                request->fullyReceived();
-                _engine->rebuildSceneFromBlob(
-                    {request->params[0].type, std::move(request->data),
-                     &request->progress,
-                     [request] { return request->cancelled(); }},
-                    [ this, request, clientID = wsRequest.clientID ](
-                        const std::string& error) {
-                        request->finish(error);
-                        _deleteBinaryRequest(clientID);
-                    });
-            }
-            else
-            {
-                // prepare receiving of next file
-                request->data.clear(); // TODO: might not be needed if moved
-                                       // before
-                request->data.reserve(request->params[1].size);
-            }
-            request->params.pop_front();
-        }
-
-        return {};
-#endif
     }
 
     void _broadcastWebsocketMessages()
@@ -870,11 +798,7 @@ public:
             std::bind(createSnapshotTask, std::placeholders::_1,
                       std::ref(*_engine), std::ref(_imageGenerator)));
     }
-    // TODO: executor of size 1 for binary tasks, so multiple ones can be
-    // scheduled w/o rejecting them, but only 1 will be executed at a time. so
-    // task API must be enhanced with a custom executor that lives here.
-    // EDIT: still needed? the tasks are just waiting for data, so all should be
-    // fine
+
     void _handleReceiveBinary()
     {
         RpcDocumentation doc{"Start sending of files", "params",
@@ -886,91 +810,6 @@ public:
                       _parametersManager.getGeometryParameters()
                           .getSupportedDataTypes(),
                       _engine));
-
-#if 0
-        using Params = std::vector<BinaryParam>;
-        _handleAsyncRPC<Params, bool>(
-            METHOD_RECEIVE_BINARY, doc,
-            [& requests = _binaryRequests, &geomParams = _parametersManager.getGeometryParameters(),
-             &timer = _timer2, engine = _engine ](const Params& params,
-                                const std::string& requestID,
-                                const uintptr_t clientID,
-                                rockets::jsonrpc::AsyncResponse respond) {
-//                if(engine->snapshotPending())
-//                {
-//                    respond(SNAPSHOT_PENDING);
-//                    return;
-//                }
-
-                if (requests.count(clientID) != 0)
-                {
-                    respond(ALREADY_PENDING_REQUEST);
-                    return;
-                }
-
-                if (params.empty())
-                {
-                    respond(MISSING_PARAMS);
-                    return;
-                }
-
-                const auto& supportedTypes = geomParams.getSupportedDataTypes();
-                for (size_t i = 0; i < params.size(); ++i)
-                {
-                    const auto& param = params[i];
-                    if(param.type.empty() || param.size == 0)
-                    {
-                        respond(MISSING_PARAMS);
-                        return;
-                    }
-
-                    // try exact pattern match
-                    // TODO: proper regex check for *.obj and obj cases
-                    bool supported = supportedTypes.find(param.type) != supportedTypes.end();
-                    if(supported)
-                        continue;
-
-                    // fallback to match "ends with extension"
-                    supported = false;
-                    for(const auto& type : supportedTypes)
-                    {
-                        if(endsWith(type, param.type))
-                        {
-                            supported = true;
-                            break;
-                        }
-                    }
-
-                    if(!supported)
-                    {
-                        respond(UNSUPPORTED_TYPE({i, {supportedTypes.begin(), supportedTypes.end()}}));
-                        return;
-                    }
-                }
-
-                auto request = std::make_shared<BinaryRequest>();
-                request->id = requestID;
-                request->params.assign(params.begin(), params.end());
-                request->data.reserve(request->params[0].size);
-                request->respond = respond;
-                request->progress.requestID = requestID;
-                request->updateTotalBytes();
-                requests.emplace(clientID, request);
-
-                timer.start();
-            },
-            [this](const std::string& requestID) {
-                for (auto& i : _binaryRequests)
-                {
-                    auto& request = i.second;
-                    if (request->id == requestID)
-                    {
-                        request->cancel();
-                        break;
-                    }
-                }
-            });
-#endif
     }
 
     // TODO: RPC for remote file loading
@@ -1054,87 +893,6 @@ public:
 
     Timer _timer;
     float _leftover{0.f};
-
-    // TODO: move what's needed to new task
-    struct BinaryRequest
-    {
-        BinaryRequest() { progress.setOperation("Waiting for data..."); }
-        std::string id;
-        std::deque<BinaryParam> params;
-        std::string data;
-        rockets::jsonrpc::AsyncResponse respond;
-        Progress2 progress;
-
-        bool valid() const
-        {
-            if (params.empty() || params[0].size == 0)
-            {
-                // respond(INVALID_BINARY_RECEIVE);
-                return false;
-            }
-
-            return !cancelled();
-        }
-
-        void fullyReceived() { _fullyReceived = true; }
-        void cancel()
-        {
-            _cancelled = true;
-
-            // once we're processed by the async loading, wait here
-            if (_fullyReceived)
-            {
-                std::unique_lock<std::mutex> lock(_mutex);
-                _cond.wait(lock);
-            }
-        }
-
-        void finish(const std::string& error = "")
-        {
-            progress.setAmount(1.f);
-            progress.setOperation("");
-
-            if (cancelled())
-            {
-                std::unique_lock<std::mutex> lock(_mutex);
-                _cond.notify_one();
-            }
-            else
-            {
-                if (error.empty())
-                    respond(Response{to_json(true)});
-                /*else
-                    respond(LOADING_BINARY_FAILED(error))*/;
-            }
-        }
-        bool cancelled() const { return _cancelled; }
-        void updateTotalBytes()
-        {
-            for (const auto& param : params)
-                _totalBytes += param.size;
-        }
-
-        void appendChunk(const std::string& chunk)
-        {
-            data += chunk;
-            _receivedBytes += chunk.size();
-            progress.setAmount(_progress());
-            progress.setOperation("Receiving data...");
-        }
-
-    private:
-        size_t _totalBytes{0};
-        size_t _receivedBytes{0};
-        float _progress() const
-        {
-            return 0.5f * ((float)_receivedBytes / _totalBytes);
-        }
-
-        bool _cancelled{false};
-        std::mutex _mutex;
-        std::condition_variable _cond;
-        bool _fullyReceived{false};
-    };
 
     // TODO: pair stuff looks wrong, extend Task.h??
     std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;

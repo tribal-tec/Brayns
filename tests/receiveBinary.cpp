@@ -296,14 +296,141 @@ BOOST_AUTO_TEST_CASE(cancel_while_loading)
 
 BOOST_AUTO_TEST_CASE(close_client_while_pending_request)
 {
+    auto wsClient = std::make_unique<rockets::ws::Client>();
+
+    connect(*wsClient);
+
+    brayns::BinaryParam params;
+    params.size = 4;
+    params.type = "xyz";
+
+    auto responseFuture =
+        rockets::jsonrpc::Client<rockets::ws::Client>{*wsClient}
+            .request<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+                                                             {params});
+
+    auto asyncWait =
+        std::async(std::launch::async, [&responseFuture, &wsClient] {
+            wsClient->process(10);
+            process();
+
+            wsClient.reset(); // close client connection
+            process();
+
+            responseFuture.get();
+        });
+
+    BOOST_CHECK_THROW(asyncWait.get(), rockets::jsonrpc::response_error);
 }
 
-BOOST_AUTO_TEST_CASE(multiple_xyz)
+BOOST_AUTO_TEST_CASE(multiple_files)
 {
+    std::vector<brayns::BinaryParam> params{2};
+    params[0].size = [] {
+        std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+                           std::ios::binary | std::ios::ate);
+        return file.tellg();
+    }();
+    params[0].type = "obj";
+
+    params[1].size = [] {
+        std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
+                           std::ios::binary | std::ios::ate);
+        return file.tellg();
+    }();
+    params[1].type = "xyz";
+
+    auto responseFuture =
+        getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
+            "receive-binary", params);
+
+    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
+        while (!is_ready(responseFuture))
+            process();
+    });
+
+    std::vector<char> buffer(1024, 0);
+
+    {
+        std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+                           std::ios::binary);
+
+        while (file.read(buffer.data(), buffer.size()))
+        {
+            const std::streamsize size = file.gcount();
+            getWsClient().sendBinary(buffer.data(), size);
+        }
+
+        // read & send last chunk
+        const std::streamsize size = file.gcount();
+        if (size != 0)
+        {
+            file.read(buffer.data(), size);
+            getWsClient().sendBinary(buffer.data(), size);
+        }
+    }
+
+    std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
+                       std::ios::binary);
+
+    while (file.read(buffer.data(), buffer.size()))
+    {
+        const std::streamsize size = file.gcount();
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    // read & send last chunk
+    const std::streamsize size = file.gcount();
+    if (size != 0)
+    {
+        file.read(buffer.data(), size);
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    asyncWait.get();
+    BOOST_CHECK(responseFuture.get());
 }
 
 BOOST_AUTO_TEST_CASE(obj)
 {
+    brayns::BinaryParam params;
+    params.size = [] {
+        std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+                           std::ios::binary | std::ios::ate);
+        return file.tellg();
+    }();
+    params.type = "obj";
+
+    auto responseFuture =
+        getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
+            "receive-binary", {params});
+
+    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
+        while (!is_ready(responseFuture))
+            process();
+    });
+
+    std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+                       std::ios::binary);
+
+    std::vector<char> buffer(1024, 0);
+
+    while (file.read(buffer.data(), buffer.size()))
+    {
+        const std::streamsize size = file.gcount();
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    // read & send last chunk
+    const std::streamsize size = file.gcount();
+    if (size != 0)
+    {
+        file.read(buffer.data(), size);
+        getWsClient().sendBinary(buffer.data(), size);
+    }
+
+    asyncWait.get();
+    BOOST_CHECK(responseFuture.get());
 }
 
 BOOST_AUTO_TEST_CASE(second_request_with_first_one_not_finished)

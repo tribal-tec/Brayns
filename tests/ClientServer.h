@@ -66,18 +66,23 @@ public:
             .setImageStreamFPS(0);
         brayns->render();
 
+        connect(wsClient);
+        _instance = this;
+    }
+
+    void connect(rockets::ws::Client& client)
+    {
         const auto uri = brayns->getParametersManager()
                              .getApplicationParameters()
                              .getHttpServerURI();
 
-        auto connectFuture = wsClient.connect("ws://" + uri, "rockets");
+        auto connectFuture = client.connect("ws://" + uri, "rockets");
         while (!is_ready(connectFuture))
         {
-            wsClient.process(CLIENT_PROCESS_TIMEOUT);
+            client.process(CLIENT_PROCESS_TIMEOUT);
             brayns->render();
         }
         connectFuture.get();
-        _instance = this;
     }
 
     template <typename Params, typename RetVal>
@@ -190,4 +195,9 @@ auto& getJsonRpcClient()
 void process()
 {
     ClientServer::instance().process();
+}
+
+void connect(rockets::ws::Client& client)
+{
+    ClientServer::instance().connect(client);
 }

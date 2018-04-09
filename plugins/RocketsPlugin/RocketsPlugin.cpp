@@ -294,7 +294,7 @@ public:
         });
 
         _rocketsServer->handleClose([this](const uintptr_t clientID) {
-            //_deleteBinaryRequest(clientID);
+            _deleteBinaryRequest(clientID);
             return std::vector<rockets::ws::Response>{};
         });
 
@@ -976,21 +976,15 @@ public:
     // TODO: RPC for remote file loading
     // TODO: need an API for finding the (best) suitable loader giving just a
     // filename (folder?).
+    void _deleteBinaryRequest(const uintptr_t clientID)
+    {
+        auto i = _binaryRequests.find(clientID);
+        if (i == _binaryRequests.end())
+            return;
 
-    // TODO: no matter if properly finished or cancelled; remove it from our
-    // list and
-    // update the progress to be fulfilled
-    //    void _deleteBinaryRequest(const uintptr_t clientID)
-    //    {
-    //        auto i = _binaryRequests.find(clientID);
-    //        if (i == _binaryRequests.end())
-    //            return;
-
-    //        if (i->second->progress.isModified())
-    //            _jsonrpcServer->notify(ENDPOINT_PROGRESS,
-    //            i->second->progress);
-    //        _binaryRequests.erase(i);
-    //    }
+        i->second->cancel();
+        _binaryRequests.erase(i);
+    }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
         const rockets::http::Request& request)

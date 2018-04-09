@@ -251,8 +251,8 @@ bool LoadDataFunctor::_loadDataFromBlob(
     {
         for (;;)
         {
-            _blob.cancelCheck();
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            _blob.cancelCheck();
         }
         return false;
     }

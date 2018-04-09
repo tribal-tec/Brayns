@@ -145,6 +145,8 @@ bool LoadDataFunctor::_loadData(Progress& loadingProgress)
     if (!_blob.data.empty())
         return _loadDataFromBlob(updateProgress);
 
+    return false;
+
     //    auto& geometryParameters = _parametersManager.getGeometryParameters();
     //    auto& volumeParameters = _parametersManager.getVolumeParameters();
     //    auto& sceneParameters = _parametersManager.getSceneParameters();

@@ -160,6 +160,7 @@ BOOST_AUTO_TEST_CASE(receive_binary_unsupported_type)
 {
     brayns::BinaryParam params;
     params.type = "blub";
+    params.size = 4;
     try
     {
         makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",

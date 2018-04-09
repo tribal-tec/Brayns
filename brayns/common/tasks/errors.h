@@ -30,16 +30,33 @@ struct BinaryError
     std::vector<std::string> supportedTypes;
 };
 
-const TaskRuntimeError MISSING_PARAMS{"Missing params", -1731};
-// TODO: to_json is not known here...
-inline TaskRuntimeError UNSUPPORTED_TYPE(const BinaryError& /*error*/)
+class BinaryTaskError : public TaskRuntimeError
 {
-    return {"Unsupported type", -1732, "\"how?\"" /*to_json(error)*/};
+public:
+    BinaryTaskError(const std::string& message, const int code,
+                    const BinaryError& error)
+        : TaskRuntimeError(message, code)
+        , _error(error)
+    {
+    }
+
+    const auto& error() const { return _error; }
+private:
+    const BinaryError _error;
+};
+
+const TaskRuntimeError MISSING_PARAMS{"Missing params", -1731};
+
+inline BinaryTaskError UNSUPPORTED_TYPE(const BinaryError& error)
+{
+    return {"Unsupported type", -1732, error};
 }
+
 const TaskRuntimeError INVALID_BINARY_RECEIVE{
     "Invalid binary received; no more files expected or "
     "current file is complete",
     -1733};
+
 inline TaskRuntimeError LOADING_BINARY_FAILED(const std::string& error)
 {
     return {error, -1734};

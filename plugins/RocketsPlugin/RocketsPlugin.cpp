@@ -134,6 +134,14 @@ public:
 
     ~Impl()
     {
+        // cancel all pending tasks; cancel() will remove itself from _tasks
+        while (!_tasks.empty())
+        {
+            auto& entry = *_tasks.begin();
+            entry.second.second->cancel();
+            entry.second.first.wait();
+        }
+
         if (_rocketsServer)
             _rocketsServer->setSocketListener(nullptr);
     }
@@ -410,7 +418,8 @@ public:
             {
                 if (progress.isModified())
                 {
-                    server->notify(ENDPOINT_PROGRESS, progress);
+                    if (server)
+                        server->notify(ENDPOINT_PROGRESS, progress);
                     progress.resetModified();
                 }
                 timer.start();

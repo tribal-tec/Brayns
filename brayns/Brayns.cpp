@@ -175,8 +175,8 @@ struct Brayns::Impl : public PluginAPI
 
         _extensionPluginFactory.preRender();
 
-        std::unique_lock<std::timed_mutex> lock{_engine->dataMutex(),
-                                                std::defer_lock};
+        std::shared_lock<std::shared_timed_mutex> lock{_engine->dataMutex(),
+                                                       std::defer_lock};
         if (!lock.try_lock())
             return false;
 
@@ -354,7 +354,7 @@ struct Brayns::Impl : public PluginAPI
 
     void render()
     {
-        std::lock_guard<std::timed_mutex> lock{_engine->dataMutex()};
+        std::shared_lock<std::shared_timed_mutex> lock{_engine->dataMutex()};
 
         _renderTimer.start();
         _engine->render();
@@ -393,7 +393,7 @@ private:
     void _loadScene()
     {
         // fix race condition: we have to wait until rendering is finished
-        std::lock_guard<std::timed_mutex> lock{_engine->dataMutex()};
+        std::lock_guard<std::shared_timed_mutex> lock{_engine->dataMutex()};
 
         Progress loadingProgress(
             "Loading scene ...",

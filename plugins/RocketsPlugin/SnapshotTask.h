@@ -89,7 +89,7 @@ private:
     RendererPtr _renderer;
     SnapshotParams _params;
     ImageGenerator& _imageGenerator;
-    std::unique_lock<std::timed_mutex> _dataLock;
+    std::shared_lock<std::shared_timed_mutex> _dataLock;
 };
 
 auto createSnapshotTask(const SnapshotParams& params, std::string,

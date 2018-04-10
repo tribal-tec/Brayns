@@ -25,11 +25,11 @@
 
 namespace brayns
 {
-inline bool endsWith(const std::string& value, const std::string& ending)
+inline auto lowerCase(std::string str)
 {
-    if (ending.size() > value.size())
-        return false;
-    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+    std::string retval = str;
+    std::transform(retval.begin(), retval.end(), retval.begin(), ::tolower);
+    return retval;
 }
 
 ReceiveBinaryTask::ReceiveBinaryTask(
@@ -46,54 +46,49 @@ ReceiveBinaryTask::ReceiveBinaryTask(
         if (param.type.empty() || param.size == 0)
             throw MISSING_PARAMS;
 
-        // try exact pattern match
-        // TODO: proper regex check for *.obj and obj cases
-        bool supported =
-            supportedTypes.find(param.type) != supportedTypes.end();
-        if (supported || param.type == "forever")
+        if (param.type == "forever")
             continue;
 
-        // fallback to match "ends with extension"
-        supported = false;
-        for (const auto& type : supportedTypes)
-        {
-            if (endsWith(type, param.type))
-            {
-                supported = true;
-                break;
-            }
-        }
+        auto found = std::find_if(supportedTypes.cbegin(),
+                                  supportedTypes.cend(), [&](auto val) {
+                                      return lowerCase(val).find(
+                                                 lowerCase(param.type)) !=
+                                             std::string::npos;
+                                  });
 
-        if (!supported)
+        if (found == supportedTypes.end())
             throw UNSUPPORTED_TYPE(
                 {i, {supportedTypes.begin(), supportedTypes.end()}});
     }
+
     _updateTotalBytes();
 
     // chunk event task is set() from appendBlob() once all data has been
     // received, then loading starts.
-    chunks.resize(params.size());
+    _chunks.resize(params.size());
     for (size_t i = 0; i < params.size(); ++i)
-        tasks.push_back(chunks[i].get_task().then(
+        _loadTasks.push_back(_chunks[i].get_task().then(
             _setupFunctor(LoadDataFunctor{params[i].type, engine})));
 
     // wait for load data of all files
     auto allLoaded =
-        async::when_all(tasks).then([](std::vector<async::task<void>> results) {
-            for (auto& result : results)
-                result.get(); // exception is propagated to caller
-            return true;
-        });
-    bla.emplace_back(_errorEvent.get_task());
-    bla.emplace_back(std::move(allLoaded));
+        async::when_all(_loadTasks)
+            .then([](std::vector<async::task<void>> results) {
+                for (auto& result : results)
+                    result.get(); // exception is propagated to caller
+            });
 
-    // either finish with success or error from loading, or external error
-    _task = async::when_any(bla).then(
-        [](async::when_any_result<std::vector<async::task<bool>>> result) {
-            result.tasks[result.index].get(); // exception is propagated to
-                                              // caller
-            return true;
-        });
+    // either finish with success/error from loading, or cancel
+    _finishTasks.emplace_back(_errorEvent.get_task());
+    _finishTasks.emplace_back(std::move(allLoaded));
+    _task = async::when_any(_finishTasks)
+                .then([](async::when_any_result<std::vector<async::task<void>>>
+                             results) {
+                    results.tasks[results.index].get(); // exception is
+                                                        // propagated to
+                                                        // caller
+                    return true;
+                });
 }
 
 void ReceiveBinaryTask::appendBlob(const std::string& blob)
@@ -114,7 +109,7 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
 
     if (_blob.size() == _params[_index].size)
     {
-        chunks[_index].set(_blob);
+        _chunks[_index].set(_blob);
 
         ++_index;
 

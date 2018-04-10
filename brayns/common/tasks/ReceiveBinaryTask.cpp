@@ -111,7 +111,6 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
 
     _progress.setAmount(_progressBytes());
     _progress.setOperation("Receiving data ...");
-    progressUpdated(_progress, false);
 
     if (_blob.size() == _params[_index].size)
     {

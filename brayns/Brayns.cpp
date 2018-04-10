@@ -294,11 +294,8 @@ struct Brayns::Impl : public PluginAPI
         if (!isLoadingFinished())
             throw std::runtime_error("Build scene already in progress");
 
-        if (_engine->getBlob().data.empty())
-        {
-            _engine->setLastOperation("");
-            _engine->setLastProgress(0);
-        }
+        _engine->setLastOperation("");
+        _engine->setLastProgress(0);
 
         std::promise<void> promise;
         _dataLoadingFuture = promise.get_future();
@@ -400,28 +397,12 @@ private:
 
         Progress loadingProgress(
             "Loading scene ...",
-            (_engine->getBlob().data.empty()
-                 ? 0
-                 : LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP) +
-                LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
+            LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
             [this](const std::string& msg, const float progress) {
-                if (_engine->getBlob().data.empty())
-                {
-                    std::lock_guard<std::mutex> lock_(
-                        _engine->getProgress().mutex);
-                    _engine->setLastOperation(msg);
-                    _engine->setLastProgress(progress);
-                }
-                else
-                {
-                    _engine->getBlob().progress->setOperation(msg);
-                    _engine->getBlob().progress->setAmount(progress);
-                }
+                std::lock_guard<std::mutex> lock_(_engine->getProgress().mutex);
+                _engine->setLastOperation(msg);
+                _engine->setLastProgress(progress);
             });
-
-        if (!_engine->getBlob().data.empty())
-            loadingProgress +=
-                LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP;
 
         Scene& scene = _engine->getScene();
 
@@ -478,12 +459,6 @@ private:
 
         // finish reporting of progress
         postSceneLoading();
-
-        if (!_engine->getBlob().data.empty())
-        {
-            _engine->clearBlob();
-            _engine->finishLoadCallback(_engine->getBlob().error);
-        }
     }
 
     void _updateAnimation()
@@ -516,17 +491,6 @@ private:
                 nextTic = newProgress;
             }
         };
-
-        if (!_engine->getBlob().data.empty())
-        {
-            const auto success = _loadDataFromBlob(updateProgress);
-            if (!success)
-            {
-                _engine->clearBlob();
-                _engine->finishLoadCallback(_engine->getBlob().error);
-            }
-            return success;
-        }
 
         auto& geometryParameters = _parametersManager.getGeometryParameters();
         auto& volumeParameters = _parametersManager.getVolumeParameters();
@@ -630,14 +594,6 @@ private:
         return true;
     }
 
-    bool _loadDataFromBlob(const Progress::UpdateCallback& updateProgress)
-    {
-        if (_engine->getBlob().type == "xyz")
-            return _loadXYZBBlob(updateProgress);
-
-        return _loadMeshBlob(updateProgress);
-    }
-
     /**
         Loads data from a PDB file (command line parameter --pdb-file)
     */
@@ -701,15 +657,6 @@ private:
                          << geometryParameters.getXYZBFile() << std::endl;
     }
 
-    bool _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate)
-    {
-        auto& geometryParameters = _parametersManager.getGeometryParameters();
-        auto& scene = _engine->getScene();
-        XYZBLoader xyzbLoader(geometryParameters);
-        xyzbLoader.setProgressCallback(progressUpdate);
-        return xyzbLoader.importFromBlob(_engine->getBlob(), scene);
-    }
-
     /**
         Loads data from mesh files located in the folder specified in
        the geometry parameters (command line parameter --mesh-folder)
@@ -758,20 +705,6 @@ private:
         if (!_meshLoader.importMeshFromFile(filename, scene, Matrix4f(),
                                             material))
             BRAYNS_ERROR << "Failed to import " << filename << std::endl;
-    }
-
-    bool _loadMeshBlob(const Progress::UpdateCallback& progressUpdate)
-    {
-        const auto& geometryParameters =
-            _parametersManager.getGeometryParameters();
-        auto& scene = _engine->getScene();
-        const size_t material =
-            geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
-                ? NB_SYSTEM_MATERIALS
-                : NO_MATERIAL;
-        _meshLoader.setProgressCallback(progressUpdate);
-        return _meshLoader.importMeshFromBlob(_engine->getBlob(), scene,
-                                              Matrix4f(), material);
     }
 
 #if (BRAYNS_USE_BRION)

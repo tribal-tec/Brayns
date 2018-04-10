@@ -30,8 +30,6 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
-#include <brayns/common/tasks/Task.h>
-
 namespace brayns
 {
 Engine::Engine(ParametersManager& parametersManager)

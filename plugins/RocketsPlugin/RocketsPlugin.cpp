@@ -80,21 +80,6 @@ const std::string JSON_TYPE = "application/json";
 using Response = rockets::jsonrpc::Response;
 const Response ALREADY_PENDING_REQUEST{
     Response::Error{"Already pending binary request", -1730}};
-// const Response MISSING_PARAMS{Response::Error{"Missing params", -1731}};
-// Response UNSUPPORTED_TYPE(const brayns::BinaryError& error)
-//{
-//    return {Response::Error{"Unsupported type", -1732, to_json(error)}};
-//}
-// const Response INVALID_BINARY_RECEIVE{
-//    Response::Error{"Invalid binary received; no more files expected or "
-//                    "current file is complete",
-//                    -1733}};
-// Response LOADING_BINARY_FAILED(const std::string& error)
-//{
-//    return {Response::Error{error, -1734}};
-//}
-// const Response SNAPSHOT_PENDING{
-//    Response::Error{"Snapshot is pending, rejecting data upload", -1735}};
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {

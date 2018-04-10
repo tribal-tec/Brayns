@@ -407,28 +407,8 @@ public:
     void _handleTask(const std::string& method, const RpcDocumentation& doc,
                      std::function<std::shared_ptr<TaskT<R>>(P)> createUserTask)
     {
-        _timer2.start();
-        auto progressCallback =
-            [& server = _jsonrpcServer, &timer = _timer2 ](Progress2 & progress,
-                                                           bool force = false)
-        {
-            // TODO: wrong timer again (leftover!), plus duplicate from
-            // braynsService
-            if (timer.elapsed() >= 0.01 || force)
-            {
-                if (progress.isModified())
-                {
-                    if (server)
-                        server->notify(ENDPOINT_PROGRESS, progress);
-                    progress.resetModified();
-                }
-                timer.start();
-            }
-        };
-
         auto action =
-            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask,
-             progressCallback ](P params, std::string requestID, uintptr_t clientID,
+            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer](P params, std::string requestID, uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond)
         {
             if (binaryRequests.count(clientID) != 0)
@@ -438,9 +418,8 @@ public:
             }
 
             auto errorCallback = [respond](const TaskRuntimeError& error) {
-                respond(Response{
-                    Response::Error{error.what(), error.code(), error.data()}});
-
+                respond({Response::Error{error.what(), error.code(),
+                                         error.data()}});
             };
 
             try
@@ -448,24 +427,60 @@ public:
                 auto readyCallback = [respond](R result) {
                     try
                     {
-                        respond(Response{to_json(result)});
+                        respond({to_json(result)});
                     }
                     catch (const std::runtime_error& e)
                     {
-                        respond(Response{Response::Error{e.what(), -1}});
+                        respond({Response::Error{e.what(), -1}});
                     }
                 };
 
                 auto userTask = createUserTask(params);
+
+                std::function<void()> finishProgress = [userTask] {
+                    userTask->progress("Done", 1.f);
+                };
+#ifdef BRAYNS_USE_LIBUV
+                if (uvw::Loop::getDefault()->alive())
+                {
+                    auto progressUpdate =
+                        uvw::Loop::getDefault()->resource<uvw::TimerHandle>();
+
+                    auto sendProgress =
+                        [&server,
+                         &progress = userTask->getProgress() ](const auto&,
+                                                               auto&)
+                    {
+                        if (progress.isModified())
+                        {
+                            if (server)
+                                server->notify(ENDPOINT_PROGRESS, progress);
+                            progress.resetModified();
+                        }
+                    };
+                    progressUpdate->on<uvw::TimerEvent>(sendProgress);
+                    progressUpdate->on<uvw::CloseEvent>(sendProgress);
+
+                    finishProgress = [userTask, progressUpdate] {
+                        userTask->progress("Done", 1.f);
+                        progressUpdate->stop();
+                        progressUpdate->close();
+                    };
+
+                    progressUpdate->start(std::chrono::milliseconds(0),
+                                          std::chrono::milliseconds(100));
+                }
+#endif
+
                 auto task = userTask->task().then(
                     [readyCallback, errorCallback, &tasks, &binaryRequests,
                      requestID, clientID,
-                     userTask](typename TaskT<R>::Type task2) {
-                        userTask->progress("Done", 1.f);
+                     finishProgress](typename TaskT<R>::Type result) {
+                        finishProgress();
 
                         try
                         {
-                            readyCallback(task2.get());
+                            readyCallback(result.get());
                         }
                         catch (const TaskRuntimeError& e)
                         {
@@ -478,14 +493,13 @@ public:
                         catch (const async::task_canceled&)
                         {
                             // no response needed
-                            std::cout << "Cancelled" << std::endl;
                         }
+
                         tasks.erase(requestID);
                         binaryRequests.erase(clientID);
                     });
 
                 userTask->setRequestID(requestID);
-                userTask->setProgressUpdatedCallback(progressCallback);
 
                 userTask->schedule();
 
@@ -890,7 +904,6 @@ public:
     // TODO: pair stuff looks wrong, extend Task.h??
     std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
     std::map<uintptr_t, TaskPtr> _binaryRequests;
-    Timer _timer2;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

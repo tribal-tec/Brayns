@@ -22,8 +22,6 @@
 
 #include <brayns/common/types.h>
 
-#include <memory>
-
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -35,8 +33,6 @@
 
 namespace brayns
 {
-using ProgressFunc = std::function<void(std::string, float)>;
-
 class TaskRuntimeError : public std::runtime_error
 {
 public:
@@ -72,6 +68,8 @@ public:
             async::interruption_point(*_cancelToken);
     }
 
+    using ProgressFunc = std::function<void(std::string, float)>;
+
     void setProgressFunc(const ProgressFunc& progressFunc)
     {
         _progressFunc = progressFunc;
@@ -98,14 +96,6 @@ public:
     virtual void wait() = 0;
 
     virtual void schedule() {}
-    void setProgressUpdatedCallback(
-        const std::function<void(Progress2&, bool)>& cb)
-    {
-        progressUpdated = cb;
-        if (cb)
-            cb(_progress, false);
-    }
-
     void setRequestID(const std::string& requestID)
     {
         _progress.requestID = requestID;
@@ -115,14 +105,12 @@ public:
     {
         _progress.setOperation(message);
         _progress.setAmount(amount);
-        if (progressUpdated)
-            progressUpdated(_progress, true);
     }
 
+    Progress2& getProgress() { return _progress; }
 protected:
     async::cancellation_token _cancelToken;
     Progress2 _progress{"Scheduling task ..."};
-    std::function<void(Progress2&, bool)> progressUpdated;
 
 private:
     virtual void _cancel() {}
@@ -155,13 +143,11 @@ protected:
         if (std::is_base_of<TaskFunctor, F>::value)
         {
             auto& taskFunctor = static_cast<TaskFunctor&>(functor);
-            taskFunctor.setProgressFunc(
-                [this](const std::string& message, const float amount) {
-                    _progress.setOperation(message);
-                    _progress.setAmount(amount);
-                    if (progressUpdated)
-                        progressUpdated(_progress, false);
-                });
+            taskFunctor.setProgressFunc([& progress = _progress](
+                const std::string& message, const float amount) {
+                progress.setOperation(message);
+                progress.setAmount(amount);
+            });
             taskFunctor.setCancelToken(_cancelToken);
         }
         return std::move(functor);

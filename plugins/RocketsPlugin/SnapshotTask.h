@@ -85,8 +85,8 @@ private:
     ImageGenerator& _imageGenerator;
 };
 
-auto createSnapshotTask(const SnapshotParams& params, Engine& engine,
-                        ImageGenerator& imageGenerator)
+auto createSnapshotTask(const SnapshotParams& params, const uintptr_t,
+                        Engine& engine, ImageGenerator& imageGenerator)
 {
     using SnapshotTask = DelayedTask<ImageGenerator::ImageBase64>;
     return std::make_shared<SnapshotTask>(

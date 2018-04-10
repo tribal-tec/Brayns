@@ -78,8 +78,6 @@ const std::string METHOD_SNAPSHOT = "snapshot";
 const std::string JSON_TYPE = "application/json";
 
 using Response = rockets::jsonrpc::Response;
-const Response ALREADY_PENDING_REQUEST{
-    Response::Error{"Already pending binary request", -1730}};
 
 std::string hyphenatedToCamelCase(const std::string& hyphenated)
 {
@@ -121,6 +119,49 @@ inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
         BRAYNS_ERROR << status.description() << std::endl;
     return success;
 }
+
+class BinaryRequests
+{
+public:
+    auto createTask(const BinaryParams& params, uintptr_t clientID,
+                    const std::set<std::string>& supportedTypes,
+                    EnginePtr engine)
+    {
+        if (_binaryRequests.count(clientID) != 0)
+            throw ALREADY_PENDING_REQUEST;
+
+        auto task = createReceiveBinaryTask(params, supportedTypes, engine);
+        _binaryRequests.emplace(clientID, task);
+
+        return task;
+    }
+
+    rockets::ws::Response processMessage(const rockets::ws::Request& wsRequest)
+    {
+        if (_binaryRequests.count(wsRequest.clientID) == 0)
+        {
+            BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
+                         << " or cancelled?" << std::endl;
+            return {};
+        }
+
+        _binaryRequests[wsRequest.clientID]->appendBlob(wsRequest.message);
+        return {};
+    }
+
+    void removeRequest(const uintptr_t clientID)
+    {
+        auto i = _binaryRequests.find(clientID);
+        if (i == _binaryRequests.end())
+            return;
+
+        i->second->cancel();
+        _binaryRequests.erase(i);
+    }
+
+private:
+    std::map<uintptr_t, std::shared_ptr<ReceiveBinaryTask>> _binaryRequests;
+};
 
 class RocketsPlugin::Impl
 {
@@ -268,30 +309,13 @@ public:
         });
 
         _rocketsServer->handleClose([this](const uintptr_t clientID) {
-            _deleteBinaryRequest(clientID);
+            _binaryRequests.removeRequest(clientID);
             return std::vector<rockets::ws::Response>{};
         });
 
-        _rocketsServer->handleBinary(
-            std::bind(&Impl::_processWebsocketBinaryMessage, this,
-                      std::placeholders::_1));
-    }
-
-    rockets::ws::Response _processWebsocketBinaryMessage(
-        const rockets::ws::Request& wsRequest)
-    {
-        if (_binaryRequests.count(wsRequest.clientID) == 0)
-        {
-            BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
-                         << " or cancelled?" << std::endl;
-            return {};
-        }
-
-        auto request = std::dynamic_pointer_cast<ReceiveBinaryTask>(
-            _binaryRequests[wsRequest.clientID]);
-        if (request)
-            request->appendBlob(wsRequest.message);
-        return {};
+        _rocketsServer->handleBinary(std::bind(&BinaryRequests::processMessage,
+                                               std::ref(_binaryRequests),
+                                               std::placeholders::_1));
     }
 
     void _broadcastWebsocketMessages()
@@ -404,19 +428,14 @@ public:
     }
 
     template <class P, class R>
-    void _handleTask(const std::string& method, const RpcDocumentation& doc,
-                     std::function<std::shared_ptr<TaskT<R>>(P)> createUserTask)
+    void _handleTask(
+        const std::string& method, const RpcDocumentation& doc,
+        std::function<std::shared_ptr<TaskT<R>>(P, uintptr_t)> createUserTask)
     {
         auto action =
             [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer](P params, std::string requestID, uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond)
         {
-            if (binaryRequests.count(clientID) != 0)
-            {
-                respond(ALREADY_PENDING_REQUEST);
-                return;
-            }
-
             auto errorCallback = [respond](const TaskRuntimeError& error) {
                 respond({Response::Error{error.what(), error.code(),
                                          error.data()}});
@@ -435,7 +454,7 @@ public:
                     }
                 };
 
-                auto userTask = createUserTask(params);
+                auto userTask = createUserTask(params, clientID);
 
                 std::function<void()> finishProgress = [userTask] {
                     userTask->progress("Done", 1.f);
@@ -447,9 +466,7 @@ public:
                         uvw::Loop::getDefault()->resource<uvw::TimerHandle>();
 
                     auto sendProgress =
-                        [&server,
-                         &progress = userTask->getProgress() ](const auto&,
-                                                               auto&)
+                        [&server, &progress = userTask->getProgress() ]
                     {
                         if (progress.isModified())
                         {
@@ -458,11 +475,12 @@ public:
                             progress.resetModified();
                         }
                     };
-                    progressUpdate->on<uvw::TimerEvent>(sendProgress);
-                    progressUpdate->on<uvw::CloseEvent>(sendProgress);
+                    progressUpdate->on<uvw::TimerEvent>(
+                        [sendProgress](const auto&, auto&) { sendProgress(); });
 
-                    finishProgress = [userTask, progressUpdate] {
+                    finishProgress = [userTask, progressUpdate, sendProgress] {
                         userTask->progress("Done", 1.f);
+                        sendProgress();
                         progressUpdate->stop();
                         progressUpdate->close();
                     };
@@ -496,7 +514,7 @@ public:
                         }
 
                         tasks.erase(requestID);
-                        binaryRequests.erase(clientID);
+                        binaryRequests.removeRequest(clientID);
                     });
 
                 userTask->setRequestID(requestID);
@@ -505,10 +523,6 @@ public:
 
                 tasks.emplace(requestID,
                               std::make_pair(std::move(task), userTask));
-
-                // TODO: check is_same receiveBinaryTask; needs generic
-                // signature here!
-                binaryRequests.emplace(clientID, userTask);
             }
             catch (const BinaryTaskError& e)
             {
@@ -529,8 +543,7 @@ public:
             if (i != tasks.end())
             {
                 i->second.second->cancel();
-                i->second.first.wait(); // TODO: when task in finshed, this
-                                        // waits forever??
+                i->second.first.wait();
             }
         };
         _handleAsyncRPC<P, R>(method, doc, action, cancel);
@@ -803,7 +816,8 @@ public:
         _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
             std::bind(createSnapshotTask, std::placeholders::_1,
-                      std::ref(*_engine), std::ref(_imageGenerator)));
+                      std::placeholders::_2, std::ref(*_engine),
+                      std::ref(_imageGenerator)));
     }
 
     void _handleReceiveBinary()
@@ -813,23 +827,11 @@ public:
 
         _handleTask<BinaryParams, bool>(
             METHOD_RECEIVE_BINARY, doc,
-            std::bind(createReceiveBinaryTask, std::placeholders::_1,
+            std::bind(&BinaryRequests::createTask, std::ref(_binaryRequests),
+                      std::placeholders::_1, std::placeholders::_2,
                       _parametersManager.getGeometryParameters()
                           .getSupportedDataTypes(),
                       _engine));
-    }
-
-    // TODO: RPC for remote file loading
-    // TODO: need an API for finding the (best) suitable loader giving just a
-    // filename (folder?).
-    void _deleteBinaryRequest(const uintptr_t clientID)
-    {
-        auto i = _binaryRequests.find(clientID);
-        if (i == _binaryRequests.end())
-            return;
-
-        i->second->cancel();
-        _binaryRequests.erase(i);
     }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(
@@ -903,7 +905,8 @@ public:
 
     // TODO: pair stuff looks wrong, extend Task.h??
     std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
-    std::map<uintptr_t, TaskPtr> _binaryRequests;
+
+    BinaryRequests _binaryRequests;
 };
 
 RocketsPlugin::RocketsPlugin(EnginePtr engine, PluginAPI* api)

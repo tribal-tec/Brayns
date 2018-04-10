@@ -49,19 +49,20 @@ LoadDataFunctor::~LoadDataFunctor()
     Scene& scene = _engine->getScene();
 
     // load default if we got cancelled
-    if (scene.empty())
+    if (_empty)
     {
+        scene.unload();
         _meshLoader.clear();
         BRAYNS_INFO << "Building default scene" << std::endl;
         scene.buildDefault();
 
         Progress dummy("", 0, [](const std::string&, const float) {});
 
-        _postLoad(dummy);
+        _postLoad(dummy, false);
     }
 }
 
-void LoadDataFunctor::operator()(const std::string& data)
+void LoadDataFunctor::operator()(std::string data)
 {
     // fix race condition: we have to wait until rendering is finished
     std::lock_guard<std::mutex> lock{_engine->dataMutex()};
@@ -75,18 +76,9 @@ void LoadDataFunctor::operator()(const std::string& data)
         (_blob.data.empty() ? 0 : LOADING_PROGRESS_DATA +
                                       3 * LOADING_PROGRESS_STEP) +
             LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
-        [this](const std::string& msg, const float progress) {
-            //            if (_blob.data.empty())
-            //            {
-            //                std::lock_guard<std::mutex> lock_(
-            //                    _engine->getProgress().mutex);
-            //                _engine->setLastOperation(msg);
-            //                _engine->setLastProgress(progress);
-            //            }
-            //            else
-            {
-                _blob.progressFunc(msg, progress);
-            }
+        [& func = _blob.progressFunc](const std::string& msg,
+                                      const float progress) {
+            func(msg, progress);
         });
 
     if (!_blob.data.empty())
@@ -97,6 +89,7 @@ void LoadDataFunctor::operator()(const std::string& data)
     loadingProgress.setMessage("Unloading ...");
     scene.unload();
     loadingProgress += LOADING_PROGRESS_STEP;
+    _empty = true;
 
     loadingProgress.setMessage("Loading data ...");
     _meshLoader.clear();
@@ -116,6 +109,7 @@ void LoadDataFunctor::operator()(const std::string& data)
 
     if (!success)
         throw LOADING_BINARY_FAILED(_blob.error);
+    _empty = false;
 }
 
 bool LoadDataFunctor::_loadData(Progress& loadingProgress)
@@ -288,7 +282,8 @@ bool LoadDataFunctor::_loadMeshBlob(
     return _meshLoader.importMeshFromBlob(_blob, scene, Matrix4f(), material);
 }
 
-void LoadDataFunctor::_postLoad(Progress& loadingProgress)
+void LoadDataFunctor::_postLoad(Progress& loadingProgress,
+                                const bool cancellable)
 {
     Scene& scene = _engine->getScene();
 
@@ -304,6 +299,9 @@ void LoadDataFunctor::_postLoad(Progress& loadingProgress)
         scene.saveToCacheFile();
     }
 
+    if (cancellable)
+        cancelCheck();
+
     loadingProgress += LOADING_PROGRESS_STEP;
 
     loadingProgress.setMessage("Building acceleration structure ...");
@@ -318,5 +316,6 @@ void LoadDataFunctor::_postLoad(Progress& loadingProgress)
     auto& camera = _engine->getCamera();
     camera.setInitialState(_engine->getScene().getWorldBounds());
     camera.setAspectRatio(frameSize.x() / frameSize.y());
+    _engine->triggerRender();
 }
 }

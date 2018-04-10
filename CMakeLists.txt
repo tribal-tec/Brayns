@@ -57,6 +57,8 @@ endif()
 
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(async++)
+list(APPEND LCOV_EXCLUDE 'async++/include/async++/*'
+                         'async++/src/*')
 
 # HTTP messaging
 common_find_package(LibJpegTurbo)

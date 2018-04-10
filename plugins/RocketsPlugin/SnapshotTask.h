@@ -50,12 +50,16 @@ public:
         , _renderer(engine.createRenderer(engine.getActiveRenderer()))
         , _params(params)
         , _imageGenerator(imageGenerator)
+        , _dataLock(engine.dataMutex(), std::defer_lock)
     {
         *_camera = engine.getCamera();
         _camera->setAspectRatio(float(params.size.x()) / params.size.y());
         _camera->commit();
 
         _renderer->setCamera(_camera);
+
+        _dataLock.lock();
+
         _renderer->setScene(engine.getScenePtr());
         _renderer->commit();
     }
@@ -72,6 +76,8 @@ public:
                          _params.samplesPerPixel);
         }
 
+        _dataLock.unlock();
+
         progress("Render snapshot ...", 1.f);
         return _imageGenerator.createImage(*_frameBuffer, _params.format,
                                            _params.quality);
@@ -83,10 +89,12 @@ private:
     RendererPtr _renderer;
     SnapshotParams _params;
     ImageGenerator& _imageGenerator;
+    std::unique_lock<std::timed_mutex> _dataLock;
 };
 
-auto createSnapshotTask(const SnapshotParams& params, const uintptr_t,
-                        Engine& engine, ImageGenerator& imageGenerator)
+auto createSnapshotTask(const SnapshotParams& params, std::string,
+                        const uintptr_t, Engine& engine,
+                        ImageGenerator& imageGenerator)
 {
     using SnapshotTask = DelayedTask<ImageGenerator::ImageBase64>;
     return std::make_shared<SnapshotTask>(

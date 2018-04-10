@@ -206,21 +206,20 @@ public:
 
             _jsonrpcServer.reset(new JsonRpcServer(*_rocketsServer));
 
-            //#ifdef BRAYNS_USE_LIBUV
-            //            try
-            //            {
-            //                _socketListener =
-            //                    std::make_unique<SocketListener>(*_rocketsServer);
-            //                _rocketsServer->setSocketListener(_socketListener.get());
-            //            }
-            //            catch (const std::runtime_error& e)
-            //            {
-            //                BRAYNS_DEBUG
-            //                    << "Failed to setup rockets socket listener: "
-            //                    << e.what()
-            //                    << std::endl;
-            //            }
-            //#endif
+#ifdef BRAYNS_USE_LIBUV
+            try
+            {
+                _socketListener =
+                    std::make_unique<SocketListener>(*_rocketsServer);
+                //_rocketsServer->setSocketListener(_socketListener.get());
+            }
+            catch (const std::runtime_error& e)
+            {
+                BRAYNS_DEBUG
+                    << "Failed to setup rockets socket listener: " << e.what()
+                    << std::endl;
+            }
+#endif
 
             _parametersManager.getApplicationParameters().setHttpServerURI(
                 _rocketsServer->getURI());

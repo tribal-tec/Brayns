@@ -46,20 +46,19 @@ LoadDataFunctor::LoadDataFunctor(const std::string& type, EnginePtr engine)
 
 LoadDataFunctor::~LoadDataFunctor()
 {
-    Scene& scene = _engine->getScene();
+    if (!_empty)
+        return;
 
     // load default if we got cancelled
-    if (_empty)
-    {
-        scene.unload();
-        _meshLoader.clear();
-        BRAYNS_INFO << "Building default scene" << std::endl;
-        scene.buildDefault();
+    Scene& scene = _engine->getScene();
+    scene.unload();
+    _meshLoader.clear();
+    BRAYNS_INFO << "Building default scene" << std::endl;
+    scene.buildDefault();
 
-        Progress dummy("", 0, [](const std::string&, const float) {});
+    Progress dummy("", 0, [](const std::string&, const float) {});
 
-        _postLoad(dummy, false);
-    }
+    _postLoad(dummy, false);
 }
 
 void LoadDataFunctor::operator()(std::string data)

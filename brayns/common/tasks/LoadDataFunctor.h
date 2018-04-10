@@ -37,7 +37,6 @@ public:
 
 private:
     bool _loadData(Progress& loadingProgress);
-    bool _loadDataFromBlob(const Progress::UpdateCallback& updateProgress);
     bool _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate);
     bool _loadMeshBlob(const Progress::UpdateCallback& progressUpdate);
 

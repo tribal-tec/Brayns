@@ -73,18 +73,15 @@ void LoadDataFunctor::operator()(std::string data)
     _blob.progressFunc = _progressFunc;
     _blob.data = std::move(data);
 
-    Progress loadingProgress(
-        "Loading scene ...",
-        (_blob.data.empty() ? 0 : LOADING_PROGRESS_DATA +
-                                      3 * LOADING_PROGRESS_STEP) +
-            LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
-        [& func = _blob.progressFunc](const std::string& msg,
-                                      const float progress) {
-            func(msg, progress);
-        });
-
-    if (!_blob.data.empty())
-        loadingProgress += LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP;
+    Progress loadingProgress("Loading scene ...",
+                             LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
+                             [& func =
+                                  _blob.progressFunc](const std::string& msg,
+                                                      const float progress) {
+                                 const auto offset =
+                                     0.5f; // TODO: same as in ReceiveTask
+                                 func(msg, offset + progress * (1.f - offset));
+                             });
 
     Scene& scene = _engine->getScene();
 
@@ -130,118 +127,6 @@ bool LoadDataFunctor::_loadData(Progress& loadingProgress)
         }
     };
 
-    if (!_blob.data.empty())
-        return _loadDataFromBlob(updateProgress);
-
-    return false;
-
-    //    auto& geometryParameters = _parametersManager.getGeometryParameters();
-    //    auto& volumeParameters = _parametersManager.getVolumeParameters();
-    //    auto& sceneParameters = _parametersManager.getSceneParameters();
-    //    auto& scene = _engine->getScene();
-
-    //    // set environment map if applicable
-    //    const std::string& environmentMap =
-    //        _parametersManager.getSceneParameters().getEnvironmentMap();
-    //    if (!environmentMap.empty())
-    //    {
-    //        const size_t materialId =
-    //        static_cast<size_t>(MaterialType::skybox);
-    //        auto& material = scene.getMaterials()[materialId];
-    //        material.setTexture(TT_DIFFUSE, environmentMap);
-    //        material.setType(MaterialType::skybox);
-    //    }
-
-    //    const std::string& colorMapFilename =
-    //        sceneParameters.getColorMapFilename();
-    //    if (!colorMapFilename.empty())
-    //    {
-    //        TransferFunctionLoader transferFunctionLoader;
-    //        transferFunctionLoader.loadFromFile(
-    //            colorMapFilename, sceneParameters.getColorMapRange(), scene);
-    //    }
-
-    //    if (!geometryParameters.getLoadCacheFile().empty())
-    //    {
-    //        scene.loadFromCacheFile();
-    //        loadingProgress += tic;
-    //    }
-
-    //    if (!geometryParameters.getPDBFile().empty())
-    //    {
-    //        _loadPDBFile(geometryParameters.getPDBFile());
-    //        loadingProgress += tic;
-    //    }
-
-    //    if (!geometryParameters.getPDBFolder().empty())
-    //        _loadPDBFolder(updateProgress);
-
-    //    if (!geometryParameters.getSplashSceneFolder().empty())
-    //        _loadMeshFolder(geometryParameters.getSplashSceneFolder(),
-    //                        updateProgress);
-
-    //    if (!geometryParameters.getMeshFolder().empty())
-    //        _loadMeshFolder(geometryParameters.getMeshFolder(),
-    //        updateProgress);
-
-    //    if (!geometryParameters.getMeshFile().empty())
-    //    {
-    //        _loadMeshFile(geometryParameters.getMeshFile());
-    //        loadingProgress += tic;
-    //    }
-
-    //#if (BRAYNS_USE_BRION)
-    //    if (!geometryParameters.getSceneFile().empty())
-    //        _loadSceneFile(geometryParameters.getSceneFile(), updateProgress);
-
-    //    if (!geometryParameters.getNESTCircuit().empty())
-    //    {
-    //        _loadNESTCircuit();
-    //        loadingProgress += tic;
-    //    }
-
-    //    if (!geometryParameters.getMorphologyFolder().empty())
-    //        _loadMorphologyFolder(updateProgress);
-
-    //    if (!geometryParameters.getCircuitConfiguration().empty() &&
-    //        geometryParameters.getConnectivityFile().empty())
-    //        _loadCircuitConfiguration(updateProgress);
-
-    //    if (!geometryParameters.getConnectivityFile().empty())
-    //        _loadConnectivityFile();
-    //#endif
-
-    //    if (!geometryParameters.getXYZBFile().empty())
-    //    {
-    //        _loadXYZBFile(updateProgress);
-    //        loadingProgress += tic;
-    //    }
-
-    //    if (!geometryParameters.getMolecularSystemConfig().empty())
-    //        _loadMolecularSystem(updateProgress);
-
-    //    if (scene.getVolumeHandler())
-    //    {
-    //        scene.commitTransferFunctionData();
-    //        scene.getVolumeHandler()->setCurrentIndex(0);
-    //        const Vector3ui& volumeDimensions =
-    //            scene.getVolumeHandler()->getDimensions();
-    //        const Vector3f& volumeOffset =
-    //            scene.getVolumeHandler()->getOffset();
-    //        const Vector3f& volumeElementSpacing =
-    //            volumeParameters.getElementSpacing();
-    //        Boxf& worldBounds = scene.getWorldBounds();
-    //        worldBounds.merge(Vector3f(0.f, 0.f, 0.f));
-    //        worldBounds.merge(volumeOffset +
-    //                          Vector3f(volumeDimensions) *
-    //                              volumeElementSpacing);
-    //    }
-    //    return true;
-}
-
-bool LoadDataFunctor::_loadDataFromBlob(
-    const Progress::UpdateCallback& updateProgress)
-{
     // for unit tests
     if (_blob.type == "forever")
     {

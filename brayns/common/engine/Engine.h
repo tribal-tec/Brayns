@@ -23,7 +23,7 @@
 
 #include <brayns/common/Statistics.h>
 
-#include <mutex>
+#include <shared_mutex>
 
 namespace brayns
 {
@@ -193,7 +193,7 @@ protected:
     bool _rebuildScene{false};
 
     // protect render() vs preRender() when doing all the commit()
-    std::timed_mutex _dataMutex;
+    std::shared_timed_mutex _dataMutex;
 };
 }
 

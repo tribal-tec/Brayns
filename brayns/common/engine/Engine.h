@@ -22,9 +22,7 @@
 #define ENGINE_H
 
 #include <brayns/common/Statistics.h>
-#include <brayns/common/tasks/Task.h>
 
-#include <functional>
 #include <mutex>
 
 namespace brayns
@@ -100,28 +98,6 @@ public:
     void markRebuildScene(const bool rebuild = true)
     {
         _rebuildScene = rebuild;
-    }
-
-    void rebuildSceneFromBlob(
-        const Blob& blob,
-        const std::function<void(std::string)>& finishCallback)
-    {
-        _rebuildScene = true;
-        _blob = blob;
-        _finishLoadSceneCallback = finishCallback;
-        triggerRender();
-    }
-
-    void clearBlob()
-    {
-        _blob.data.clear();
-        _blob.progress = nullptr;
-    }
-    Blob& getBlob() { return _blob; }
-    void finishLoadCallback(const std::string& error = "")
-    {
-        if (_finishLoadSceneCallback)
-            _finishLoadSceneCallback(error);
     }
 
     /** @return true if Brayns::buildScene() shall be called. */
@@ -215,9 +191,6 @@ protected:
     Progress2 _progress;
     bool _keepRunning{true};
     bool _rebuildScene{false};
-
-    Blob _blob;
-    std::function<void(std::string)> _finishLoadSceneCallback;
 
     // protect render() vs preRender() when doing all the commit()
     std::mutex _dataMutex;

@@ -65,7 +65,10 @@ LoadDataFunctor::~LoadDataFunctor()
 void LoadDataFunctor::operator()(std::string data)
 {
     // fix race condition: we have to wait until rendering is finished
-    std::lock_guard<std::mutex> lock{_engine->dataMutex()};
+    std::unique_lock<std::timed_mutex> lock{_engine->dataMutex(),
+                                            std::defer_lock};
+    while (!lock.try_lock_for(std::chrono::seconds(1)))
+        cancelCheck();
 
     _blob.cancelCheck = std::bind(&LoadDataFunctor::cancelCheck, this);
     _blob.progressFunc = _progressFunc;

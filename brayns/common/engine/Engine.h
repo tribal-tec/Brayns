@@ -193,7 +193,7 @@ protected:
     bool _rebuildScene{false};
 
     // protect render() vs preRender() when doing all the commit()
-    std::mutex _dataMutex;
+    std::timed_mutex _dataMutex;
 };
 }
 

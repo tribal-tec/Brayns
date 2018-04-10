@@ -123,7 +123,8 @@ inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
 class BinaryRequests
 {
 public:
-    auto createTask(const BinaryParams& params, uintptr_t clientID,
+    auto createTask(const BinaryParams& params, std::string requestID,
+                    uintptr_t clientID,
                     const std::set<std::string>& supportedTypes,
                     EnginePtr engine)
     {
@@ -132,6 +133,7 @@ public:
 
         auto task = createReceiveBinaryTask(params, supportedTypes, engine);
         _binaryRequests.emplace(clientID, task);
+        _requests.emplace(requestID, clientID);
 
         return task;
     }
@@ -159,8 +161,19 @@ public:
         _binaryRequests.erase(i);
     }
 
+    void removeRequest(const std::string& requestID)
+    {
+        auto i = _requests.find(requestID);
+        if (i == _requests.end())
+            return;
+
+        removeRequest(i->second);
+        _requests.erase(i);
+    }
+
 private:
     std::map<uintptr_t, std::shared_ptr<ReceiveBinaryTask>> _binaryRequests;
+    std::map<std::string, uintptr_t> _requests;
 };
 
 class RocketsPlugin::Impl
@@ -430,7 +443,8 @@ public:
     template <class P, class R>
     void _handleTask(
         const std::string& method, const RpcDocumentation& doc,
-        std::function<std::shared_ptr<TaskT<R>>(P, uintptr_t)> createUserTask)
+        std::function<std::shared_ptr<TaskT<R>>(P, std::string, uintptr_t)>
+            createUserTask)
     {
         auto action =
             [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer](P params, std::string requestID, uintptr_t clientID,
@@ -454,7 +468,7 @@ public:
                     }
                 };
 
-                auto userTask = createUserTask(params, clientID);
+                auto userTask = createUserTask(params, requestID, clientID);
 
                 std::function<void()> finishProgress = [userTask] {
                     userTask->progress("Done", 1.f);
@@ -514,7 +528,7 @@ public:
                         }
 
                         tasks.erase(requestID);
-                        binaryRequests.removeRequest(clientID);
+                        binaryRequests.removeRequest(requestID);
                     });
 
                 userTask->setRequestID(requestID);
@@ -816,8 +830,8 @@ public:
         _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
             std::bind(createSnapshotTask, std::placeholders::_1,
-                      std::placeholders::_2, std::ref(*_engine),
-                      std::ref(_imageGenerator)));
+                      std::placeholders::_2, std::placeholders::_3,
+                      std::ref(*_engine), std::ref(_imageGenerator)));
     }
 
     void _handleReceiveBinary()
@@ -829,6 +843,7 @@ public:
             METHOD_RECEIVE_BINARY, doc,
             std::bind(&BinaryRequests::createTask, std::ref(_binaryRequests),
                       std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3,
                       _parametersManager.getGeometryParameters()
                           .getSupportedDataTypes(),
                       _engine));

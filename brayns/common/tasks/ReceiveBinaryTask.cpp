@@ -47,9 +47,6 @@ ReceiveBinaryTask::ReceiveBinaryTask(
         if (param.type.empty() || param.size == 0)
             throw MISSING_PARAMS;
 
-        if (param.type == "forever")
-            continue;
-
         auto found = std::find_if(supportedTypes.cbegin(),
                                   supportedTypes.cend(), [&](auto val) {
                                       return lowerCase(val).find(
@@ -57,7 +54,7 @@ ReceiveBinaryTask::ReceiveBinaryTask(
                                              std::string::npos;
                                   });
 
-        if (found == supportedTypes.end())
+        if (found == supportedTypes.end() && param.type != "forever")
             throw UNSUPPORTED_TYPE(
                 {i, {supportedTypes.begin(), supportedTypes.end()}});
 

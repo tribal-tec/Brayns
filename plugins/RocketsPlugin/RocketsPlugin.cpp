@@ -487,7 +487,17 @@ public:
                         if (progress.isModified())
                         {
                             if (server)
-                                server->notify(ENDPOINT_PROGRESS, progress);
+                            {
+                                try
+                                {
+                                    server->notify(ENDPOINT_PROGRESS, progress);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    BRAYNS_ERROR << "Progress notify failed: "
+                                                 << e.what() << std::endl;
+                                }
+                            }
                             progress.resetModified();
                         }
                     };

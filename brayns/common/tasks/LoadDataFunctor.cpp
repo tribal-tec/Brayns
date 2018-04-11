@@ -28,6 +28,7 @@
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/scene/Scene.h>
 
+#include <brayns/io/MeshLoader.h>
 #include <brayns/io/XYZBLoader.h>
 
 #include <brayns/parameters/ParametersManager.h>
@@ -39,7 +40,6 @@ const size_t LOADING_PROGRESS_STEP = 10;
 
 LoadDataFunctor::LoadDataFunctor(const std::string& type, EnginePtr engine)
     : _engine(engine)
-    , _meshLoader(engine->getParametersManager().getGeometryParameters())
 {
     _blob.type = type;
 }
@@ -52,7 +52,6 @@ LoadDataFunctor::~LoadDataFunctor()
     // load default if we got cancelled
     Scene& scene = _engine->getScene();
     scene.unload();
-    _meshLoader.clear();
     BRAYNS_INFO << "Building default scene" << std::endl;
     scene.buildDefault();
 
@@ -91,15 +90,12 @@ void LoadDataFunctor::operator()(std::string data)
     _empty = true;
 
     loadingProgress.setMessage("Loading data ...");
-    _meshLoader.clear();
-
     scene.resetMaterials();
     const bool success = _loadData(loadingProgress);
 
     if (!success || (scene.empty() && !scene.getVolumeHandler()))
     {
         scene.unload();
-        _meshLoader.clear();
         BRAYNS_INFO << "Building default scene" << std::endl;
         scene.buildDefault();
     }
@@ -165,8 +161,9 @@ bool LoadDataFunctor::_loadMeshBlob(
         geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
             ? NB_SYSTEM_MATERIALS
             : NO_MATERIAL;
-    _meshLoader.setProgressCallback(progressUpdate);
-    return _meshLoader.importMeshFromBlob(_blob, scene, Matrix4f(), material);
+    MeshLoader meshLoader(geometryParameters);
+    meshLoader.setProgressCallback(progressUpdate);
+    return meshLoader.importMeshFromBlob(_blob, scene, Matrix4f(), material);
 }
 
 void LoadDataFunctor::_postLoad(Progress& loadingProgress,

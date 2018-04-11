@@ -88,9 +88,10 @@ struct Brayns::Impl : public PluginAPI
         : _engineFactory{argc, argv, _parametersManager}
         , _meshLoader(_parametersManager.getGeometryParameters())
     {
-        _parametersManager.getGeometryParameters()
-            .getSupportedDataTypes()
-            .insert("xyz");
+        auto& types =
+            _parametersManager.getGeometryParameters().getSupportedDataTypes();
+        types = MeshLoader::getSupportedDataTypes();
+        types.insert("xyz");
 
         BRAYNS_INFO << "     ____                             " << std::endl;
         BRAYNS_INFO << "    / __ )_________ ___  ______  _____" << std::endl;

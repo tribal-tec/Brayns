@@ -40,7 +40,9 @@ namespace brayns
 class MeshLoader : public ProgressReporter
 {
 public:
-    MeshLoader(GeometryParameters& geometryParameters);
+    MeshLoader(const GeometryParameters& geometryParameters);
+
+    static std::set<std::string> getSupportedDataTypes();
 
     /** Imports meshes from a given file
      *

@@ -63,9 +63,15 @@ private:
 };
 #endif
 
-MeshLoader::MeshLoader(GeometryParameters& geometryParameters)
+MeshLoader::MeshLoader(const GeometryParameters& geometryParameters)
     : _geometryParameters(geometryParameters)
 {
+}
+
+std::set<std::string> MeshLoader::getSupportedDataTypes()
+{
+    std::set<std::string> types;
+#ifdef BRAYNS_USE_ASSIMP
     std::string extensions;
     Assimp::Importer importer;
     importer.GetExtensionList(extensions);
@@ -74,8 +80,10 @@ MeshLoader::MeshLoader(GeometryParameters& geometryParameters)
     std::string s;
     while (std::getline(stream, s, ';'))
     {
-        geometryParameters.getSupportedDataTypes().insert(s);
+        types.insert(s);
     }
+#endif
+    return types;
 }
 
 void MeshLoader::clear()
@@ -313,8 +321,6 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                            const std::function<void()>& cancelPoint,
                            const std::string& folder)
 {
-    updateProgress("Post-processing mesh...", 51, 100);
-
     if (defaultMaterial == NO_MATERIAL)
         _createMaterials(scene, aiScene, folder);
     else
@@ -390,9 +396,10 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                 << std::endl;
 
         _meshIndex[materialId] += mesh->mNumVertices;
-    }
 
-    updateProgress("Post-processing mesh...", 100, 100);
+        updateProgress("Post-processing mesh...",
+                       50 + ((m + 1) * 50.f) / aiScene->mNumMeshes, 100);
+    }
 
     BRAYNS_DEBUG << "Loaded " << nbVertices << " vertices and " << nbFaces
                  << " faces" << std::endl;

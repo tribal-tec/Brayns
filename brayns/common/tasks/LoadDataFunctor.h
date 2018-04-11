@@ -24,8 +24,6 @@
 
 #include <brayns/common/Progress.h>
 
-#include <brayns/io/MeshLoader.h>
-
 namespace brayns
 {
 class LoadDataFunctor : public TaskFunctor
@@ -44,7 +42,6 @@ private:
 
     EnginePtr _engine;
     Blob _blob;
-    MeshLoader _meshLoader;
     bool _empty{false};
 };
 }

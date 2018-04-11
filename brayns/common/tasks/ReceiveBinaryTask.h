@@ -44,7 +44,7 @@ public:
 
 private:
     std::vector<async::task<void>> _loadTasks;
-    std::vector<async::event_task<std::string>> _chunks;
+    std::vector<async::event_task<Blob>> _chunks;
     async::event_task<void> _errorEvent;
     std::vector<async::task<void>> _finishTasks;
     std::string _blob;

@@ -31,7 +31,7 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool XYZBLoader::importFromBlob(Blob& blob, Scene& scene)
+void XYZBLoader::importFromBlob(Blob& blob, Scene& scene)
 {
     BRAYNS_INFO << "Loading xyz file from blob" << std::endl;
 
@@ -70,9 +70,8 @@ bool XYZBLoader::importFromBlob(Blob& blob, Scene& scene)
             break;
         }
         default:
-            blob.error = "Invalid content in line " + std::to_string(i + 1) +
-                         ": " + line;
-            return false;
+            throw std::runtime_error("Invalid content in line " +
+                                     std::to_string(i + 1) + ": " + line);
         }
         updateProgress("Loading spheres...", i++, numlines);
     }
@@ -89,8 +88,6 @@ bool XYZBLoader::importFromBlob(Blob& blob, Scene& scene)
         for (i = 0; i < numlines; ++i)
             spheres[i + startOffset].radius = newRadius;
     }
-
-    return true;
 }
 
 bool XYZBLoader::importFromFile(const std::string& filename, Scene& scene)

@@ -419,7 +419,6 @@ struct Blob
 {
     std::string type;
     std::string data;
-    std::string error{};
 };
 }
 

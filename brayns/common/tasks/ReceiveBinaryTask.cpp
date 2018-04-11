@@ -63,12 +63,14 @@ ReceiveBinaryTask::ReceiveBinaryTask(
 
     _updateTotalBytes();
 
+    // TODO: share and setup progress across all load tasks!!
+
     // chunk event task is set() from appendBlob() once all data has been
     // received, then loading starts.
     _chunks.resize(params.size());
     for (size_t i = 0; i < params.size(); ++i)
-        _loadTasks.push_back(_chunks[i].get_task().then(
-            _setupFunctor(LoadDataFunctor{params[i].type, engine})));
+        _loadTasks.push_back(
+            _chunks[i].get_task().then(_setupFunctor(LoadDataFunctor{engine})));
 
     // wait for load data of all files
     auto allLoaded =
@@ -109,15 +111,12 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
 
     if (_blob.size() == _params[_index].size)
     {
-        _chunks[_index].set(_blob);
+        _chunks[_index].set({_params[_index].type, std::move(_blob)});
 
         ++_index;
 
         if (_index < _params.size())
-        {
-            _blob.clear();
             _blob.reserve(_params[_index].size);
-        }
     }
 }
 }

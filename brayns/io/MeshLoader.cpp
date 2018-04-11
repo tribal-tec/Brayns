@@ -124,11 +124,12 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
     }
 
     boost::filesystem::path filepath = filename;
-    return _postLoad(aiScene, scene, transformation, defaultMaterial,
-                     filepath.parent_path().string());
+    _postLoad(aiScene, scene, transformation, defaultMaterial,
+              filepath.parent_path().string());
+    return true;
 }
 
-bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
+void MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
                                     const Matrix4f& transformation,
                                     const size_t defaultMaterial)
 {
@@ -142,18 +143,12 @@ bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
                                     _getQuality(), blob.type.c_str());
 
     if (!aiScene)
-    {
-        blob.error = importer.GetErrorString();
-        return false;
-    }
+        throw std::runtime_error(importer.GetErrorString());
 
     if (!aiScene->HasMeshes())
-    {
-        blob.error = "No meshes found";
-        return false;
-    }
+        throw std::runtime_error("No meshes found");
 
-    return _postLoad(aiScene, scene, transformation, defaultMaterial);
+    _postLoad(aiScene, scene, transformation, defaultMaterial);
 }
 
 bool MeshLoader::exportMeshToFile(const std::string& filename,
@@ -308,7 +303,7 @@ void MeshLoader::_createMaterials(Scene& scene, const aiScene* aiScene,
     }
 }
 
-bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
+void MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                            const Matrix4f& transformation,
                            const size_t defaultMaterial,
                            const std::string& folder)
@@ -393,8 +388,6 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
 
     BRAYNS_DEBUG << "Loaded " << nbVertices << " vertices and " << nbFaces
                  << " faces" << std::endl;
-
-    return true;
 }
 
 size_t MeshLoader::_getQuality() const

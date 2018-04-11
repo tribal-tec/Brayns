@@ -59,7 +59,7 @@ public:
                             const Matrix4f& transformation,
                             const size_t defaultMaterial);
 
-    bool importMeshFromBlob(Blob& blob, Scene& scene,
+    void importMeshFromBlob(Blob& blob, Scene& scene,
                             const Matrix4f& transformation,
                             const size_t defaultMaterial);
 
@@ -89,7 +89,7 @@ private:
     void _createMaterials(Scene& scene, const aiScene* aiScene,
                           const std::string& folder);
 
-    bool _postLoad(const aiScene* aiScene, Scene& scene,
+    void _postLoad(const aiScene* aiScene, Scene& scene,
                    const Matrix4f& transformation, const size_t defaultMaterial,
                    const std::string& folder = "");
     size_t _getQuality() const;

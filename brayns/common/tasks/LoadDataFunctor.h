@@ -29,19 +29,20 @@ namespace brayns
 class LoadDataFunctor : public TaskFunctor
 {
 public:
-    LoadDataFunctor(const std::string& type, EnginePtr engine);
+    LoadDataFunctor(EnginePtr engine);
     ~LoadDataFunctor();
-    void operator()(std::string data);
+    void operator()(Blob&& blob);
 
 private:
-    bool _loadData(Progress& loadingProgress);
-    bool _loadXYZBBlob(const Progress::UpdateCallback& progressUpdate);
-    bool _loadMeshBlob(const Progress::UpdateCallback& progressUpdate);
+    void _loadData(Blob&& blob, Progress& loadingProgress);
+    void _loadXYZBBlob(Blob&& blob,
+                       const Progress::UpdateCallback& progressUpdate);
+    void _loadMeshBlob(Blob&& blob,
+                       const Progress::UpdateCallback& progressUpdate);
 
     void _postLoad(Progress& loadingProgress, bool cancellable = true);
 
     EnginePtr _engine;
-    Blob _blob;
     bool _empty{false};
 };
 }

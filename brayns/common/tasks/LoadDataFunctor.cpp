@@ -38,10 +38,9 @@ namespace brayns
 const size_t LOADING_PROGRESS_DATA = 100;
 const size_t LOADING_PROGRESS_STEP = 10;
 
-LoadDataFunctor::LoadDataFunctor(const std::string& type, EnginePtr engine)
+LoadDataFunctor::LoadDataFunctor(EnginePtr engine)
     : _engine(engine)
 {
-    _blob.type = type;
 }
 
 LoadDataFunctor::~LoadDataFunctor()
@@ -60,15 +59,14 @@ LoadDataFunctor::~LoadDataFunctor()
     _postLoad(dummy, false);
 }
 
-void LoadDataFunctor::operator()(std::string data)
+void LoadDataFunctor::operator()(Blob&& blob)
 {
-    // fix race condition: we have to wait until rendering is finished
+    // fix race condition: we need exclusive access to the scene as we unload
+    // the current one. So no rendering & snapshot must occur.
     std::unique_lock<std::shared_timed_mutex> lock{_engine->dataMutex(),
                                                    std::defer_lock};
     while (!lock.try_lock_for(std::chrono::seconds(1)))
         cancelCheck();
-
-    _blob.data = std::move(data);
 
     Progress loadingProgress("Loading scene ...",
                              LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
@@ -88,8 +86,14 @@ void LoadDataFunctor::operator()(std::string data)
 
     loadingProgress.setMessage("Loading data ...");
     scene.resetMaterials();
-    if (!_loadData(loadingProgress))
-        throw LOADING_BINARY_FAILED(_blob.error);
+    try
+    {
+        _loadData(std::move(blob), loadingProgress);
+    }
+    catch (const std::exception& e)
+    {
+        throw LOADING_BINARY_FAILED(e.what());
+    }
 
     if (scene.empty() && !scene.getVolumeHandler())
     {
@@ -102,7 +106,7 @@ void LoadDataFunctor::operator()(std::string data)
     _empty = false;
 }
 
-bool LoadDataFunctor::_loadData(Progress& loadingProgress)
+void LoadDataFunctor::_loadData(Blob&& blob, Progress& loadingProgress)
 {
     size_t nextTic = 0;
     const size_t tic = LOADING_PROGRESS_DATA;
@@ -119,24 +123,24 @@ bool LoadDataFunctor::_loadData(Progress& loadingProgress)
     };
 
     // for unit tests
-    if (_blob.type == "forever")
+    if (blob.type == "forever")
     {
         for (;;)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             cancelCheck();
         }
-        return false;
+        return;
     }
 
-    if (_blob.type == "xyz")
-        return _loadXYZBBlob(updateProgress);
-
-    return _loadMeshBlob(updateProgress);
+    if (blob.type == "xyz")
+        _loadXYZBBlob(std::move(blob), updateProgress);
+    else
+        _loadMeshBlob(std::move(blob), updateProgress);
 }
 
-bool LoadDataFunctor::_loadXYZBBlob(
-    const Progress::UpdateCallback& progressUpdate)
+void LoadDataFunctor::_loadXYZBBlob(
+    Blob&& blob, const Progress::UpdateCallback& progressUpdate)
 {
     auto& geometryParameters =
         _engine->getParametersManager().getGeometryParameters();
@@ -144,11 +148,11 @@ bool LoadDataFunctor::_loadXYZBBlob(
     XYZBLoader xyzbLoader(geometryParameters);
     xyzbLoader.setProgressCallback(progressUpdate);
     xyzbLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
-    return xyzbLoader.importFromBlob(_blob, scene);
+    xyzbLoader.importFromBlob(blob, scene);
 }
 
-bool LoadDataFunctor::_loadMeshBlob(
-    const Progress::UpdateCallback& progressUpdate)
+void LoadDataFunctor::_loadMeshBlob(
+    Blob&& blob, const Progress::UpdateCallback& progressUpdate)
 {
     const auto& geometryParameters =
         _engine->getParametersManager().getGeometryParameters();
@@ -160,7 +164,7 @@ bool LoadDataFunctor::_loadMeshBlob(
     MeshLoader meshLoader(geometryParameters);
     meshLoader.setProgressCallback(progressUpdate);
     meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
-    return meshLoader.importMeshFromBlob(_blob, scene, Matrix4f(), material);
+    meshLoader.importMeshFromBlob(blob, scene, Matrix4f(), material);
 }
 
 void LoadDataFunctor::_postLoad(Progress& loadingProgress,

@@ -392,25 +392,7 @@ struct RenderOutput
 
 class Progress;
 
-struct Progress2 : public BaseObject
-{
-    Progress2() = default;
-    Progress2(const std::string& operation_)
-        : operation(operation_)
-    {
-    }
-    std::string requestID;
-    std::string operation;
-    float amount{0.f};
-    mutable std::mutex mutex;
-
-    void setOperation(const std::string& operation_)
-    {
-        _updateValue(operation, operation_);
-    }
-
-    void setAmount(const float amount_) { _updateValue(amount, amount_); }
-};
+class Progress2;
 
 class Task;
 using TaskPtr = std::shared_ptr<Task>;

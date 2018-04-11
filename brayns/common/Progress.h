@@ -24,8 +24,39 @@
 #include <memory>
 #include <string>
 
+#include <brayns/common/types.h>
+
+SERIALIZATION_ACCESS(Progress2)
+
 namespace brayns
 {
+class Progress2 : public BaseObject
+{
+public:
+    Progress2() = default;
+    Progress2(const std::string& requestID, const std::string& operation)
+        : _requestID(requestID)
+        , _operation(operation)
+    {
+    }
+
+    void update(const std::string& operation, const float amount)
+    {
+        std::lock_guard<std::mutex> lock_(_mutex);
+        _updateValue(_operation, operation);
+        _updateValue(_amount, amount);
+    }
+
+    mutable std::mutex _mutex;
+
+private:
+    std::string _requestID;
+    std::string _operation;
+    float _amount{0.f};
+
+    SERIALIZATION_FRIEND(Progress2)
+};
+
 /**
  * A class which tracks and reports progress of an operation/execution.
  * It reports on stdout using boost::progress_display and also reports to a

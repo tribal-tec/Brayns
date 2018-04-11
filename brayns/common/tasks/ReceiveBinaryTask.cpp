@@ -33,9 +33,10 @@ inline auto lowerCase(std::string str)
 }
 
 ReceiveBinaryTask::ReceiveBinaryTask(
-    const BinaryParams& params, const std::set<std::string>& supportedTypes,
-    EnginePtr engine)
-    : _params(params)
+    const std::string& requestID, const BinaryParams& params,
+    const std::set<std::string>& supportedTypes, EnginePtr engine)
+    : TaskT<bool>(requestID)
+    , _params(params)
 {
     if (params.empty())
         throw MISSING_PARAMS;
@@ -106,9 +107,7 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
     _blob += blob;
     _receivedBytes += blob.size();
 
-    _progress.setAmount(_progressBytes());
-    _progress.setOperation("Receiving data ...");
-
+    _progress.update("Receiving data ...", _progressBytes());
     if (_blob.size() == _params[_index].size)
     {
         _chunks[_index].set({_params[_index].type, std::move(_blob)});

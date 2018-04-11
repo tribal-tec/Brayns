@@ -21,6 +21,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include <brayns/common/Progress.h>
 #include <brayns/common/Statistics.h>
 
 #include <shared_mutex>
@@ -125,20 +126,6 @@ public:
     /** @return the current progress of the engine */
     const Progress2& getProgress() const { return _progress; }
     Progress2& getProgress() { return _progress; }
-    /** Set the last operation processed by the engine. */
-    void setLastOperation(const std::string& lastOperation)
-    {
-        _progress.setOperation(lastOperation);
-    }
-
-    /**
-     * Set the last normalized progress value (0..1) for any current operation.
-     */
-    void setLastProgress(const float lastProgress)
-    {
-        _progress.setAmount(lastProgress);
-    }
-
     /**
      * @return true if for "--module deflect" the DeflectPixelOp was
      *         successfully loaded. Only supported for the OSPRay engine.

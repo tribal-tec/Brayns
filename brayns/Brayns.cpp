@@ -295,8 +295,7 @@ struct Brayns::Impl : public PluginAPI
         if (!isLoadingFinished())
             throw std::runtime_error("Build scene already in progress");
 
-        _engine->setLastOperation("");
-        _engine->setLastProgress(0);
+        _engine->getProgress().update("", 0);
 
         std::promise<void> promise;
         _dataLoadingFuture = promise.get_future();
@@ -400,9 +399,7 @@ private:
             "Loading scene ...",
             LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
             [this](const std::string& msg, const float progress) {
-                std::lock_guard<std::mutex> lock_(_engine->getProgress().mutex);
-                _engine->setLastOperation(msg);
-                _engine->setLastProgress(progress);
+                _engine->getProgress().update(msg, progress);
             });
 
         Scene& scene = _engine->getScene();

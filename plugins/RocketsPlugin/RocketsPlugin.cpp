@@ -131,7 +131,8 @@ public:
         if (_binaryRequests.count(clientID) != 0)
             throw ALREADY_PENDING_REQUEST;
 
-        auto task = createReceiveBinaryTask(params, supportedTypes, engine);
+        auto task =
+            createReceiveBinaryTask(requestID, params, supportedTypes, engine);
         _binaryRequests.emplace(clientID, task);
         _requests.emplace(requestID, clientID);
 
@@ -530,8 +531,6 @@ public:
                         tasks.erase(requestID);
                         binaryRequests.removeRequest(requestID);
                     });
-
-                userTask->setRequestID(requestID);
 
                 userTask->schedule();
 

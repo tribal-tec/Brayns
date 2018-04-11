@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <brayns/common/Progress.h>
 #include <brayns/common/types.h>
 
 #ifdef __GNUC__
@@ -87,6 +88,11 @@ protected:
 class Task
 {
 public:
+    explicit Task(const std::string& requestID)
+        : _progress{requestID, "Scheduling task ..."}
+    {
+    }
+
     virtual ~Task() = default;
     void cancel()
     {
@@ -96,21 +102,15 @@ public:
     virtual void wait() = 0;
 
     virtual void schedule() {}
-    void setRequestID(const std::string& requestID)
-    {
-        _progress.requestID = requestID;
-    }
-
     void progress(const std::string& message, const float amount)
     {
-        _progress.setOperation(message);
-        _progress.setAmount(amount);
+        _progress.update(message, amount);
     }
 
     Progress2& getProgress() { return _progress; }
 protected:
     async::cancellation_token _cancelToken;
-    Progress2 _progress{"Scheduling task ..."};
+    Progress2 _progress;
 
 private:
     virtual void _cancel() {}
@@ -122,10 +122,11 @@ class TaskT : public Task
 public:
     using Type = async::task<T>;
 
-    TaskT() = default;
+    using Task::Task;
 
     template <typename F>
-    TaskT(F&& functor)
+    TaskT(const std::string& requestID, F&& functor)
+        : Task(requestID)
     {
         _setupFunctor(functor);
         _task = async::spawn(functor);
@@ -143,11 +144,9 @@ protected:
         if (std::is_base_of<TaskFunctor, F>::value)
         {
             auto& taskFunctor = static_cast<TaskFunctor&>(functor);
-            taskFunctor.setProgressFunc([& progress = _progress](
-                const std::string& message, const float amount) {
-                progress.setOperation(message);
-                progress.setAmount(amount);
-            });
+            taskFunctor.setProgressFunc(
+                std::bind(&Progress2::update, std::ref(_progress),
+                          std::placeholders::_1, std::placeholders::_2));
             taskFunctor.setCancelToken(_cancelToken);
         }
         return std::move(functor);
@@ -159,7 +158,8 @@ class DelayedTask : public TaskT<T>
 {
 public:
     template <typename F>
-    DelayedTask(F&& functor)
+    DelayedTask(const std::string& requestID, F&& functor)
+        : TaskT<T>(requestID)
     {
         TaskT<T>::_task = _e.get_task().then(
             TaskT<T>::template _setupFunctor(std::move(functor)));

@@ -35,7 +35,7 @@ using BinaryParams = std::vector<BinaryParam>;
 class ReceiveBinaryTask : public TaskT<bool>
 {
 public:
-    ReceiveBinaryTask(const BinaryParams& params,
+    ReceiveBinaryTask(const std::string& requestID, const BinaryParams& params,
                       const std::set<std::string>& supportedTypes,
                       EnginePtr engine);
 
@@ -70,10 +70,12 @@ private:
     size_t _receivedBytes{0};
 };
 
-auto createReceiveBinaryTask(const BinaryParams& params,
+auto createReceiveBinaryTask(const std::string& requestID,
+                             const BinaryParams& params,
                              const std::set<std::string>& supportedTypes,
                              EnginePtr engine)
 {
-    return std::make_shared<ReceiveBinaryTask>(params, supportedTypes, engine);
+    return std::make_shared<ReceiveBinaryTask>(requestID, params,
+                                               supportedTypes, engine);
 }
 }

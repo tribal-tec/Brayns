@@ -60,18 +60,28 @@ ReceiveBinaryTask::ReceiveBinaryTask(
         if (found == supportedTypes.end())
             throw UNSUPPORTED_TYPE(
                 {i, {supportedTypes.begin(), supportedTypes.end()}});
+
+        _totalBytes += param.size;
     }
-
-    _updateTotalBytes();
-
-    // TODO: share and setup progress across all load tasks!!
 
     // chunk event task is set() from appendBlob() once all data has been
     // received, then loading starts.
     _chunks.resize(params.size());
     for (size_t i = 0; i < params.size(); ++i)
-        _loadTasks.push_back(
-            _chunks[i].get_task().then(_setupFunctor(LoadDataFunctor{engine})));
+    {
+        LoadDataFunctor functor{engine};
+        functor.setCancelToken(_cancelToken);
+
+        // use progress increment as we might receive data for next file which
+        // updates progress as well
+        functor.setProgressFunc([&progress=_progress,
+                      amountPerTask = (1.f-CHUNK_PROGRESS_WEIGHT)/params.size()]
+        (auto msg, auto increment, auto){
+            progress.increment(msg, increment*amountPerTask);
+        });
+        _loadTasks.push_back(_chunks[i].get_task().then(std::move(functor)));
+        functor.setProgressFunc([](auto, auto, auto) {});
+    }
 
     // wait for load data of all files
     auto allLoaded =
@@ -105,9 +115,12 @@ void ReceiveBinaryTask::appendBlob(const std::string& blob)
     }
 
     _blob += blob;
-    _receivedBytes += blob.size();
 
-    _progress.update("Receiving data ...", _progressBytes());
+    // update progress; use increment as we might load at the same time
+    const auto before = _progressBytes();
+    _receivedBytes += blob.size();
+    _progress.increment("Receiving data ...", _progressBytes() - before);
+
     if (_blob.size() == _params[_index].size)
     {
         _chunks[_index].set({_params[_index].type, std::move(_blob)});

@@ -57,10 +57,11 @@ class TaskFunctor
 public:
     TaskFunctor() = default;
 
-    void progress(const std::string& message, const float amount)
+    void progress(const std::string& message, const float increment,
+                  const float amount)
     {
         if (_progressFunc)
-            _progressFunc(message, amount);
+            _progressFunc(message, increment, amount);
     }
 
     void cancelCheck()
@@ -69,7 +70,7 @@ public:
             async::interruption_point(*_cancelToken);
     }
 
-    using ProgressFunc = std::function<void(std::string, float)>;
+    using ProgressFunc = std::function<void(std::string, float, float)>;
 
     void setProgressFunc(const ProgressFunc& progressFunc)
     {
@@ -146,7 +147,7 @@ protected:
             auto& taskFunctor = static_cast<TaskFunctor&>(functor);
             taskFunctor.setProgressFunc(
                 std::bind(&Progress2::update, std::ref(_progress),
-                          std::placeholders::_1, std::placeholders::_2));
+                          std::placeholders::_1, std::placeholders::_3));
             taskFunctor.setCancelToken(_cancelToken);
         }
         return std::move(functor);

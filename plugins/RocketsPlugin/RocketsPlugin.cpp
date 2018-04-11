@@ -193,8 +193,9 @@ public:
         while (!_tasks.empty())
         {
             auto& entry = *_tasks.begin();
+            auto task = entry.second.first;
             entry.second.second->cancel();
-            entry.second.first.wait();
+            task->wait();
         }
 
         if (_rocketsServer)
@@ -505,37 +506,37 @@ public:
                 }
 #endif
 
-                auto task = userTask->task().then(
-                    [readyCallback, errorCallback, &tasks, &binaryRequests,
-                     requestID, clientID,
-                     finishProgress](typename TaskT<R>::Type result) {
-                        finishProgress();
+                auto task =
+                    std::make_shared<async::task<void>>(userTask->task().then(
+                        [readyCallback, errorCallback, &tasks, &binaryRequests,
+                         requestID, clientID,
+                         finishProgress](typename TaskT<R>::Type result) {
+                            finishProgress();
 
-                        try
-                        {
-                            readyCallback(result.get());
-                        }
-                        catch (const TaskRuntimeError& e)
-                        {
-                            errorCallback(e);
-                        }
-                        catch (const std::exception& e)
-                        {
-                            errorCallback({e.what()});
-                        }
-                        catch (const async::task_canceled&)
-                        {
-                            // no response needed
-                        }
+                            try
+                            {
+                                readyCallback(result.get());
+                            }
+                            catch (const TaskRuntimeError& e)
+                            {
+                                errorCallback(e);
+                            }
+                            catch (const std::exception& e)
+                            {
+                                errorCallback({e.what()});
+                            }
+                            catch (const async::task_canceled&)
+                            {
+                                // no response needed
+                            }
 
-                        tasks.erase(requestID);
-                        binaryRequests.removeRequest(requestID);
-                    });
+                            tasks.erase(requestID);
+                            binaryRequests.removeRequest(requestID);
+                        }));
 
                 userTask->schedule();
 
-                tasks.emplace(requestID,
-                              std::make_pair(std::move(task), userTask));
+                tasks.emplace(requestID, std::make_pair(task, userTask));
             }
             catch (const BinaryTaskError& e)
             {
@@ -555,8 +556,9 @@ public:
             auto i = tasks.find(requestID);
             if (i != tasks.end())
             {
+                auto task = i->second.first;
                 i->second.second->cancel();
-                i->second.first.wait();
+                task->wait();
             }
         };
         _handleAsyncRPC<P, R>(method, doc, action, cancel);
@@ -918,7 +920,9 @@ public:
     float _leftover{0.f};
 
     // TODO: pair stuff looks wrong, extend Task.h??
-    std::map<std::string, std::pair<async::task<void>, TaskPtr>> _tasks;
+    std::map<std::string,
+             std::pair<std::shared_ptr<async::task<void>>, TaskPtr>>
+        _tasks;
 
     BinaryRequests _binaryRequests;
 };

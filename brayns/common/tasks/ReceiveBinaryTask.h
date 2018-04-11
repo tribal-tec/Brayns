@@ -39,7 +39,6 @@ public:
                       const std::set<std::string>& supportedTypes,
                       EnginePtr engine);
 
-    size_t getTotalBytes() const { return _totalBytes; }
     void appendBlob(const std::string& blob);
 
 private:
@@ -55,19 +54,15 @@ private:
         for (auto& i : _chunks)
             i.set_exception(std::make_exception_ptr(async::task_canceled()));
     }
-    void _updateTotalBytes()
-    {
-        for (const auto& param : _params)
-            _totalBytes += param.size;
-    }
     float _progressBytes() const
     {
-        return 0.5f * ((float)_receivedBytes / _totalBytes);
+        return CHUNK_PROGRESS_WEIGHT * ((float)_receivedBytes / _totalBytes);
     }
 
     BinaryParams _params;
     size_t _totalBytes{0};
     size_t _receivedBytes{0};
+    const float CHUNK_PROGRESS_WEIGHT{0.5f};
 };
 
 auto createReceiveBinaryTask(const std::string& requestID,

@@ -72,13 +72,12 @@ public:
             cancelCheck();
             _renderer->render(_frameBuffer);
             progress("Render snapshot ...",
+                     1.f / _frameBuffer->numAccumFrames(),
                      float(_frameBuffer->numAccumFrames()) /
                          _params.samplesPerPixel);
         }
 
         _dataLock.unlock();
-
-        progress("Render snapshot ...", 1.f);
         return _imageGenerator.createImage(*_frameBuffer, _params.format,
                                            _params.quality);
     }

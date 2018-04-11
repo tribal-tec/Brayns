@@ -37,6 +37,7 @@ namespace brayns
 {
 const size_t LOADING_PROGRESS_DATA = 100;
 const size_t LOADING_PROGRESS_STEP = 10;
+const float TOTAL_PROGRESS = 3 * LOADING_PROGRESS_STEP + LOADING_PROGRESS_DATA;
 
 LoadDataFunctor::LoadDataFunctor(EnginePtr engine)
     : _engine(engine)
@@ -45,83 +46,60 @@ LoadDataFunctor::LoadDataFunctor(EnginePtr engine)
 
 LoadDataFunctor::~LoadDataFunctor()
 {
-    if (!_empty)
+    if (!_loadDefaultScene)
         return;
 
-    // load default if we got cancelled
+    // load default scene if we got cancelled or any other error occurred
     Scene& scene = _engine->getScene();
     scene.unload();
     BRAYNS_INFO << "Building default scene" << std::endl;
     scene.buildDefault();
 
-    Progress dummy("", 0, [](const std::string&, const float) {});
-
-    _postLoad(dummy, false);
+    _postLoad(false);
 }
 
 void LoadDataFunctor::operator()(Blob&& blob)
 {
-    // fix race condition: we need exclusive access to the scene as we unload
-    // the current one. So no rendering & snapshot must occur.
-    std::unique_lock<std::shared_timed_mutex> lock{_engine->dataMutex(),
-                                                   std::defer_lock};
-    while (!lock.try_lock_for(std::chrono::seconds(1)))
-        cancelCheck();
-
-    Progress loadingProgress("Loading scene ...",
-                             LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
-                             [& func = _progressFunc](const std::string& msg,
-                                                      const float progress) {
-                                 const auto offset =
-                                     0.5f; // TODO: same as in ReceiveTask
-                                 func(msg, offset + progress * (1.f - offset));
-                             });
-
-    Scene& scene = _engine->getScene();
-
-    loadingProgress.setMessage("Unloading ...");
-    scene.unload();
-    loadingProgress += LOADING_PROGRESS_STEP;
-    _empty = true;
-
-    loadingProgress.setMessage("Loading data ...");
-    scene.resetMaterials();
     try
     {
-        _loadData(std::move(blob), loadingProgress);
-    }
-    catch (const std::exception& e)
-    {
-        throw LOADING_BINARY_FAILED(e.what());
-    }
+        // fix race condition: we need exclusive access to the scene as we
+        // unload
+        // the current one. So no rendering & snapshot must occur.
+        std::unique_lock<std::shared_timed_mutex> lock{_engine->dataMutex(),
+                                                       std::defer_lock};
+        while (!lock.try_lock_for(std::chrono::seconds(1)))
+            cancelCheck();
 
-    if (scene.empty() && !scene.getVolumeHandler())
-    {
+        _updateProgress("Unloading ...", 0.f);
+        Scene& scene = _engine->getScene();
         scene.unload();
-        BRAYNS_INFO << "Building default scene" << std::endl;
-        scene.buildDefault();
-    }
+        _loadDefaultScene = true;
 
-    _postLoad(loadingProgress);
-    _empty = false;
+        _updateProgress("Loading data ...", LOADING_PROGRESS_STEP);
+        scene.resetMaterials();
+        try
+        {
+            _loadData(std::move(blob));
+        }
+        catch (const std::exception& e)
+        {
+            throw LOADING_BINARY_FAILED(e.what());
+        }
+
+        if (!scene.empty())
+            _postLoad();
+        _loadDefaultScene = false;
+    }
+    catch (...)
+    {
+        progress("Loading failed",
+                 (TOTAL_PROGRESS - _currentProgress) / TOTAL_PROGRESS, 1.f);
+        throw;
+    }
 }
 
-void LoadDataFunctor::_loadData(Blob&& blob, Progress& loadingProgress)
+void LoadDataFunctor::_loadData(Blob&& blob)
 {
-    size_t nextTic = 0;
-    const size_t tic = LOADING_PROGRESS_DATA;
-    auto updateProgress = [&nextTic, &loadingProgress](const std::string& msg,
-                                                       const float progress) {
-        loadingProgress.setMessage(msg);
-
-        const size_t newProgress = progress * tic;
-        if (newProgress % tic > nextTic)
-        {
-            loadingProgress += newProgress - nextTic;
-            nextTic = newProgress;
-        }
-    };
-
     // for unit tests
     if (blob.type == "forever")
     {
@@ -134,25 +112,22 @@ void LoadDataFunctor::_loadData(Blob&& blob, Progress& loadingProgress)
     }
 
     if (blob.type == "xyz")
-        _loadXYZBBlob(std::move(blob), updateProgress);
+        _loadXYZBBlob(std::move(blob));
     else
-        _loadMeshBlob(std::move(blob), updateProgress);
+        _loadMeshBlob(std::move(blob));
 }
 
-void LoadDataFunctor::_loadXYZBBlob(
-    Blob&& blob, const Progress::UpdateCallback& progressUpdate)
+void LoadDataFunctor::_loadXYZBBlob(Blob&& blob)
 {
-    auto& geometryParameters =
-        _engine->getParametersManager().getGeometryParameters();
     auto& scene = _engine->getScene();
-    XYZBLoader xyzbLoader(geometryParameters);
-    xyzbLoader.setProgressCallback(progressUpdate);
+    XYZBLoader xyzbLoader(
+        _engine->getParametersManager().getGeometryParameters());
+    xyzbLoader.setProgressCallback(_getProgressFunc());
     xyzbLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     xyzbLoader.importFromBlob(blob, scene);
 }
 
-void LoadDataFunctor::_loadMeshBlob(
-    Blob&& blob, const Progress::UpdateCallback& progressUpdate)
+void LoadDataFunctor::_loadMeshBlob(Blob&& blob)
 {
     const auto& geometryParameters =
         _engine->getParametersManager().getGeometryParameters();
@@ -162,22 +137,26 @@ void LoadDataFunctor::_loadMeshBlob(
             ? NB_SYSTEM_MATERIALS
             : NO_MATERIAL;
     MeshLoader meshLoader(geometryParameters);
-    meshLoader.setProgressCallback(progressUpdate);
+    meshLoader.setProgressCallback(_getProgressFunc());
     meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     meshLoader.importMeshFromBlob(blob, scene, Matrix4f(), material);
 }
 
-void LoadDataFunctor::_postLoad(Progress& loadingProgress,
-                                const bool cancellable)
+void LoadDataFunctor::_postLoad(const bool cancellable)
 {
     Scene& scene = _engine->getScene();
 
     scene.buildEnvironment();
 
+    if (cancellable)
+        _updateProgress("Building geometry ...", LOADING_PROGRESS_STEP);
+    scene.buildGeometry();
+
+    if (cancellable)
+        cancelCheck();
+
     const auto& geomParams =
         _engine->getParametersManager().getGeometryParameters();
-    loadingProgress.setMessage("Building geometry ...");
-    scene.buildGeometry();
     if (geomParams.getLoadCacheFile().empty() &&
         !geomParams.getSaveCacheFile().empty())
     {
@@ -185,15 +164,13 @@ void LoadDataFunctor::_postLoad(Progress& loadingProgress,
     }
 
     if (cancellable)
+    {
         cancelCheck();
-
-    loadingProgress += LOADING_PROGRESS_STEP;
-
-    loadingProgress.setMessage("Building acceleration structure ...");
+        _updateProgress("Building acceleration structure ...",
+                        LOADING_PROGRESS_STEP);
+    }
     scene.commit();
-    loadingProgress += LOADING_PROGRESS_STEP;
 
-    loadingProgress.setMessage("Done");
     BRAYNS_INFO << "Now rendering ..." << std::endl;
 
     const auto frameSize = Vector2f(_engine->getFrameBuffer().getSize());
@@ -202,5 +179,25 @@ void LoadDataFunctor::_postLoad(Progress& loadingProgress,
     camera.setInitialState(_engine->getScene().getWorldBounds());
     camera.setAspectRatio(frameSize.x() / frameSize.y());
     _engine->triggerRender();
+}
+
+void LoadDataFunctor::_updateProgress(const std::string& message,
+                                      const size_t increment)
+{
+    _currentProgress += increment;
+    progress(message, increment / TOTAL_PROGRESS,
+             _currentProgress / TOTAL_PROGRESS);
+}
+
+std::function<void(std::string, float)> LoadDataFunctor::_getProgressFunc()
+{
+    return [this](const std::string& msg, const float progress) {
+        const size_t newProgress = progress * LOADING_PROGRESS_DATA;
+        if (newProgress % LOADING_PROGRESS_DATA > _nextTic)
+        {
+            _updateProgress(msg, newProgress - _nextTic);
+            _nextTic = newProgress;
+        }
+    };
 }
 }

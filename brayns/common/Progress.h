@@ -47,6 +47,13 @@ public:
         _updateValue(_amount, amount);
     }
 
+    void increment(const std::string& operation, const float amount)
+    {
+        std::lock_guard<std::mutex> lock_(_mutex);
+        _updateValue(_operation, operation);
+        _updateValue(_amount, _amount + amount);
+    }
+
     mutable std::mutex _mutex;
 
 private:

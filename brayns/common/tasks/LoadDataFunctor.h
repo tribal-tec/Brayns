@@ -34,15 +34,19 @@ public:
     void operator()(Blob&& blob);
 
 private:
-    void _loadData(Blob&& blob, Progress& loadingProgress);
-    void _loadXYZBBlob(Blob&& blob,
-                       const Progress::UpdateCallback& progressUpdate);
-    void _loadMeshBlob(Blob&& blob,
-                       const Progress::UpdateCallback& progressUpdate);
+    void _loadData(Blob&& blob);
+    void _loadXYZBBlob(Blob&& blob);
+    void _loadMeshBlob(Blob&& blob);
 
-    void _postLoad(Progress& loadingProgress, bool cancellable = true);
+    void _postLoad(bool cancellable = true);
+
+    void _updateProgress(const std::string& message, const size_t increment);
+
+    std::function<void(std::string, float)> _getProgressFunc();
 
     EnginePtr _engine;
-    bool _empty{false};
+    bool _loadDefaultScene{false};
+    size_t _currentProgress{0};
+    size_t _nextTic{0};
 };
 }

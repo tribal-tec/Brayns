@@ -536,7 +536,7 @@ CADiffusionSimulationHandlerPtr Scene::getCADiffusionSimulationHandler() const
     return _caDiffusionSimulationHandler;
 }
 
-VolumeHandlerPtr Scene::getVolumeHandler()
+VolumeHandlerPtr Scene::getVolumeHandler() const
 {
     const auto& volumeFile =
         _parametersManager.getVolumeParameters().getFilename();
@@ -613,7 +613,7 @@ VolumeHandlerPtr Scene::getVolumeHandler()
 bool Scene::empty() const
 {
     return _spheres.empty() && _cylinders.empty() && _cones.empty() &&
-           _trianglesMeshes.empty();
+           _trianglesMeshes.empty() && !getVolumeHandler();
 }
 
 void Scene::_buildMissingMaterials(const size_t materialId)

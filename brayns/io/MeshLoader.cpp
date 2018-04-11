@@ -40,20 +40,14 @@ namespace brayns
 class ProgressWatcher : public Assimp::ProgressHandler
 {
 public:
-    ProgressWatcher(ProgressReporter& parent,
-                    const std::function<void()>& cancelCheck)
+    ProgressWatcher(ProgressReporter& parent)
         : _parent(parent)
-        , _cancelCheck(cancelCheck)
     {
     }
 
     bool Update(const float percentage) final
     {
-        _parent.updateProgress("Loading mesh...", percentage * 50, 100);
-
-        // return value for cancelling is not evaluated, hence throwing an
-        // exception...
-        _cancelCheck();
+        _parent.updateProgress("Loading mesh ...", percentage * 50, 100);
         return true;
     }
 
@@ -130,7 +124,7 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
     }
 
     boost::filesystem::path filepath = filename;
-    return _postLoad(aiScene, scene, transformation, defaultMaterial, {},
+    return _postLoad(aiScene, scene, transformation, defaultMaterial,
                      filepath.parent_path().string());
 }
 
@@ -140,7 +134,7 @@ bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
-    auto watcher = new ProgressWatcher(*this, blob.cancelCheck);
+    auto watcher = new ProgressWatcher(*this);
     importer.SetProgressHandler(watcher);
 
     const aiScene* aiScene =
@@ -159,8 +153,7 @@ bool MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
         return false;
     }
 
-    return _postLoad(aiScene, scene, transformation, defaultMaterial,
-                     blob.cancelCheck);
+    return _postLoad(aiScene, scene, transformation, defaultMaterial);
 }
 
 bool MeshLoader::exportMeshToFile(const std::string& filename,
@@ -318,7 +311,6 @@ void MeshLoader::_createMaterials(Scene& scene, const aiScene* aiScene,
 bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
                            const Matrix4f& transformation,
                            const size_t defaultMaterial,
-                           const std::function<void()>& cancelPoint,
                            const std::string& folder)
 {
     if (defaultMaterial == NO_MATERIAL)
@@ -331,8 +323,6 @@ bool MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
     auto& triangleMeshes = scene.getTriangleMeshes();
     for (size_t m = 0; m < aiScene->mNumMeshes; ++m)
     {
-        cancelPoint();
-
         aiMesh* mesh = aiScene->mMeshes[m];
         const size_t materialId =
             _getMaterialId(mesh->mMaterialIndex, defaultMaterial);

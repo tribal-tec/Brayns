@@ -419,8 +419,6 @@ struct Blob
 {
     std::string type;
     std::string data;
-    std::function<void(std::string, float)> progressFunc;
-    std::function<void()> cancelCheck;
     std::string error{};
 };
 }

@@ -68,14 +68,11 @@ void LoadDataFunctor::operator()(std::string data)
     while (!lock.try_lock_for(std::chrono::seconds(1)))
         cancelCheck();
 
-    _blob.cancelCheck = std::bind(&LoadDataFunctor::cancelCheck, this);
-    _blob.progressFunc = _progressFunc;
     _blob.data = std::move(data);
 
     Progress loadingProgress("Loading scene ...",
                              LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
-                             [& func =
-                                  _blob.progressFunc](const std::string& msg,
+                             [& func = _progressFunc](const std::string& msg,
                                                       const float progress) {
                                  const auto offset =
                                      0.5f; // TODO: same as in ReceiveTask
@@ -91,9 +88,10 @@ void LoadDataFunctor::operator()(std::string data)
 
     loadingProgress.setMessage("Loading data ...");
     scene.resetMaterials();
-    const bool success = _loadData(loadingProgress);
+    if (!_loadData(loadingProgress))
+        throw LOADING_BINARY_FAILED(_blob.error);
 
-    if (!success || (scene.empty() && !scene.getVolumeHandler()))
+    if (scene.empty() && !scene.getVolumeHandler())
     {
         scene.unload();
         BRAYNS_INFO << "Building default scene" << std::endl;
@@ -101,9 +99,6 @@ void LoadDataFunctor::operator()(std::string data)
     }
 
     _postLoad(loadingProgress);
-
-    if (!success)
-        throw LOADING_BINARY_FAILED(_blob.error);
     _empty = false;
 }
 
@@ -129,7 +124,7 @@ bool LoadDataFunctor::_loadData(Progress& loadingProgress)
         for (;;)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            _blob.cancelCheck();
+            cancelCheck();
         }
         return false;
     }
@@ -148,6 +143,7 @@ bool LoadDataFunctor::_loadXYZBBlob(
     auto& scene = _engine->getScene();
     XYZBLoader xyzbLoader(geometryParameters);
     xyzbLoader.setProgressCallback(progressUpdate);
+    xyzbLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     return xyzbLoader.importFromBlob(_blob, scene);
 }
 
@@ -163,6 +159,7 @@ bool LoadDataFunctor::_loadMeshBlob(
             : NO_MATERIAL;
     MeshLoader meshLoader(geometryParameters);
     meshLoader.setProgressCallback(progressUpdate);
+    meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     return meshLoader.importMeshFromBlob(_blob, scene, Matrix4f(), material);
 }
 

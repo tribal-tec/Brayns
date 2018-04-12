@@ -176,9 +176,13 @@ struct Brayns::Impl : public PluginAPI
 
         _extensionPluginFactory.preRender();
 
-        std::shared_lock<std::shared_timed_mutex> lock{_engine->dataMutex(),
-                                                       std::defer_lock};
+        std::unique_lock<std::mutex> lock{_renderMutex, std::defer_lock};
         if (!lock.try_lock())
+            return false;
+
+        std::shared_lock<std::shared_timed_mutex> dataLock{_engine->dataMutex(),
+                                                           std::defer_lock};
+        if (!dataLock.try_lock())
             return false;
 
         Scene& scene = _engine->getScene();
@@ -354,7 +358,9 @@ struct Brayns::Impl : public PluginAPI
 
     void render()
     {
-        std::shared_lock<std::shared_timed_mutex> lock{_engine->dataMutex()};
+        std::lock_guard<std::mutex> lock{_renderMutex};
+        std::shared_lock<std::shared_timed_mutex> dataLock{
+            _engine->dataMutex()};
 
         _renderTimer.start();
         _engine->render();
@@ -1283,6 +1289,9 @@ private:
     float _eyeSeparation{0.0635f};
 
     std::future<void> _dataLoadingFuture;
+
+    // protect render() vs preRender() when doing all the commit()
+    std::mutex _renderMutex;
 
     Timer _renderTimer;
     int64_t _fpsUpdateElapsed{0};

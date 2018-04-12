@@ -54,9 +54,8 @@ UploadPathTask::UploadPathTask(const std::string& requestID,
         if (!boost::filesystem::exists(path_))
             throw INVALID_PATH;
 
-        // ignore folders for now
-        if (!path_.has_filename())
-            throw TaskRuntimeError("Folders are not supported", -12345);
+        if (boost::filesystem::is_directory(path_))
+            throw UNSUPPORTED_FOLDERS;
 
         const auto extension = boost::filesystem::extension(path_).erase(0, 1);
 
@@ -75,15 +74,10 @@ UploadPathTask::UploadPathTask(const std::string& requestID,
     for (size_t i = 0; i < paths.size(); ++i)
     {
         const auto& path = paths[i];
-        const boost::filesystem::path path_ = path;
-        if (!path_.has_filename())
-            continue; // ignore folders for now
 
         LoadDataFunctor functor{engine};
         functor.setCancelToken(_cancelToken);
 
-        // use progress increment as we might receive data for next file which
-        // updates progress as well
         functor.setProgressFunc(
             [& progress = _progress,
              amountPerTask = 1.f / paths.size() ](auto msg, auto increment,
@@ -91,11 +85,12 @@ UploadPathTask::UploadPathTask(const std::string& requestID,
                 progress.increment(msg, increment * amountPerTask);
             });
         _loadTasks.push_back(
-            async::spawn([path, path_] {
+            async::spawn([path] {
                 if (path == "forever")
                     return Blob{path, ""};
 
                 std::ifstream file(path, std::ios::binary);
+                const boost::filesystem::path path_ = path;
                 return Blob{boost::filesystem::extension(path_).erase(0, 1),
                             {std::istreambuf_iterator<char>(file),
                              std::istreambuf_iterator<char>()}};

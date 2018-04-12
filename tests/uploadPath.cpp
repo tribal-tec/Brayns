@@ -185,4 +185,14 @@ BOOST_AUTO_TEST_CASE(close_client_while_pending_request)
 
 BOOST_AUTO_TEST_CASE(folder)
 {
+    try
+    {
+        makeRequest<std::vector<std::string>, bool>(UPLOAD_PATH,
+                                                    {BRAYNS_TESTDATA});
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1736);
+        BOOST_CHECK(e.data.empty());
+    }
 }

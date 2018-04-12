@@ -450,7 +450,7 @@ public:
             createUserTask)
     {
         auto action =
-            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer](P params, std::string requestID, uintptr_t clientID,
+            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer, &mutex = _tasksMutex](P params, std::string requestID, uintptr_t clientID,
                                 rockets::jsonrpc::AsyncResponse respond)
         {
             auto errorCallback = [respond](const TaskRuntimeError& error) {
@@ -520,8 +520,8 @@ public:
                 auto task =
                     std::make_shared<async::task<void>>(userTask->task().then(
                         [readyCallback, errorCallback, &tasks, &binaryRequests,
-                         requestID, clientID,
-                         finishProgress](typename TaskT<R>::Type result) {
+                         requestID, clientID, finishProgress,
+                         &mutex](typename TaskT<R>::Type result) {
                             finishProgress();
 
                             try
@@ -541,12 +541,14 @@ public:
                                 // no response needed
                             }
 
+                            std::lock_guard<std::mutex> lock(mutex);
                             tasks.erase(requestID);
                             binaryRequests.removeRequest(requestID);
                         }));
 
                 userTask->schedule();
 
+                std::lock_guard<std::mutex> lock(mutex);
                 tasks.emplace(requestID, std::make_pair(task, userTask));
             }
             catch (const BinaryTaskError& e)
@@ -562,14 +564,18 @@ public:
                 errorCallback({e.what()});
             }
         };
-        auto cancel = [& tasks = _tasks](const std::string& requestID)
+        auto cancel = [& tasks = _tasks,
+                       &mutex = _tasksMutex ](const std::string& requestID)
         {
+            std::unique_lock<std::mutex> lock(mutex);
             auto i = tasks.find(requestID);
             if (i != tasks.end())
             {
                 auto task = i->second.first;
                 i->second.second->cancel();
-                task->wait();
+                lock.unlock();
+                if (task->valid())
+                    task->wait();
             }
         };
         _handleAsyncRPC<P, R>(method, doc, action, cancel);
@@ -934,6 +940,7 @@ public:
     std::map<std::string,
              std::pair<std::shared_ptr<async::task<void>>, TaskPtr>>
         _tasks;
+    std::mutex _tasksMutex;
 
     BinaryRequests _binaryRequests;
 };

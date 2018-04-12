@@ -18,7 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define BOOST_TEST_MODULE braynsReceiveBinary
+#define BOOST_TEST_MODULE braynsUploadBinary
 
 #include <jsonSerialization.h>
 
@@ -27,6 +27,8 @@
 #include "ClientServer.h"
 
 #include <fstream>
+
+const std::string UPLOAD_BINARY("upload-binary");
 
 BOOST_GLOBAL_FIXTURE(ClientServer);
 
@@ -42,7 +44,7 @@ BOOST_AUTO_TEST_CASE(illegal_no_params)
 {
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {});
     }
     catch (const rockets::jsonrpc::response_error& e)
@@ -57,7 +59,7 @@ BOOST_AUTO_TEST_CASE(missing_params)
     brayns::BinaryParam params;
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
     }
     catch (const rockets::jsonrpc::response_error& e)
@@ -74,7 +76,7 @@ BOOST_AUTO_TEST_CASE(invalid_size)
     params.size = 0;
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
     }
     catch (const rockets::jsonrpc::response_error& e)
@@ -91,7 +93,7 @@ BOOST_AUTO_TEST_CASE(unsupported_type)
     params.size = 4;
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
     }
     catch (const rockets::jsonrpc::response_error& e)
@@ -113,7 +115,7 @@ BOOST_AUTO_TEST_CASE(multiple_files_one_unsupported)
     params[2].type = "abc";
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             params);
     }
     catch (const rockets::jsonrpc::response_error& e)
@@ -138,7 +140,7 @@ BOOST_AUTO_TEST_CASE(xyz)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -180,7 +182,7 @@ BOOST_AUTO_TEST_CASE(broken_xyz)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -227,7 +229,7 @@ BOOST_AUTO_TEST_CASE(cancel)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -248,7 +250,7 @@ BOOST_AUTO_TEST_CASE(send_wrong_number_of_bytes)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -278,7 +280,7 @@ BOOST_AUTO_TEST_CASE(cancel_while_loading)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -306,7 +308,7 @@ BOOST_AUTO_TEST_CASE(close_client_while_pending_request)
 
     auto responseFuture =
         rockets::jsonrpc::Client<rockets::ws::Client>{*wsClient}
-            .request<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+            .request<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                              {params});
 
     auto asyncWait =
@@ -342,7 +344,7 @@ BOOST_AUTO_TEST_CASE(multiple_files)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", params);
+            UPLOAD_BINARY, params);
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -403,7 +405,7 @@ BOOST_AUTO_TEST_CASE(obj)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     auto asyncWait = std::async(std::launch::async, [&responseFuture] {
         while (!is_ready(responseFuture))
@@ -441,11 +443,11 @@ BOOST_AUTO_TEST_CASE(second_request_with_first_one_not_finished)
 
     auto responseFuture =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
-            "receive-binary", {params});
+            UPLOAD_BINARY, {params});
 
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>("receive-binary",
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
         BOOST_REQUIRE(false);
     }

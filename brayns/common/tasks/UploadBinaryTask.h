@@ -32,10 +32,10 @@ struct BinaryParam
 
 using BinaryParams = std::vector<BinaryParam>;
 
-class ReceiveBinaryTask : public TaskT<bool>
+class UploadBinaryTask : public TaskT<bool>
 {
 public:
-    ReceiveBinaryTask(const std::string& requestID, const BinaryParams& params,
+    UploadBinaryTask(const std::string& requestID, const BinaryParams& params,
                       const std::set<std::string>& supportedTypes,
                       EnginePtr engine);
 
@@ -65,12 +65,12 @@ private:
     const float CHUNK_PROGRESS_WEIGHT{0.5f};
 };
 
-auto createReceiveBinaryTask(const std::string& requestID,
+auto createUploadBinaryTask(const std::string& requestID,
                              const BinaryParams& params,
                              const std::set<std::string>& supportedTypes,
                              EnginePtr engine)
 {
-    return std::make_shared<ReceiveBinaryTask>(requestID, params,
+    return std::make_shared<UploadBinaryTask>(requestID, params,
                                                supportedTypes, engine);
 }
 }

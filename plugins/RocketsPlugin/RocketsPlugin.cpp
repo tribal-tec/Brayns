@@ -27,8 +27,8 @@
 #include "jsonUtils.h"
 
 #include <brayns/common/Timer.h>
-#include <brayns/common/tasks/ReceiveBinaryTask.h>
 #include <brayns/common/tasks/Task.h>
+#include <brayns/common/tasks/UploadBinaryTask.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
@@ -71,7 +71,8 @@ const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
 const std::string METHOD_INSPECT = "inspect";
 const std::string METHOD_QUIT = "quit";
-const std::string METHOD_RECEIVE_BINARY = "receive-binary";
+const std::string METHOD_UPLOAD_BINARY = "upload-binary";
+const std::string METHOD_UPLOAD_PATH = "upload-path";
 const std::string METHOD_RESET_CAMERA = "reset-camera";
 const std::string METHOD_SNAPSHOT = "snapshot";
 
@@ -132,7 +133,7 @@ public:
             throw ALREADY_PENDING_REQUEST;
 
         auto task =
-            createReceiveBinaryTask(requestID, params, supportedTypes, engine);
+            createUploadBinaryTask(requestID, params, supportedTypes, engine);
         _binaryRequests.emplace(clientID, task);
         _requests.emplace(requestID, clientID);
 
@@ -143,7 +144,7 @@ public:
     {
         if (_binaryRequests.count(wsRequest.clientID) == 0)
         {
-            BRAYNS_ERROR << "Missing RPC " << METHOD_RECEIVE_BINARY
+            BRAYNS_ERROR << "Missing RPC " << METHOD_UPLOAD_BINARY
                          << " or cancelled?" << std::endl;
             return {};
         }
@@ -173,7 +174,7 @@ public:
     }
 
 private:
-    std::map<uintptr_t, std::shared_ptr<ReceiveBinaryTask>> _binaryRequests;
+    std::map<uintptr_t, std::shared_ptr<UploadBinaryTask>> _binaryRequests;
     std::map<std::string, uintptr_t> _requests;
 };
 
@@ -632,7 +633,7 @@ public:
         _handleResetCamera();
         _handleSnapshot();
 
-        _handleReceiveBinary();
+        _handleUploadBinary();
     }
 
     void _handleFrameBuffer()
@@ -845,13 +846,13 @@ public:
                       std::ref(*_engine), std::ref(_imageGenerator)));
     }
 
-    void _handleReceiveBinary()
+    void _handleUploadBinary()
     {
-        RpcDocumentation doc{"Start sending of files", "params",
-                             "List of file parameter: size and type"};
+        RpcDocumentation doc{"Upload files to load geometry", "params",
+                             "Array of file parameter: size and type"};
 
         _handleTask<BinaryParams, bool>(
-            METHOD_RECEIVE_BINARY, doc,
+            METHOD_UPLOAD_BINARY, doc,
             std::bind(&BinaryRequests::createTask, std::ref(_binaryRequests),
                       std::placeholders::_1, std::placeholders::_2,
                       std::placeholders::_3,

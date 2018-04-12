@@ -18,7 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "ReceiveBinaryTask.h"
+#include "UploadBinaryTask.h"
 
 #include "LoadDataFunctor.h"
 #include "errors.h"
@@ -32,7 +32,7 @@ inline auto lowerCase(std::string str)
     return retval;
 }
 
-ReceiveBinaryTask::ReceiveBinaryTask(
+UploadBinaryTask::UploadBinaryTask(
     const std::string& requestID, const BinaryParams& params,
     const std::set<std::string>& supportedTypes, EnginePtr engine)
     : TaskT<bool>(requestID)
@@ -101,7 +101,7 @@ ReceiveBinaryTask::ReceiveBinaryTask(
                 });
 }
 
-void ReceiveBinaryTask::appendBlob(const std::string& blob)
+void UploadBinaryTask::appendBlob(const std::string& blob)
 {
     if (_index >= _params.size() ||
         (_blob.size() + blob.size() > _params[_index].size))

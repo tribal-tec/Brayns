@@ -26,7 +26,7 @@
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/renderer/Renderer.h>
 #include <brayns/common/scene/Scene.h>
-#include <brayns/common/tasks/ReceiveBinaryTask.h>
+#include <brayns/common/tasks/UploadBinaryTask.h>
 #include <brayns/common/tasks/errors.h>
 #include <brayns/common/transferFunction/TransferFunction.h>
 #include <brayns/parameters/AnimationParameters.h>

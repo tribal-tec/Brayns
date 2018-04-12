@@ -878,7 +878,10 @@ public:
         _handleTask<std::vector<std::string>, bool>(
             METHOD_UPLOAD_PATH, doc,
             std::bind(createUploadPathTask, std::placeholders::_1,
-                      std::placeholders::_2, std::placeholders::_3, _engine));
+                      std::placeholders::_2, std::placeholders::_3,
+                      _parametersManager.getGeometryParameters()
+                          .getSupportedDataTypes(),
+                      _engine));
     }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(

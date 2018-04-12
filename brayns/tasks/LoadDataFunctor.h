@@ -30,10 +30,8 @@ class LoadDataFunctor : public TaskFunctor
 {
 public:
     LoadDataFunctor(EnginePtr engine);
-    LoadDataFunctor(EnginePtr engine, std::vector<std::string>&& paths);
     ~LoadDataFunctor();
     void operator()(Blob&& blob);
-    bool operator()();
 
 private:
     void _loadData(Blob&& blob);
@@ -49,7 +47,6 @@ private:
     bool _forever(const std::string& name) const;
 
     EnginePtr _engine;
-    std::vector<std::string> _paths;
     bool _loadDefaultScene{false};
     size_t _currentProgress{0};
     size_t _nextTic{0};

@@ -25,10 +25,24 @@
 
 namespace brayns
 {
-auto createUploadPathTask(std::vector<std::string>&& paths, std::string requestID,
-                        const uintptr_t, EnginePtr engine)
+class UploadPathTask : public TaskT<bool>
 {
-    using UploadPathTask = DelayedTask<bool>;
-    return std::make_shared<UploadPathTask>(requestID,LoadDataFunctor{engine, std::move(paths)});
+public:
+    UploadPathTask(const std::string& requestID,
+                   std::vector<std::string>&& paths,
+                   const std::set<std::string>& supportedTypes,
+                   EnginePtr engine);
+
+private:
+    std::vector<async::task<void>> _loadTasks;
+};
+
+auto createUploadPathTask(std::vector<std::string>&& paths,
+                          std::string requestID, const uintptr_t,
+                          const std::set<std::string>& supportedTypes,
+                          EnginePtr engine)
+{
+    return std::make_shared<UploadPathTask>(requestID, std::move(paths),
+                                            supportedTypes, engine);
 }
 }

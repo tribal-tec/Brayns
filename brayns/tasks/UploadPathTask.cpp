@@ -20,6 +20,95 @@
 
 #include "UploadPathTask.h"
 
+#include "errors.h"
+
+#include <boost/filesystem.hpp>
+#include <fstream>
+
 namespace brayns
 {
+inline auto lowerCase(std::string str)
+{
+    std::string retval = str;
+    std::transform(retval.begin(), retval.end(), retval.begin(), ::tolower);
+    return retval;
+}
+
+UploadPathTask::UploadPathTask(const std::string& requestID,
+                               std::vector<std::string>&& paths,
+                               const std::set<std::string>& supportedTypes,
+                               EnginePtr engine)
+    : TaskT<bool>(requestID)
+{
+    if (paths.empty())
+        throw MISSING_PARAMS;
+
+    for (size_t i = 0; i < paths.size(); ++i)
+    {
+        const auto& path = paths[i];
+
+        if (path == "forever")
+            continue;
+
+        const boost::filesystem::path path_ = path;
+        if (!boost::filesystem::exists(path_))
+            throw INVALID_PATH;
+
+        // ignore folders for now
+        if (!path_.has_filename())
+            throw TaskRuntimeError("Folders are not supported", -12345);
+
+        const auto extension = boost::filesystem::extension(path_).erase(0, 1);
+
+        auto found =
+            std::find_if(supportedTypes.cbegin(), supportedTypes.cend(),
+                         [&](auto val) {
+                             return lowerCase(val).find(lowerCase(extension)) !=
+                                    std::string::npos;
+                         });
+
+        if (found == supportedTypes.end())
+            throw UNSUPPORTED_TYPE(
+                {i, {supportedTypes.begin(), supportedTypes.end()}});
+    }
+
+    for (size_t i = 0; i < paths.size(); ++i)
+    {
+        const auto& path = paths[i];
+        const boost::filesystem::path path_ = path;
+        if (!path_.has_filename())
+            continue; // ignore folders for now
+
+        LoadDataFunctor functor{engine};
+        functor.setCancelToken(_cancelToken);
+
+        // use progress increment as we might receive data for next file which
+        // updates progress as well
+        functor.setProgressFunc(
+            [& progress = _progress,
+             amountPerTask = 1.f / paths.size() ](auto msg, auto increment,
+                                                  auto) {
+                progress.increment(msg, increment * amountPerTask);
+            });
+        _loadTasks.push_back(
+            async::spawn([path, path_] {
+                if (path == "forever")
+                    return Blob{path, ""};
+
+                std::ifstream file(path, std::ios::binary);
+                return Blob{boost::filesystem::extension(path_).erase(0, 1),
+                            {std::istreambuf_iterator<char>(file),
+                             std::istreambuf_iterator<char>()}};
+            }).then(std::move(functor)));
+        functor.setProgressFunc([](auto, auto, auto) {});
+    }
+
+    // wait for load data of all files
+    _task = async::when_all(_loadTasks)
+                .then([](std::vector<async::task<void>> results) {
+                    for (auto& result : results)
+                        result.get(); // exception is propagated to caller
+                    return true;
+                });
+}
 }

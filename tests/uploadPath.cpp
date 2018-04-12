@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(missing_params)
     }
 }
 
-BOOST_AUTO_TEST_CASE(invalid_file)
+BOOST_AUTO_TEST_CASE(nonexistant_file)
 {
     try
     {
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(invalid_file)
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
-        BOOST_CHECK_EQUAL(e.code, -1731);
+        BOOST_CHECK_EQUAL(e.code, -1735);
         BOOST_CHECK(e.data.empty());
     }
 }

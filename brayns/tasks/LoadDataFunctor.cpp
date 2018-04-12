@@ -33,9 +33,6 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
-#include <boost/filesystem.hpp>
-#include <fstream>
-
 namespace brayns
 {
 const size_t LOADING_PROGRESS_DATA = 100;
@@ -44,13 +41,6 @@ const float TOTAL_PROGRESS = 3 * LOADING_PROGRESS_STEP + LOADING_PROGRESS_DATA;
 
 LoadDataFunctor::LoadDataFunctor(EnginePtr engine)
     : _engine(engine)
-{
-}
-
-LoadDataFunctor::LoadDataFunctor(EnginePtr engine,
-                                 std::vector<std::string>&& paths)
-    : _engine(engine)
-    , _paths(std::move(paths))
 {
 }
 
@@ -106,29 +96,6 @@ void LoadDataFunctor::operator()(Blob&& blob)
                  (TOTAL_PROGRESS - _currentProgress) / TOTAL_PROGRESS, 1.f);
         throw;
     }
-}
-
-bool LoadDataFunctor::operator()()
-{
-    for (auto& path : _paths)
-    {
-        if (_forever(path))
-            continue;
-
-        std::ifstream file(path, std::ios::binary);
-        const boost::filesystem::path path_ = path;
-        if (path_.has_filename())
-        {
-            Blob blob{boost::filesystem::extension(path_),
-                      {std::istreambuf_iterator<char>(file),
-                       std::istreambuf_iterator<char>()}};
-            blob.type = blob.type.erase(0, 1);
-            operator()(std::move(blob));
-        }
-        else
-            throw TaskRuntimeError("Folders are not supported yet", -12345);
-    }
-    return true;
 }
 
 void LoadDataFunctor::_loadData(Blob&& blob)

@@ -26,8 +26,6 @@
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/renderer/Renderer.h>
 #include <brayns/common/scene/Scene.h>
-#include <brayns/common/tasks/UploadBinaryTask.h>
-#include <brayns/common/tasks/errors.h>
 #include <brayns/common/transferFunction/TransferFunction.h>
 #include <brayns/parameters/AnimationParameters.h>
 #include <brayns/parameters/ApplicationParameters.h>
@@ -36,6 +34,8 @@
 #include <brayns/parameters/SceneParameters.h>
 #include <brayns/parameters/StreamParameters.h>
 #include <brayns/parameters/VolumeParameters.h>
+#include <brayns/tasks/UploadBinaryTask.h>
+#include <brayns/tasks/errors.h>
 #include <brayns/version.h>
 
 #include "ImageGenerator.h"

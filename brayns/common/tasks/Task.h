@@ -64,7 +64,7 @@ public:
             _progressFunc(message, increment, amount);
     }
 
-    void cancelCheck()
+    void cancelCheck() const
     {
         if (_cancelToken)
             async::interruption_point(*_cancelToken);

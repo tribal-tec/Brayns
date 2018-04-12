@@ -18,35 +18,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#pragma once
-
-#include <brayns/common/tasks/Task.h>
-
-#include <brayns/common/Progress.h>
+#include "UploadPathTask.h"
 
 namespace brayns
 {
-class LoadDataFunctor : public TaskFunctor
-{
-public:
-    LoadDataFunctor(EnginePtr engine);
-    ~LoadDataFunctor();
-    void operator()(Blob&& blob);
-
-private:
-    void _loadData(Blob&& blob);
-    void _loadXYZBBlob(Blob&& blob);
-    void _loadMeshBlob(Blob&& blob);
-
-    void _postLoad(bool cancellable = true);
-
-    void _updateProgress(const std::string& message, const size_t increment);
-
-    std::function<void(std::string, float)> _getProgressFunc();
-
-    EnginePtr _engine;
-    bool _loadDefaultScene{false};
-    size_t _currentProgress{0};
-    size_t _nextTic{0};
-};
 }

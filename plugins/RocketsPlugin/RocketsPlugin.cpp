@@ -28,9 +28,11 @@
 
 #include <brayns/common/Timer.h>
 #include <brayns/common/tasks/Task.h>
-#include <brayns/common/tasks/UploadBinaryTask.h>
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/pluginapi/PluginAPI.h>
+
+#include <brayns/tasks/UploadBinaryTask.h>
+#include <brayns/tasks/UploadPathTask.h>
 
 #include <fstream>
 #include <rockets/jsonrpc/helpers.h>
@@ -640,6 +642,7 @@ public:
         _handleSnapshot();
 
         _handleUploadBinary();
+        _handleUploadPath();
     }
 
     void _handleFrameBuffer()
@@ -865,6 +868,17 @@ public:
                       _parametersManager.getGeometryParameters()
                           .getSupportedDataTypes(),
                       _engine));
+    }
+
+    void _handleUploadPath()
+    {
+        RpcDocumentation doc{"Upload remote path to load geometry from",
+                             "params", "Array of path, either file or folder"};
+
+        _handleTask<std::vector<std::string>, bool>(
+            METHOD_UPLOAD_PATH, doc,
+            std::bind(createUploadPathTask, std::placeholders::_1,
+                      std::placeholders::_2, std::placeholders::_3, _engine));
     }
 
     std::future<rockets::http::Response> _handleCircuitConfigBuilder(

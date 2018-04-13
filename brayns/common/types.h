@@ -400,6 +400,7 @@ using TaskPtr = std::shared_ptr<Task>;
 struct Blob
 {
     std::string type;
+    std::string name;
     std::string data;
 };
 }

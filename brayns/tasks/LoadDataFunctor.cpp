@@ -83,12 +83,11 @@ void LoadDataFunctor::_performLoad(const std::function<void()>& loadData)
             cancelCheck();
         }
 
-        _updateProgress("Unloading ...", 0.f);
+        _updateProgress("Unloading ...", LOADING_PROGRESS_STEP);
         Scene& scene = _engine->getScene();
         scene.unload();
         _loadDefaultScene = true;
 
-        _updateProgress("Loading data ...", LOADING_PROGRESS_STEP);
         scene.resetMaterials();
         try
         {

@@ -33,6 +33,7 @@
 #endif
 
 #include <brayns/common/scene/Scene.h>
+#include <brayns/common/utils/Utils.h>
 
 namespace brayns
 {
@@ -40,20 +41,22 @@ namespace brayns
 class ProgressWatcher : public Assimp::ProgressHandler
 {
 public:
-    ProgressWatcher(ProgressReporter& parent)
+    ProgressWatcher(ProgressReporter& parent, const std::string& filename)
         : _parent(parent)
     {
+        _msg << "Loading " << shortenString(filename) << " ..." << std::endl;
     }
 
     bool Update(const float percentage) final
     {
-        _parent.updateProgress("Loading mesh ...", percentage * 50, 100);
+        _parent.updateProgress(_msg.str(), percentage * 50, 100);
         return true;
     }
 
 private:
     ProgressReporter& _parent;
     std::function<void()> _cancelCheck;
+    std::stringstream _msg;
 };
 #endif
 
@@ -93,6 +96,8 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
     _materialOffset = scene.getMaterials().size();
     const boost::filesystem::path file = filename;
     Assimp::Importer importer;
+    auto watcher = new ProgressWatcher(*this, filename);
+    importer.SetProgressHandler(watcher);
     if (!importer.IsExtensionSupported(file.extension().c_str()))
     {
         BRAYNS_DEBUG << "File extension " << file.extension()
@@ -135,7 +140,7 @@ void MeshLoader::importMeshFromBlob(const Blob& blob, Scene& scene,
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
-    auto watcher = new ProgressWatcher(*this);
+    auto watcher = new ProgressWatcher(*this, blob.name);
     importer.SetProgressHandler(watcher);
 
     const aiScene* aiScene =
@@ -382,7 +387,7 @@ void MeshLoader::_postLoad(const aiScene* aiScene, Scene& scene,
 
         _meshIndex[materialId] += mesh->mNumVertices;
 
-        updateProgress("Post-processing mesh...",
+        updateProgress("Post-processing mesh ...",
                        50 + ((m + 1) * 50.f) / aiScene->mNumMeshes, 100);
     }
 

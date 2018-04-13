@@ -122,7 +122,8 @@ void UploadBinaryTask::appendBlob(const std::string& blob)
 
     if (_blob.size() == _params[_index].size)
     {
-        _chunks[_index].set({_params[_index].type, std::move(_blob)});
+        _chunks[_index].set(
+            {_params[_index].type, _params[_index].name, std::move(_blob)});
 
         ++_index;
 

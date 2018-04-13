@@ -20,6 +20,7 @@
 
 #include <brayns/common/log.h>
 #include <brayns/common/scene/Scene.h>
+#include <brayns/common/utils/Utils.h>
 #include <fstream>
 
 #include "XYZBLoader.h"
@@ -33,7 +34,7 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 
 void XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
 {
-    BRAYNS_INFO << "Loading xyz file from blob" << std::endl;
+    BRAYNS_INFO << "Loading xyz " << blob.name << std::endl;
 
     std::stringstream stream(blob.data);
     size_t numlines = 0;
@@ -50,6 +51,8 @@ void XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
 
     size_t i = 0;
     std::string line;
+    std::stringstream msg;
+    msg << "Loading " << shortenString(blob.name) << " ..." << std::endl;
     while (std::getline(stream, line))
     {
         std::vector<float> lineData;
@@ -73,7 +76,7 @@ void XYZBLoader::importFromBlob(const Blob& blob, Scene& scene)
             throw std::runtime_error("Invalid content in line " +
                                      std::to_string(i + 1) + ": " + line);
         }
-        updateProgress("Loading spheres...", i++, numlines);
+        updateProgress(msg.str(), i++, numlines);
     }
 
     const float maxDim = scene.getWorldBounds().getSize().find_max();
@@ -96,6 +99,7 @@ void XYZBLoader::importFromFile(const std::string& filename, Scene& scene)
     if (!file.good())
         throw std::runtime_error("Could not open file " + filename);
     importFromBlob({"xyz",
+                    filename,
                     {std::istreambuf_iterator<char>(file),
                      std::istreambuf_iterator<char>()}},
                    scene);

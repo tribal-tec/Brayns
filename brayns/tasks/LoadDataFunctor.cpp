@@ -33,6 +33,8 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
+#include <boost/filesystem.hpp>
+
 namespace brayns
 {
 const size_t LOADING_PROGRESS_DATA = 100;
@@ -41,6 +43,7 @@ const float TOTAL_PROGRESS = 3 * LOADING_PROGRESS_STEP + LOADING_PROGRESS_DATA;
 
 LoadDataFunctor::LoadDataFunctor(EnginePtr engine)
     : _engine(engine)
+    , _lock{_engine->dataMutex(), std::defer_lock}
 {
 }
 
@@ -60,14 +63,21 @@ LoadDataFunctor::~LoadDataFunctor()
 
 void LoadDataFunctor::operator()(Blob&& blob)
 {
+    _performLoad([&] { _loadData(std::move(blob)); });
+}
+
+void LoadDataFunctor::operator()(const std::string& path)
+{
+    _performLoad([&] { _loadData(path); });
+}
+
+void LoadDataFunctor::_performLoad(const std::function<void()>& loadData)
+{
     try
     {
         // fix race condition: we need exclusive access to the scene as we
-        // unload
-        // the current one. So no rendering & snapshot must occur.
-        std::unique_lock<std::shared_timed_mutex> lock{_engine->dataMutex(),
-                                                       std::defer_lock};
-        while (!lock.try_lock_for(std::chrono::seconds(1)))
+        // unload the current one. So no rendering & snapshot must occur.
+        while (!_lock.try_lock_for(std::chrono::seconds(1)))
             cancelCheck();
 
         _updateProgress("Unloading ...", 0.f);
@@ -79,7 +89,7 @@ void LoadDataFunctor::operator()(Blob&& blob)
         scene.resetMaterials();
         try
         {
-            _loadData(std::move(blob));
+            loadData();
         }
         catch (const std::exception& e)
         {
@@ -133,6 +143,47 @@ void LoadDataFunctor::_loadMeshBlob(Blob&& blob)
     meshLoader.setProgressCallback(_getProgressFunc());
     meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     meshLoader.importMeshFromBlob(blob, scene, Matrix4f(), material);
+}
+
+void LoadDataFunctor::_loadData(const std::string& path)
+{
+    if (_forever(path))
+        return;
+
+    auto extension = boost::filesystem::extension(path);
+    if (extension.empty())
+        return;
+
+    extension = extension.erase(0, 1);
+    if (extension == "xyz")
+        _loadXYZBFile(path);
+    else
+        _loadMeshFile(path);
+}
+
+void LoadDataFunctor::_loadXYZBFile(const std::string& path)
+{
+    auto& scene = _engine->getScene();
+    XYZBLoader xyzbLoader(
+        _engine->getParametersManager().getGeometryParameters());
+    xyzbLoader.setProgressCallback(_getProgressFunc());
+    xyzbLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
+    xyzbLoader.importFromFile(path, scene);
+}
+
+void LoadDataFunctor::_loadMeshFile(const std::string& path)
+{
+    const auto& geometryParameters =
+        _engine->getParametersManager().getGeometryParameters();
+    auto& scene = _engine->getScene();
+    const size_t material =
+        geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
+            ? NB_SYSTEM_MATERIALS
+            : NO_MATERIAL;
+    MeshLoader meshLoader(geometryParameters);
+    meshLoader.setProgressCallback(_getProgressFunc());
+    meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
+    meshLoader.importMeshFromFile(path, scene, Matrix4f(), material);
 }
 
 void LoadDataFunctor::_postLoad(const bool cancellable)

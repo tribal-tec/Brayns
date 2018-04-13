@@ -129,7 +129,7 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
     return true;
 }
 
-void MeshLoader::importMeshFromBlob(Blob& blob, Scene& scene,
+void MeshLoader::importMeshFromBlob(const Blob& blob, Scene& scene,
                                     const Matrix4f& transformation,
                                     const size_t defaultMaterial)
 {

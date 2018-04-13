@@ -89,17 +89,7 @@ UploadPathTask::UploadPathTask(const std::string& requestID,
                 progress.increment(msg, increment * amountPerTask);
             });
         _loadTasks.push_back(
-            async::spawn([path] {
-                if (path == "forever")
-                    return Blob{path, ""};
-
-                const boost::filesystem::path path_ = path;
-                std::ifstream file(path, std::ios::binary);
-                return Blob{boost::filesystem::extension(path_).erase(0, 1),
-                            {std::istreambuf_iterator<char>(file),
-                             std::istreambuf_iterator<char>()}};
-            }).then(std::move(functor)));
-        functor.setProgressFunc([](auto, auto, auto) {});
+            async::spawn([path] { return path; }).then(std::move(functor)));
     }
 
     // wait for load data of all files

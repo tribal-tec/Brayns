@@ -656,9 +656,16 @@ private:
                     << std::endl;
         XYZBLoader xyzbLoader(geometryParameters);
         xyzbLoader.setProgressCallback(progressUpdate);
-        if (!xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene))
+        try
+        {
+            xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene);
+        }
+        catch (const std::runtime_error& e)
+        {
             BRAYNS_ERROR << "Failed to import "
-                         << geometryParameters.getXYZBFile() << std::endl;
+                         << geometryParameters.getXYZBFile() << ": " << e.what()
+                         << std::endl;
+        }
     }
 
     /**

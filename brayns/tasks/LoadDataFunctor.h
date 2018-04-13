@@ -24,6 +24,8 @@
 
 #include <brayns/common/Progress.h>
 
+#include <shared_mutex>
+
 namespace brayns
 {
 class LoadDataFunctor : public TaskFunctor
@@ -31,12 +33,20 @@ class LoadDataFunctor : public TaskFunctor
 public:
     LoadDataFunctor(EnginePtr engine);
     ~LoadDataFunctor();
+    LoadDataFunctor(LoadDataFunctor&&) = default;
     void operator()(Blob&& blob);
+    void operator()(const std::string& path);
 
 private:
+    void _performLoad(const std::function<void()>& loadData);
+
     void _loadData(Blob&& blob);
     void _loadXYZBBlob(Blob&& blob);
     void _loadMeshBlob(Blob&& blob);
+
+    void _loadData(const std::string& path);
+    void _loadXYZBFile(const std::string& path);
+    void _loadMeshFile(const std::string& path);
 
     void _postLoad(bool cancellable = true);
 
@@ -50,5 +60,6 @@ private:
     bool _loadDefaultScene{false};
     size_t _currentProgress{0};
     size_t _nextTic{0};
+    std::unique_lock<std::shared_timed_mutex> _lock;
 };
 }

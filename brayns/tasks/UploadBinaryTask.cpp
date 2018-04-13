@@ -32,9 +32,10 @@ inline auto lowerCase(std::string str)
     return retval;
 }
 
-UploadBinaryTask::UploadBinaryTask(
-    const std::string& requestID, const BinaryParams& params,
-    const std::set<std::string>& supportedTypes, EnginePtr engine)
+UploadBinaryTask::UploadBinaryTask(const std::string& requestID,
+                                   const BinaryParams& params,
+                                   const std::set<std::string>& supportedTypes,
+                                   EnginePtr engine)
     : TaskT<bool>(requestID)
     , _params(params)
 {
@@ -77,7 +78,6 @@ UploadBinaryTask::UploadBinaryTask(
             progress.increment(msg, increment*amountPerTask);
         });
         _loadTasks.push_back(_chunks[i].get_task().then(std::move(functor)));
-        functor.setProgressFunc([](auto, auto, auto) {});
     }
 
     // wait for load data of all files

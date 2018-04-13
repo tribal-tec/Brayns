@@ -36,6 +36,7 @@ struct SnapshotParams
     Vector2ui size;
     std::string format; // ImageMagick formats apply
     size_t quality{100};
+    std::string name;
 };
 
 class SnapshotFunctor : public TaskFunctor
@@ -47,6 +48,7 @@ public:
                                                 FrameBufferFormat::rgba_i8,
                                                 true))
         , _camera(engine.createCamera(engine.getCamera().getType()))
+        , _scene(engine.getScenePtr())
         , _renderer(engine.createRenderer(engine.getActiveRenderer()))
         , _params(params)
         , _imageGenerator(imageGenerator)
@@ -57,15 +59,26 @@ public:
         _camera->commit();
 
         _renderer->setCamera(_camera);
-
-        _dataLock.lock();
-
-        _renderer->setScene(engine.getScenePtr());
-        _renderer->commit();
     }
 
     ImageGenerator::ImageBase64 operator()()
     {
+        while (!_dataLock.try_lock_for(std::chrono::seconds(1)))
+        {
+            progress("Waiting for scene access ...", 0.f, 0.f);
+            cancelCheck();
+        }
+
+        _renderer->setScene(_scene);
+        _renderer->commit();
+
+        std::stringstream msg;
+        msg << "Render snapshot ";
+        if (_params.name.empty())
+            msg << "...";
+        else
+            msg << _params.name << " ...";
+
         while (_frameBuffer->numAccumFrames() !=
                size_t(_params.samplesPerPixel))
         {
@@ -85,6 +98,7 @@ public:
 private:
     FrameBufferPtr _frameBuffer;
     CameraPtr _camera;
+    ScenePtr _scene;
     RendererPtr _renderer;
     SnapshotParams _params;
     ImageGenerator& _imageGenerator;

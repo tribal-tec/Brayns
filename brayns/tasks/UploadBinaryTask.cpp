@@ -116,7 +116,9 @@ void UploadBinaryTask::appendBlob(const std::string& blob)
     // update progress; use increment as we might load at the same time
     const auto before = _progressBytes();
     _receivedBytes += blob.size();
-    _progress.increment("Receiving data ...", _progressBytes() - before);
+    std::stringstream msg;
+    msg << "Receiving " << _params[_index].name << " ...";
+    _progress.increment(msg.str(), _progressBytes() - before);
 
     if (_blob.size() == _params[_index].size)
     {

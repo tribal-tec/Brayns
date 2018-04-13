@@ -28,6 +28,7 @@ struct BinaryParam
 {
     size_t size{0};
     std::string type; // file extension or MESH, POINTS, CIRCUIT
+    std::string name{"data"};
 };
 
 using BinaryParams = std::vector<BinaryParam>;
@@ -36,8 +37,8 @@ class UploadBinaryTask : public TaskT<bool>
 {
 public:
     UploadBinaryTask(const std::string& requestID, const BinaryParams& params,
-                      const std::set<std::string>& supportedTypes,
-                      EnginePtr engine);
+                     const std::set<std::string>& supportedTypes,
+                     EnginePtr engine);
 
     void appendBlob(const std::string& blob);
 
@@ -66,11 +67,11 @@ private:
 };
 
 auto createUploadBinaryTask(const std::string& requestID,
-                             const BinaryParams& params,
-                             const std::set<std::string>& supportedTypes,
-                             EnginePtr engine)
+                            const BinaryParams& params,
+                            const std::set<std::string>& supportedTypes,
+                            EnginePtr engine)
 {
-    return std::make_shared<UploadBinaryTask>(requestID, params,
-                                               supportedTypes, engine);
+    return std::make_shared<UploadBinaryTask>(requestID, params, supportedTypes,
+                                              engine);
 }
 }

@@ -569,6 +569,9 @@ public:
         auto cancel = [& tasks = _tasks,
                        &mutex = _tasksMutex ](const std::string& requestID)
         {
+            // TODO: cancel callback must be also async request!!! otherwise
+            // all other communication is blocked for the time this cancel is
+            // not finished!
             std::unique_lock<std::mutex> lock(mutex);
             auto i = tasks.find(requestID);
             if (i != tasks.end())

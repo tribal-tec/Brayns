@@ -129,6 +129,7 @@ inline void init(brayns::BinaryParam* s, ObjectHandler* h)
 {
     h->add_property("size", &s->size);
     h->add_property("type", &s->type);
+    h->add_property("name", &s->name, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
@@ -145,6 +146,7 @@ inline void init(brayns::SnapshotParams* s, ObjectHandler* h)
     h->add_property("quality", &s->quality, Flags::Optional);
     h->add_property("samples_per_pixel", &s->samplesPerPixel, Flags::Optional);
     h->add_property("size", Vector2uiArray(s->size));
+    h->add_property("name", &s->name, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

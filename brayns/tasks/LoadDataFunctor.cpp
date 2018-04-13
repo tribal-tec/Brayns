@@ -78,7 +78,10 @@ void LoadDataFunctor::_performLoad(const std::function<void()>& loadData)
         // fix race condition: we need exclusive access to the scene as we
         // unload the current one. So no rendering & snapshot must occur.
         while (!_lock.try_lock_for(std::chrono::seconds(1)))
+        {
+            _updateProgress("Waiting for scene access ...", 0.f);
             cancelCheck();
+        }
 
         _updateProgress("Unloading ...", 0.f);
         Scene& scene = _engine->getScene();

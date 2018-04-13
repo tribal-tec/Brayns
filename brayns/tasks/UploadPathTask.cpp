@@ -57,6 +57,10 @@ UploadPathTask::UploadPathTask(const std::string& requestID,
         if (boost::filesystem::is_directory(path_))
             throw UNSUPPORTED_FOLDERS;
 
+        if (!path_.has_extension())
+            throw UNSUPPORTED_TYPE(
+                {i, {supportedTypes.begin(), supportedTypes.end()}});
+
         const auto extension = boost::filesystem::extension(path_).erase(0, 1);
 
         auto found =
@@ -89,8 +93,8 @@ UploadPathTask::UploadPathTask(const std::string& requestID,
                 if (path == "forever")
                     return Blob{path, ""};
 
-                std::ifstream file(path, std::ios::binary);
                 const boost::filesystem::path path_ = path;
+                std::ifstream file(path, std::ios::binary);
                 return Blob{boost::filesystem::extension(path_).erase(0, 1),
                             {std::istreambuf_iterator<char>(file),
                              std::istreambuf_iterator<char>()}};

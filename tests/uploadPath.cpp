@@ -196,3 +196,23 @@ BOOST_AUTO_TEST_CASE(folder)
         BOOST_CHECK(e.data.empty());
     }
 }
+
+#ifdef BRAYNS_USE_BBPTESTDATA
+BOOST_AUTO_TEST_CASE(file_no_extension)
+{
+    try
+    {
+        makeRequest<std::vector<std::string>, bool>(UPLOAD_PATH,
+                                                    {BBP_TEST_BLUECONFIG3});
+    }
+    catch (const rockets::jsonrpc::response_error& e)
+    {
+        BOOST_CHECK_EQUAL(e.code, -1732);
+        BOOST_REQUIRE(!e.data.empty());
+        brayns::BinaryError error;
+        BOOST_CHECK(from_json(error, e.data));
+        BOOST_CHECK_EQUAL(error.index, 0);
+        BOOST_CHECK_GT(error.supportedTypes.size(), 0);
+    }
+}
+#endif

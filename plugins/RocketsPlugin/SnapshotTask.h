@@ -84,8 +84,7 @@ public:
         {
             cancelCheck();
             _renderer->render(_frameBuffer);
-            progress("Render snapshot ...",
-                     1.f / _frameBuffer->numAccumFrames(),
+            progress(msg.str(), 1.f / _frameBuffer->numAccumFrames(),
                      float(_frameBuffer->numAccumFrames()) /
                          _params.samplesPerPixel);
         }

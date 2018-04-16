@@ -34,14 +34,14 @@
 #include <brayns/tasks/UploadBinaryTask.h>
 #include <brayns/tasks/UploadPathTask.h>
 
-#include <fstream>
-#include <rockets/jsonrpc/helpers.h>
-
 #ifdef BRAYNS_USE_LIBUV
-#include "SocketListener.h"
+#include <uvw.hpp>
 #endif
 
+#include <fstream>
+
 #include <rockets/jsonrpc/asyncReceiver.h>
+#include <rockets/jsonrpc/helpers.h>
 #include <rockets/jsonrpc/server.h>
 #include <rockets/server.h>
 
@@ -207,7 +207,7 @@ public:
 
     void preRender()
     {
-        if (!_rocketsServer || _socketListener)
+        if (!_rocketsServer || !_manualProcessing)
             return;
 
         // https://github.com/BlueBrain/Brayns/issues/342
@@ -266,27 +266,23 @@ public:
     {
         try
         {
-            _rocketsServer.reset(
-                new rockets::Server{_getHttpInterface(), "rockets", 0});
+#ifdef BRAYNS_USE_LIBUV
+            if (uvw::Loop::getDefault()->alive())
+            {
+                _rocketsServer.reset(new rockets::Server{uv_default_loop(),
+                                                         _getHttpInterface(),
+                                                         "rockets"});
+                _manualProcessing = false;
+            }
+            else
+#endif
+                _rocketsServer.reset(
+                    new rockets::Server{_getHttpInterface(), "rockets", 0});
+
             BRAYNS_INFO << "Rockets server running on "
                         << _rocketsServer->getURI() << std::endl;
 
             _jsonrpcServer.reset(new JsonRpcServer(*_rocketsServer));
-
-#ifdef BRAYNS_USE_LIBUV
-            try
-            {
-                _socketListener =
-                    std::make_unique<SocketListener>(*_rocketsServer);
-                //_rocketsServer->setSocketListener(_socketListener.get());
-            }
-            catch (const std::runtime_error& e)
-            {
-                BRAYNS_DEBUG
-                    << "Failed to setup rockets socket listener: " << e.what()
-                    << std::endl;
-            }
-#endif
 
             _parametersManager.getApplicationParameters().setHttpServerURI(
                 _rocketsServer->getURI());
@@ -947,9 +943,7 @@ public:
                                  rockets::jsonrpc::AsyncReceiver>;
     std::unique_ptr<JsonRpcServer> _jsonrpcServer;
 
-#ifdef BRAYNS_USE_LIBUV
-    std::unique_ptr<SocketListener> _socketListener;
-#endif
+    bool _manualProcessing{true};
 
     ImageGenerator _imageGenerator;
 

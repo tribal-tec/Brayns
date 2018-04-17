@@ -52,7 +52,6 @@ namespace
 const std::string ENDPOINT_API_VERSION = "v1/";
 const std::string ENDPOINT_APP_PARAMS = "application-parameters";
 const std::string ENDPOINT_CAMERA = "camera";
-const std::string ENDPOINT_CIRCUIT_CONFIG_BUILDER = "circuit-config-builder";
 const std::string ENDPOINT_DATA_SOURCE = "data-source";
 const std::string ENDPOINT_FRAME = "frame";
 const std::string ENDPOINT_FRAME_BUFFERS = "frame-buffers";
@@ -126,18 +125,16 @@ inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
 class BinaryRequests
 {
 public:
-    auto createTask(const BinaryParams& params, std::string requestID,
-                    uintptr_t clientID,
+    auto createTask(const BinaryParams& params, uintptr_t clientID,
                     const std::set<std::string>& supportedTypes,
                     EnginePtr engine)
     {
         if (_binaryRequests.count(clientID) != 0)
             throw ALREADY_PENDING_REQUEST;
 
-        auto task =
-            createUploadBinaryTask(requestID, params, supportedTypes, engine);
+        auto task = createUploadBinaryTask(params, supportedTypes, engine);
         _binaryRequests.emplace(clientID, task);
-        _requests.emplace(requestID, clientID);
+        _requests.emplace(task, clientID);
 
         return task;
     }
@@ -165,9 +162,9 @@ public:
         _binaryRequests.erase(i);
     }
 
-    void removeRequest(const std::string& requestID)
+    void removeTask(TaskPtr task)
     {
-        auto i = _requests.find(requestID);
+        auto i = _requests.find(task);
         if (i == _requests.end())
             return;
 
@@ -177,7 +174,7 @@ public:
 
 private:
     std::map<uintptr_t, std::shared_ptr<UploadBinaryTask>> _binaryRequests;
-    std::map<std::string, uintptr_t> _requests;
+    std::map<TaskPtr, uintptr_t> _requests;
 };
 
 class RocketsPlugin::Impl
@@ -195,9 +192,8 @@ public:
         // cancel all pending tasks; cancel() will remove itself from _tasks
         while (!_tasks.empty())
         {
-            auto& entry = *_tasks.begin();
-            auto task = entry.second.first;
-            entry.second.second->cancel();
+            auto task = _tasks.begin()->second;
+            _tasks.begin()->first->cancel();
             task->wait();
         }
 
@@ -430,26 +426,24 @@ public:
     }
 
     template <class P, class R>
-    void _handleAsyncRPC(
-        const std::string& method, const RpcDocumentation& doc,
-        std::function<void(P, std::string, uintptr_t,
-                           rockets::jsonrpc::AsyncResponse)>
-            action,
-        rockets::jsonrpc::AsyncReceiver::CancelRequestCallback cancel)
+    void _handleAsyncRPC(const std::string& method, const RpcDocumentation& doc,
+                         std::function<rockets::jsonrpc::CancelRequestCallback(
+                             P, uintptr_t, rockets::jsonrpc::AsyncResponse,
+                             rockets::jsonrpc::ProgressUpdateCallback)>
+                             action)
     {
-        _jsonrpcServer->bindAsync<P>(method, action, cancel);
+        _jsonrpcServer->bindAsync<P>(method, action);
         _handleSchema(method, buildJsonRpcSchema<P, R>(method, doc));
     }
 
     template <class P, class R>
     void _handleTask(
         const std::string& method, const RpcDocumentation& doc,
-        std::function<std::shared_ptr<TaskT<R>>(P, std::string, uintptr_t)>
-            createUserTask)
+        std::function<std::shared_ptr<TaskT<R>>(P, uintptr_t)> createUserTask)
     {
         auto action =
-            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer, &mutex = _tasksMutex](P params, std::string requestID, uintptr_t clientID,
-                                rockets::jsonrpc::AsyncResponse respond)
+            [& tasks = _tasks, &binaryRequests = _binaryRequests, createUserTask, & server = _jsonrpcServer, &mutex = _tasksMutex](P params, uintptr_t clientID,
+                                rockets::jsonrpc::AsyncResponse respond, rockets::jsonrpc::ProgressUpdateCallback progressCb)
         {
             auto errorCallback = [respond](const TaskRuntimeError& error) {
                 respond({Response::Error{error.what(), error.code(),
@@ -469,7 +463,7 @@ public:
                     }
                 };
 
-                auto userTask = createUserTask(params, requestID, clientID);
+                auto userTask = createUserTask(params, clientID);
 
                 std::function<void()> finishProgress = [userTask] {
                     userTask->progress("Done", 1.f);
@@ -481,22 +475,11 @@ public:
                         uvw::Loop::getDefault()->resource<uvw::TimerHandle>();
 
                     auto sendProgress =
-                        [&server, &progress = userTask->getProgress() ]
+                        [ progressCb, &progress = userTask->getProgress() ]
                     {
                         if (progress.isModified())
                         {
-                            if (server)
-                            {
-                                try
-                                {
-                                    server->notify(ENDPOINT_PROGRESS, progress);
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    BRAYNS_ERROR << "Progress notify failed: "
-                                                 << e.what() << std::endl;
-                                }
-                            }
+                            progressCb(progress.operation(), progress.amount());
                             progress.resetModified();
                         }
                     };
@@ -518,36 +501,48 @@ public:
                 auto task =
                     std::make_shared<async::task<void>>(userTask->task().then(
                         [readyCallback, errorCallback, &tasks, &binaryRequests,
-                         requestID, clientID, finishProgress,
+                         userTask, clientID, finishProgress,
                          &mutex](typename TaskT<R>::Type result) {
                             finishProgress();
 
-                            try
+                            if (userTask->canceled())
+                                userTask->finishCancel();
+                            else
                             {
-                                readyCallback(result.get());
-                            }
-                            catch (const TaskRuntimeError& e)
-                            {
-                                errorCallback(e);
-                            }
-                            catch (const std::exception& e)
-                            {
-                                errorCallback({e.what()});
-                            }
-                            catch (const async::task_canceled&)
-                            {
-                                // no response needed
+                                try
+                                {
+                                    readyCallback(result.get());
+                                }
+                                catch (const TaskRuntimeError& e)
+                                {
+                                    errorCallback(e);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    errorCallback({e.what()});
+                                }
+                                catch (const async::task_canceled&)
+                                {
+                                    // no response needed
+                                }
                             }
 
                             std::lock_guard<std::mutex> lock(mutex);
-                            tasks.erase(requestID);
-                            binaryRequests.removeRequest(requestID);
+                            tasks.erase(userTask);
+                            binaryRequests.removeTask(userTask);
                         }));
 
                 userTask->schedule();
 
                 std::lock_guard<std::mutex> lock(mutex);
-                tasks.emplace(requestID, std::make_pair(task, userTask));
+                tasks.emplace(userTask, task);
+
+                auto cancel = [userTask,
+                               task](rockets::jsonrpc::VoidCallback done) {
+                    userTask->cancel(done);
+                };
+
+                return rockets::jsonrpc::CancelRequestCallback(cancel);
             }
             catch (const BinaryTaskError& e)
             {
@@ -561,25 +556,9 @@ public:
             {
                 errorCallback({e.what()});
             }
+            return rockets::jsonrpc::CancelRequestCallback();
         };
-        auto cancel = [& tasks = _tasks,
-                       &mutex = _tasksMutex ](const std::string& requestID)
-        {
-            // TODO: cancel callback must be also async request!!! otherwise
-            // all other communication is blocked for the time this cancel is
-            // not finished!
-            std::unique_lock<std::mutex> lock(mutex);
-            auto i = tasks.find(requestID);
-            if (i != tasks.end())
-            {
-                auto task = i->second.first;
-                i->second.second->cancel();
-                lock.unlock();
-                if (task->valid())
-                    task->wait();
-            }
-        };
-        _handleAsyncRPC<P, R>(method, doc, action, cancel);
+        _handleAsyncRPC<P, R>(method, doc, action);
     }
 
     template <class T>
@@ -614,12 +593,6 @@ public:
         _handle(ENDPOINT_RENDERING_PARAMS,
                 _parametersManager.getRenderingParameters());
         _handle(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
-
-        _rocketsServer->handle(rockets::http::Method::GET,
-                               ENDPOINT_API_VERSION +
-                                   ENDPOINT_CIRCUIT_CONFIG_BUILDER,
-                               std::bind(&Impl::_handleCircuitConfigBuilder,
-                                         this, std::placeholders::_1));
 
         // following endpoints need a valid engine
         _handle(ENDPOINT_CAMERA, _engine->getCamera());
@@ -850,8 +823,8 @@ public:
         _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(
             METHOD_SNAPSHOT, doc,
             std::bind(createSnapshotTask, std::placeholders::_1,
-                      std::placeholders::_2, std::placeholders::_3,
-                      std::ref(*_engine), std::ref(_imageGenerator)));
+                      std::placeholders::_2, std::ref(*_engine),
+                      std::ref(_imageGenerator)));
     }
 
     void _handleUploadBinary()
@@ -863,7 +836,6 @@ public:
             METHOD_UPLOAD_BINARY, doc,
             std::bind(&BinaryRequests::createTask, std::ref(_binaryRequests),
                       std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3,
                       _parametersManager.getGeometryParameters()
                           .getSupportedDataTypes(),
                       _engine));
@@ -877,53 +849,10 @@ public:
         _handleTask<std::vector<std::string>, bool>(
             METHOD_UPLOAD_PATH, doc,
             std::bind(createUploadPathTask, std::placeholders::_1,
-                      std::placeholders::_2, std::placeholders::_3,
+                      std::placeholders::_2,
                       _parametersManager.getGeometryParameters()
                           .getSupportedDataTypes(),
                       _engine));
-    }
-
-    std::future<rockets::http::Response> _handleCircuitConfigBuilder(
-        const rockets::http::Request& request)
-    {
-        using namespace rockets::http;
-
-        const auto& params = _parametersManager.getApplicationParameters();
-        const auto filename = params.getTmpFolder() + "/BlueConfig";
-        if (_writeBlueConfigFile(filename, request.query))
-        {
-            const std::string body = "{\"filename\":\"" + filename + "\"}";
-            return make_ready_response(Code::OK, body, JSON_TYPE);
-        }
-        return make_ready_response(Code::SERVICE_UNAVAILABLE);
-    }
-
-    bool _writeBlueConfigFile(const std::string& filename,
-                              const std::map<std::string, std::string>& params)
-    {
-        std::ofstream blueConfig(filename);
-        if (!blueConfig.good())
-            return false;
-
-        std::map<std::string, std::string> dictionary = {{"morphology_folder",
-                                                          "MorphologyPath"},
-                                                         {"mvd_file",
-                                                          "CircuitPath"}};
-
-        blueConfig << "Run Default" << std::endl << "{" << std::endl;
-        for (const auto& kv : params)
-        {
-            if (dictionary.find(kv.first) == dictionary.end())
-            {
-                BRAYNS_ERROR << "BlueConfigBuilder: Unknown parameter "
-                             << kv.first << std::endl;
-                continue;
-            }
-            blueConfig << dictionary[kv.first] << " " << kv.second << std::endl;
-        }
-        blueConfig << "}" << std::endl;
-        blueConfig.close();
-        return true;
     }
 
     EnginePtr _engine;
@@ -938,9 +867,7 @@ public:
     ParametersManager& _parametersManager;
 
     std::unique_ptr<rockets::Server> _rocketsServer;
-    using JsonRpcServer =
-        rockets::jsonrpc::Server<rockets::Server,
-                                 rockets::jsonrpc::AsyncReceiver>;
+    using JsonRpcServer = rockets::jsonrpc::Server<rockets::Server>;
     std::unique_ptr<JsonRpcServer> _jsonrpcServer;
 
     bool _manualProcessing{true};
@@ -951,9 +878,7 @@ public:
     float _leftover{0.f};
 
     // TODO: pair stuff looks wrong, extend Task.h??
-    std::map<std::string,
-             std::pair<std::shared_ptr<async::task<void>>, TaskPtr>>
-        _tasks;
+    std::map<TaskPtr, std::shared_ptr<async::task<void>>> _tasks;
     std::mutex _tasksMutex;
 
     BinaryRequests _binaryRequests;

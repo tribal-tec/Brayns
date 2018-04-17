@@ -89,14 +89,10 @@ protected:
 class Task
 {
 public:
-    explicit Task(const std::string& requestID)
-        : _progress{requestID, "Scheduling task ..."}
-    {
-    }
-
     virtual ~Task() = default;
-    void cancel()
+    void cancel(std::function<void()> done = {})
     {
+        _cancelDone = done;
         _cancelToken.cancel();
         _cancel();
     }
@@ -109,9 +105,16 @@ public:
     }
 
     Progress2& getProgress() { return _progress; }
+    void finishCancel()
+    {
+        if (_cancelDone)
+            _cancelDone();
+    }
+
 protected:
     async::cancellation_token _cancelToken;
-    Progress2 _progress;
+    Progress2 _progress{"Scheduling task ..."};
+    std::function<void()> _cancelDone;
 
 private:
     virtual void _cancel() {}
@@ -125,9 +128,10 @@ public:
 
     using Task::Task;
 
+    TaskT() = default;
+
     template <typename F>
-    TaskT(const std::string& requestID, F&& functor)
-        : Task(requestID)
+    TaskT(F&& functor)
     {
         _setupFunctor(functor);
         _task = async::spawn(functor);
@@ -159,8 +163,7 @@ class DelayedTask : public TaskT<T>
 {
 public:
     template <typename F>
-    DelayedTask(const std::string& requestID, F&& functor)
-        : TaskT<T>(requestID)
+    DelayedTask(F&& functor)
     {
         TaskT<T>::_task = _e.get_task().then(
             TaskT<T>::template _setupFunctor(std::move(functor)));

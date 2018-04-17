@@ -34,11 +34,9 @@ inline auto lowerCase(std::string str)
     return retval;
 }
 
-UploadPathTask::UploadPathTask(const std::string& requestID,
-                               std::vector<std::string>&& paths,
+UploadPathTask::UploadPathTask(std::vector<std::string>&& paths,
                                const std::set<std::string>& supportedTypes,
                                EnginePtr engine)
-    : TaskT<bool>(requestID)
 {
     if (paths.empty())
         throw MISSING_PARAMS;

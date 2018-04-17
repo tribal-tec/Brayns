@@ -32,12 +32,10 @@ inline auto lowerCase(std::string str)
     return retval;
 }
 
-UploadBinaryTask::UploadBinaryTask(const std::string& requestID,
-                                   const BinaryParams& params,
+UploadBinaryTask::UploadBinaryTask(const BinaryParams& params,
                                    const std::set<std::string>& supportedTypes,
                                    EnginePtr engine)
-    : TaskT<bool>(requestID)
-    , _params(params)
+    : _params(params)
 {
     if (params.empty())
         throw MISSING_PARAMS;

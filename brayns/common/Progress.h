@@ -34,9 +34,8 @@ class Progress2 : public BaseObject
 {
 public:
     Progress2() = default;
-    Progress2(const std::string& requestID, const std::string& operation)
-        : _requestID(requestID)
-        , _operation(operation)
+    explicit Progress2(const std::string& operation)
+        : _operation(operation)
     {
     }
 
@@ -54,6 +53,8 @@ public:
         _updateValue(_amount, _amount + amount);
     }
 
+    const std::string& operation() const { return _operation; }
+    float amount() const { return _amount; }
     mutable std::mutex _mutex;
 
 private:

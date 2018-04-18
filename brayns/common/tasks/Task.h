@@ -92,10 +92,12 @@ public:
     virtual ~Task() = default;
     void cancel(std::function<void()> done = {})
     {
+        _cancelled = true;
         _cancelDone = done;
         _cancelToken.cancel();
         _cancel();
     }
+    bool canceled() const { return _cancelled; }
     virtual void wait() = 0;
 
     virtual void schedule() {}
@@ -115,6 +117,7 @@ protected:
     async::cancellation_token _cancelToken;
     Progress2 _progress{"Scheduling task ..."};
     std::function<void()> _cancelDone;
+    bool _cancelled{false};
 
 private:
     virtual void _cancel() {}

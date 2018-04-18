@@ -27,6 +27,7 @@
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/renderer/Renderer.h>
+#include <brayns/common/utils/Utils.h>
 
 namespace brayns
 {
@@ -77,7 +78,7 @@ public:
         if (_params.name.empty())
             msg << "...";
         else
-            msg << _params.name << " ...";
+            msg << shortenString(_params.name) << " ...";
 
         while (_frameBuffer->numAccumFrames() !=
                size_t(_params.samplesPerPixel))

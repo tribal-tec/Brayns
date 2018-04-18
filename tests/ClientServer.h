@@ -88,27 +88,27 @@ public:
     template <typename Params, typename RetVal>
     RetVal makeRequest(const std::string& method, const Params& params)
     {
-        auto responseFuture = _client.request<Params, RetVal>(method, params);
-        while (!is_ready(responseFuture))
+        auto request = _client.request<Params, RetVal>(method, params);
+        while (!request.is_ready())
         {
             _wsClient.process(0);
             _brayns->render();
         }
 
-        return responseFuture.get();
+        return request.get();
     }
 
     template <typename RetVal>
     RetVal makeRequest(const std::string& method)
     {
-        auto responseFuture = _client.request<RetVal>(method);
-        while (!is_ready(responseFuture))
+        auto request = _client.request<RetVal>(method);
+        while (!request.is_ready())
         {
             _wsClient.process(0);
             _brayns->render();
         }
 
-        return responseFuture.get();
+        return request.get();
     }
 
     template <typename Params>

@@ -44,8 +44,7 @@ BOOST_AUTO_TEST_CASE(illegal_no_params)
 {
     try
     {
-        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
-                                                            {});
+        makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY, {});
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
@@ -138,12 +137,12 @@ BOOST_AUTO_TEST_CASE(xyz)
     }();
     params.type = "xyz";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
     });
 
@@ -167,7 +166,7 @@ BOOST_AUTO_TEST_CASE(xyz)
     }
 
     asyncWait.get();
-    BOOST_CHECK(responseFuture.get());
+    BOOST_CHECK(request.get());
 }
 
 BOOST_AUTO_TEST_CASE(broken_xyz)
@@ -180,12 +179,12 @@ BOOST_AUTO_TEST_CASE(broken_xyz)
     }();
     params.type = "xyz";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
     });
 
@@ -211,7 +210,7 @@ BOOST_AUTO_TEST_CASE(broken_xyz)
     asyncWait.get();
     try
     {
-        responseFuture.get();
+        request.get();
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
@@ -227,17 +226,17 @@ BOOST_AUTO_TEST_CASE(cancel)
     params.size = 42;
     params.type = "xyz";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
-        responseFuture.get();
+        request.get();
     });
 
-    getJsonRpcClient().cancelLastRequest();
+    request.cancel();
 
     BOOST_CHECK_THROW(asyncWait.get(), std::runtime_error);
 }
@@ -248,14 +247,14 @@ BOOST_AUTO_TEST_CASE(send_wrong_number_of_bytes)
     params.size = 4;
     params.type = "xyz";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
-        responseFuture.get();
+        request.get();
     });
 
     const std::string wrong("not_four_bytes");
@@ -278,20 +277,20 @@ BOOST_AUTO_TEST_CASE(cancel_while_loading)
     params.size = 4;
     params.type = "forever";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
-        responseFuture.get();
+        request.get();
     });
 
     const std::string fourBytes("four");
     getWsClient().sendBinary(fourBytes.data(), fourBytes.size());
 
-    getJsonRpcClient().cancelLastRequest();
+    request.cancel();
 
     BOOST_CHECK_THROW(asyncWait.get(), std::runtime_error);
 }
@@ -342,12 +341,12 @@ BOOST_AUTO_TEST_CASE(multiple_files)
     }();
     params[1].type = "xyz";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, params);
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
     });
 
@@ -390,7 +389,7 @@ BOOST_AUTO_TEST_CASE(multiple_files)
     }
 
     asyncWait.get();
-    BOOST_CHECK(responseFuture.get());
+    BOOST_CHECK(request.get());
 }
 
 BOOST_AUTO_TEST_CASE(obj)
@@ -403,12 +402,12 @@ BOOST_AUTO_TEST_CASE(obj)
     }();
     params.type = "obj";
 
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<brayns::BinaryParam>, bool>(
             UPLOAD_BINARY, {params});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
     });
 
@@ -432,7 +431,7 @@ BOOST_AUTO_TEST_CASE(obj)
     }
 
     asyncWait.get();
-    BOOST_CHECK(responseFuture.get());
+    BOOST_CHECK(request.get());
 }
 
 BOOST_AUTO_TEST_CASE(second_request_with_first_one_not_finished)

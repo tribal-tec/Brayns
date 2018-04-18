@@ -501,7 +501,7 @@ public:
                 auto task =
                     std::make_shared<async::task<void>>(userTask->task().then(
                         [readyCallback, errorCallback, &tasks, &binaryRequests,
-                         userTask, clientID, finishProgress,
+                         userTask, finishProgress,
                          &mutex](typename TaskT<R>::Type result) {
                             finishProgress();
 

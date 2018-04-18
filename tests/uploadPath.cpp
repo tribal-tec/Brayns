@@ -143,17 +143,17 @@ BOOST_AUTO_TEST_CASE(broken_xyz)
 
 BOOST_AUTO_TEST_CASE(cancel)
 {
-    auto responseFuture =
+    auto request =
         getJsonRpcClient().request<std::vector<std::string>, bool>(UPLOAD_PATH,
                                                                    {"forever"});
 
-    auto asyncWait = std::async(std::launch::async, [&responseFuture] {
-        while (!is_ready(responseFuture))
+    auto asyncWait = std::async(std::launch::async, [&request] {
+        while (!request.is_ready())
             process();
-        responseFuture.get();
+        request.get();
     });
 
-    getJsonRpcClient().cancelLastRequest();
+    request.cancel();
 
     BOOST_CHECK_THROW(asyncWait.get(), std::runtime_error);
 }

@@ -78,16 +78,14 @@ void LoadDataFunctor::_performLoad(const std::function<void()>& loadData)
         // fix race condition: we need exclusive access to the scene as we
         // unload the current one. So no rendering & snapshot must occur.
         while (!_lock.try_lock_for(std::chrono::seconds(1)))
-        {
             _updateProgress("Waiting for scene access ...", 0.f);
-            cancelCheck();
-        }
 
-        _updateProgress("Unloading ...", LOADING_PROGRESS_STEP);
+        _updateProgress("Unloading ...", 0.f);
         Scene& scene = _engine->getScene();
         scene.unload();
         _loadDefaultScene = true;
 
+        _updateProgress("Loading data ...", LOADING_PROGRESS_STEP);
         scene.resetMaterials();
         try
         {
@@ -128,7 +126,6 @@ void LoadDataFunctor::_loadXYZBBlob(Blob&& blob)
     XYZBLoader xyzbLoader(
         _engine->getParametersManager().getGeometryParameters());
     xyzbLoader.setProgressCallback(_getProgressFunc());
-    xyzbLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     xyzbLoader.importFromBlob(blob, scene);
 }
 
@@ -143,7 +140,6 @@ void LoadDataFunctor::_loadMeshBlob(Blob&& blob)
             : NO_MATERIAL;
     MeshLoader meshLoader(geometryParameters);
     meshLoader.setProgressCallback(_getProgressFunc());
-    meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     meshLoader.importMeshFromBlob(blob, scene, Matrix4f(), material);
 }
 
@@ -169,7 +165,6 @@ void LoadDataFunctor::_loadXYZBFile(const std::string& path)
     XYZBLoader xyzbLoader(
         _engine->getParametersManager().getGeometryParameters());
     xyzbLoader.setProgressCallback(_getProgressFunc());
-    xyzbLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     xyzbLoader.importFromFile(path, scene);
 }
 
@@ -184,7 +179,6 @@ void LoadDataFunctor::_loadMeshFile(const std::string& path)
             : NO_MATERIAL;
     MeshLoader meshLoader(geometryParameters);
     meshLoader.setProgressCallback(_getProgressFunc());
-    meshLoader.setCancelCheck(std::bind(&LoadDataFunctor::cancelCheck, this));
     meshLoader.importMeshFromFile(path, scene, Matrix4f(), material);
 }
 
@@ -198,9 +192,6 @@ void LoadDataFunctor::_postLoad(const bool cancellable)
         _updateProgress("Building geometry ...", LOADING_PROGRESS_STEP);
     scene.buildGeometry();
 
-    if (cancellable)
-        cancelCheck();
-
     const auto& geomParams =
         _engine->getParametersManager().getGeometryParameters();
     if (geomParams.getLoadCacheFile().empty() &&
@@ -210,11 +201,8 @@ void LoadDataFunctor::_postLoad(const bool cancellable)
     }
 
     if (cancellable)
-    {
-        cancelCheck();
         _updateProgress("Building acceleration structure ...",
                         LOADING_PROGRESS_STEP);
-    }
     scene.commit();
 
     BRAYNS_INFO << "Now rendering ..." << std::endl;

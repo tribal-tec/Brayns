@@ -55,6 +55,8 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   Timer.h
   transferFunction/TransferFunction.h
   tasks/Task.h
+  tasks/TaskFunctor.h
+  tasks/TaskRuntimeError.h
   types.h
   utils/Utils.h
   volume/VolumeHandler.h

@@ -21,71 +21,11 @@
 #pragma once
 
 #include <brayns/common/Progress.h>
+#include <brayns/common/tasks/TaskFunctor.h>
 #include <brayns/common/types.h>
-
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-#include <async++.h>
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
 
 namespace brayns
 {
-class TaskRuntimeError : public std::runtime_error
-{
-public:
-    TaskRuntimeError(const std::string& message, const int code = -1,
-                     const std::string& data = "")
-        : std::runtime_error(message.c_str())
-        , _code(code)
-        , _data(data)
-    {
-    }
-
-    int code() const { return _code; }
-    const std::string& data() const { return _data; }
-private:
-    const int _code;
-    const std::string _data;
-};
-
-class TaskFunctor
-{
-public:
-    TaskFunctor() = default;
-
-    void progress(const std::string& message, const float increment,
-                  const float amount)
-    {
-        if (_progressFunc)
-            _progressFunc(message, increment, amount);
-    }
-
-    void cancelCheck() const
-    {
-        if (_cancelToken)
-            async::interruption_point(*_cancelToken);
-    }
-
-    using ProgressFunc = std::function<void(std::string, float, float)>;
-
-    void setProgressFunc(const ProgressFunc& progressFunc)
-    {
-        _progressFunc = progressFunc;
-    }
-    void setCancelToken(async::cancellation_token& cancelToken)
-    {
-        _cancelToken = &cancelToken;
-    }
-
-protected:
-    async::cancellation_token* _cancelToken{nullptr};
-    ProgressFunc _progressFunc;
-};
-
 class Task
 {
 public:

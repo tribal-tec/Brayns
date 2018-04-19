@@ -121,7 +121,6 @@ RUN cksum ${BRAYNS_SRC}/.gitsubprojects \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${DIST_PATH} \
     -DBUILD_PYTHON_BINDINGS=OFF \
-    -DCOMMON_DISABLE_WERROR=TRUE \
  && ninja mvd-tool Brayns-install \
  && rm -rf ${DIST_PATH}/include ${DIST_PATH}/share
 

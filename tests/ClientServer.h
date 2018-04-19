@@ -137,12 +137,6 @@ public:
     {
         _wsClient.process(10);
         _brayns->preRender();
-
-        if (_brayns->getEngine().rebuildScene())
-        {
-            _brayns->buildScene();
-            _brayns->getEngine().markRebuildScene(false);
-        }
     }
 
 private:

@@ -65,10 +65,7 @@ public:
     ImageGenerator::ImageBase64 operator()()
     {
         while (!_dataLock.try_lock_for(std::chrono::seconds(1)))
-        {
             progress("Waiting for scene access ...", 0.f, 0.f);
-            cancelCheck();
-        }
 
         _renderer->setScene(_scene);
         _renderer->commit();
@@ -83,7 +80,6 @@ public:
         while (_frameBuffer->numAccumFrames() !=
                size_t(_params.samplesPerPixel))
         {
-            cancelCheck();
             _renderer->render(_frameBuffer);
             progress(msg.str(), 1.f / _frameBuffer->numAccumFrames(),
                      float(_frameBuffer->numAccumFrames()) /

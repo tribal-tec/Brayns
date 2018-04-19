@@ -20,11 +20,13 @@
 
 #pragma once
 
+#include <brayns/common/BaseObject.h>
+#include <brayns/common/types.h>
+
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
-
-#include <brayns/common/types.h>
 
 SERIALIZATION_ACCESS(Progress2)
 

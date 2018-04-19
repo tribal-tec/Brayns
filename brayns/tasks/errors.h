@@ -21,6 +21,7 @@
 #pragma once
 
 #include <brayns/common/tasks/Task.h>
+#include <brayns/common/tasks/TaskRuntimeError.h>
 
 namespace brayns
 {

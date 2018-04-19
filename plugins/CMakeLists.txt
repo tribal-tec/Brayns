@@ -23,6 +23,7 @@ endif()
 
 if(BRAYNS_NETWORKING_ENABLED)
   list(APPEND BRAYNSPLUGINS_HEADERS
+    RocketsPlugin/BinaryRequests.h
     RocketsPlugin/ImageGenerator.h
     RocketsPlugin/jsonSerialization.h
     RocketsPlugin/jsonUtils.h

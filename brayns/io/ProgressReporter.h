@@ -45,12 +45,6 @@ public:
         _progressUpdate = func;
     }
 
-    using CancelCheckFunc = std::function<void()>;
-    void setCancelCheck(const CancelCheckFunc& cancelCheck)
-    {
-        _cancelCheck = cancelCheck;
-    }
-
     /**
      * Update the current progress of an operation. Will call the provided
      * callback from setProgressUpdate().
@@ -58,8 +52,6 @@ public:
     void updateProgress(const std::string& message, const size_t current,
                         const size_t expected)
     {
-        if (_cancelCheck)
-            _cancelCheck();
 #ifdef BRAYNS_USE_OPENMP
         if (omp_get_thread_num() == 0)
 #endif
@@ -69,6 +61,5 @@ public:
 
 private:
     Progress::UpdateCallback _progressUpdate;
-    CancelCheckFunc _cancelCheck;
 };
 }

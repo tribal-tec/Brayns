@@ -38,13 +38,11 @@
 #include <uvw.hpp>
 #endif
 
-#include <fstream>
-
-#include <rockets/jsonrpc/asyncReceiver.h>
 #include <rockets/jsonrpc/helpers.h>
 #include <rockets/jsonrpc/server.h>
 #include <rockets/server.h>
 
+#include "BinaryRequests.h"
 #include "ImageGenerator.h"
 
 namespace
@@ -72,7 +70,6 @@ const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
 const std::string METHOD_INSPECT = "inspect";
 const std::string METHOD_QUIT = "quit";
-const std::string METHOD_UPLOAD_BINARY = "upload-binary";
 const std::string METHOD_UPLOAD_PATH = "upload-path";
 const std::string METHOD_RESET_CAMERA = "reset-camera";
 const std::string METHOD_SNAPSHOT = "snapshot";
@@ -121,61 +118,6 @@ inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
         BRAYNS_ERROR << status.description() << std::endl;
     return success;
 }
-
-class BinaryRequests
-{
-public:
-    auto createTask(const BinaryParams& params, uintptr_t clientID,
-                    const std::set<std::string>& supportedTypes,
-                    EnginePtr engine)
-    {
-        if (_binaryRequests.count(clientID) != 0)
-            throw ALREADY_PENDING_REQUEST;
-
-        auto task = createUploadBinaryTask(params, supportedTypes, engine);
-        _binaryRequests.emplace(clientID, task);
-        _requests.emplace(task, clientID);
-
-        return task;
-    }
-
-    rockets::ws::Response processMessage(const rockets::ws::Request& wsRequest)
-    {
-        if (_binaryRequests.count(wsRequest.clientID) == 0)
-        {
-            BRAYNS_ERROR << "Missing RPC " << METHOD_UPLOAD_BINARY
-                         << " or cancelled?" << std::endl;
-            return {};
-        }
-
-        _binaryRequests[wsRequest.clientID]->appendBlob(wsRequest.message);
-        return {};
-    }
-
-    void removeRequest(const uintptr_t clientID)
-    {
-        auto i = _binaryRequests.find(clientID);
-        if (i == _binaryRequests.end())
-            return;
-
-        i->second->cancel();
-        _binaryRequests.erase(i);
-    }
-
-    void removeTask(TaskPtr task)
-    {
-        auto i = _requests.find(task);
-        if (i == _requests.end())
-            return;
-
-        removeRequest(i->second);
-        _requests.erase(i);
-    }
-
-private:
-    std::map<uintptr_t, std::shared_ptr<UploadBinaryTask>> _binaryRequests;
-    std::map<TaskPtr, uintptr_t> _requests;
-};
 
 class RocketsPlugin::Impl
 {
@@ -815,7 +757,6 @@ public:
                    });
     }
 
-    // Forwarded to plugins?
     void _handleSnapshot()
     {
         RpcDocumentation doc{"Make a snapshot of the current view", "settings",
@@ -877,7 +818,6 @@ public:
     Timer _timer;
     float _leftover{0.f};
 
-    // TODO: pair stuff looks wrong, extend Task.h??
     std::map<TaskPtr, std::shared_ptr<async::task<void>>> _tasks;
     std::mutex _tasksMutex;
 

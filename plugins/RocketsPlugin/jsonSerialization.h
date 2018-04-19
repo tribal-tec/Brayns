@@ -186,7 +186,6 @@ inline void init(brayns::Camera* c, ObjectHandler* h)
 
 inline void init(brayns::Progress2* p, ObjectHandler* h)
 {
-    // TODO: requestID is already JSON'd from rockets, how to deal with that?
     h->add_property("id", &p->_requestID);
     h->add_property("amount", &p->_amount);
     h->add_property("operation", &p->_operation);

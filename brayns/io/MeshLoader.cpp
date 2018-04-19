@@ -117,7 +117,7 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
 
     if (!aiScene)
     {
-        BRAYNS_DEBUG << "Error parsing mesh: " << filename.c_str() << ": "
+        BRAYNS_DEBUG << "Error parsing mesh " << filename.c_str() << ": "
                      << importer.GetErrorString() << std::endl;
         return false;
     }

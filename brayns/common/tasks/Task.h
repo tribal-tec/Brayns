@@ -46,7 +46,7 @@ public:
         _progress.update(message, amount);
     }
 
-    Progress2& getProgress() { return _progress; }
+    Progress& getProgress() { return _progress; }
     void finishCancel()
     {
         if (_cancelDone)
@@ -55,7 +55,7 @@ public:
 
 protected:
     async::cancellation_token _cancelToken;
-    Progress2 _progress{"Scheduling task ..."};
+    Progress _progress{"Scheduling task ..."};
     std::function<void()> _cancelDone;
     bool _cancelled{false};
 
@@ -93,7 +93,7 @@ protected:
         {
             auto& taskFunctor = static_cast<TaskFunctor&>(functor);
             taskFunctor.setProgressFunc(
-                std::bind(&Progress2::update, std::ref(_progress),
+                std::bind(&Progress::update, std::ref(_progress),
                           std::placeholders::_1, std::placeholders::_3));
             taskFunctor.setCancelToken(_cancelToken);
         }

@@ -184,14 +184,6 @@ inline void init(brayns::Camera* c, ObjectHandler* h)
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
-inline void init(brayns::Progress2* p, ObjectHandler* h)
-{
-    h->add_property("id", &p->_requestID);
-    h->add_property("amount", &p->_amount);
-    h->add_property("operation", &p->_operation);
-    h->set_flags(Flags::DisallowUnknownKey);
-}
-
 inline void init(brayns::FrameBuffer* f, ObjectHandler* h)
 {
     static brayns::Vector2ui frameSize;
@@ -467,12 +459,7 @@ inline std::string to_json(const T& obj)
 {
     return staticjson::to_pretty_json_string(obj);
 }
-template <>
-inline std::string to_json(const brayns::Progress2& obj)
-{
-    std::lock_guard<std::mutex> lock(obj._mutex);
-    return staticjson::to_pretty_json_string(obj);
-}
+
 template <>
 inline std::string to_json(const brayns::Version& obj)
 {

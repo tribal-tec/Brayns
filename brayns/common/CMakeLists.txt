@@ -16,7 +16,6 @@ set(BRAYNSCOMMON_SOURCES
   scene/Scene.cpp
   material/Material.cpp
   material/Texture2D.cpp
-  Progress.cpp
   renderer/Renderer.cpp
   renderer/FrameBuffer.cpp
   light/Light.cpp

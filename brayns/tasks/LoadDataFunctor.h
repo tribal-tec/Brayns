@@ -22,8 +22,6 @@
 
 #include <brayns/common/tasks/Task.h>
 
-#include <brayns/common/Progress.h>
-
 #include <shared_mutex>
 
 namespace brayns

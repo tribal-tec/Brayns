@@ -391,8 +391,6 @@ struct RenderOutput
 
 class Progress;
 
-class Progress2;
-
 class Task;
 using TaskPtr = std::shared_ptr<Task>;
 

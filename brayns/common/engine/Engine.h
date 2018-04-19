@@ -21,7 +21,6 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include <brayns/common/Progress.h>
 #include <brayns/common/Statistics.h>
 
 #include <shared_mutex>
@@ -123,9 +122,6 @@ public:
     /** @return the minimum frame size in pixels supported by this engine. */
     virtual Vector2ui getMinimumFrameSize() const = 0;
 
-    /** @return the current progress of the engine */
-    const Progress2& getProgress() const { return _progress; }
-    Progress2& getProgress() { return _progress; }
     /**
      * @return true if for "--module deflect" the DeflectPixelOp was
      *         successfully loaded. Only supported for the OSPRay engine.
@@ -175,7 +171,6 @@ protected:
     FrameBufferPtr _frameBuffer;
     Statistics _statistics;
 
-    Progress2 _progress;
     bool _keepRunning{true};
     bool _rebuildScene{false};
 

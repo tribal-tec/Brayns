@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, EPFL/Blue Brain Project
+/* Copyright (c) 2015-2018, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
  * Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
  *                     Jafet Villafranca <jafet.villafrancadiaz@epfl.ch>
@@ -21,7 +21,6 @@
 
 #include <brayns/Brayns.h>
 
-#include <brayns/common/Progress.h>
 #include <brayns/common/Timer.h>
 #include <brayns/common/camera/Camera.h>
 #include <brayns/common/camera/FlyingModeManipulator.h>
@@ -72,6 +71,8 @@
 #include <ospcommon/library.h>
 #endif
 
+#include <boost/progress.hpp>
+
 namespace
 {
 const float DEFAULT_TEST_ANIMATION_FRAME = 10000;
@@ -109,8 +110,7 @@ struct Brayns::Impl : public PluginAPI
 
         createEngine();
 
-        if (!isAsyncMode())
-            _finishLoadScene();
+        _finishLoadScene();
     }
 
     void addPlugins()
@@ -257,7 +257,6 @@ struct Brayns::Impl : public PluginAPI
         _extensionPluginFactory.postRender();
 
         ap.resetModified();
-        _engine->getProgress().resetModified();
         _engine->getFrameBuffer().resetModified();
         _engine->getStatistics().resetModified();
     }
@@ -265,7 +264,6 @@ struct Brayns::Impl : public PluginAPI
     void postSceneLoading()
     {
         _extensionPluginFactory.postSceneLoading();
-        _engine->getProgress().resetModified();
         _engine->getStatistics().resetModified();
     }
 
@@ -298,8 +296,6 @@ struct Brayns::Impl : public PluginAPI
     {
         if (!isLoadingFinished())
             throw std::runtime_error("Build scene already in progress");
-
-        _engine->getProgress().update("", 0);
 
         std::promise<void> promise;
         _dataLoadingFuture = promise.get_future();
@@ -401,20 +397,15 @@ private:
         // fix race condition: we have to wait until rendering is finished
         std::lock_guard<std::shared_timed_mutex> lock{_engine->dataMutex()};
 
-        Progress loadingProgress(
-            "Loading scene ...",
-            LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP,
-            [this](const std::string& msg, const float progress) {
-                _engine->getProgress().update(msg, progress);
-            });
+        boost::progress_display loadingProgress(
+            LOADING_PROGRESS_DATA + 3 * LOADING_PROGRESS_STEP, std::cout,
+            "[INFO ] Loading scene ...\n[INFO ] ", "[INFO ] ", "[INFO ] ");
 
         Scene& scene = _engine->getScene();
 
-        loadingProgress.setMessage("Unloading ...");
         scene.unload();
         loadingProgress += LOADING_PROGRESS_STEP;
 
-        loadingProgress.setMessage("Loading data ...");
         _meshLoader.clear();
 
         scene.resetMaterials();
@@ -431,7 +422,6 @@ private:
         scene.buildEnvironment();
 
         const auto& geomParams = _parametersManager.getGeometryParameters();
-        loadingProgress.setMessage("Building geometry ...");
         scene.buildGeometry();
         if (geomParams.getLoadCacheFile().empty() &&
             !geomParams.getSaveCacheFile().empty())
@@ -441,11 +431,9 @@ private:
 
         loadingProgress += LOADING_PROGRESS_STEP;
 
-        loadingProgress.setMessage("Building acceleration structure ...");
         scene.commit();
         loadingProgress += LOADING_PROGRESS_STEP;
 
-        loadingProgress.setMessage("Done");
         BRAYNS_INFO << "Now rendering ..." << std::endl;
     }
 
@@ -479,20 +467,21 @@ private:
         }
     }
 
-    bool _loadData(Progress& loadingProgress)
+    bool _loadData(boost::progress_display& loadingProgress)
     {
         size_t nextTic = 0;
         const size_t tic = LOADING_PROGRESS_DATA;
         auto updateProgress = [&nextTic,
-                               &loadingProgress](const std::string& msg,
+                               &loadingProgress](const std::string&,
                                                  const float progress) {
-            loadingProgress.setMessage(msg);
-
-            const size_t newProgress = progress * tic;
-            if (newProgress % tic > nextTic)
+#pragma omp critical
             {
-                loadingProgress += newProgress - nextTic;
-                nextTic = newProgress;
+                const size_t newProgress = progress * tic;
+                if (newProgress % tic > nextTic)
+                {
+                    loadingProgress += newProgress - nextTic;
+                    nextTic = newProgress;
+                }
             }
         };
 
@@ -601,7 +590,7 @@ private:
     /**
         Loads data from a PDB file (command line parameter --pdb-file)
     */
-    void _loadPDBFolder(const Progress::UpdateCallback& progressUpdate)
+    void _loadPDBFolder(const ProgressReporter::UpdateCallback& progressUpdate)
     {
         // Load PDB File
         auto& geometryParameters = _parametersManager.getGeometryParameters();
@@ -647,7 +636,7 @@ private:
     /**
         Loads data from a XYZR file (command line parameter --xyzr-file)
     */
-    void _loadXYZBFile(const Progress::UpdateCallback& progressUpdate)
+    void _loadXYZBFile(const ProgressReporter::UpdateCallback& progressUpdate)
     {
         // Load XYZB File
         auto& geometryParameters = _parametersManager.getGeometryParameters();
@@ -673,7 +662,7 @@ private:
        the geometry parameters (command line parameter --mesh-folder)
     */
     void _loadMeshFolder(const std::string& folder,
-                         const Progress::UpdateCallback& progressUpdate)
+                         const ProgressReporter::UpdateCallback& progressUpdate)
     {
         const auto& geometryParameters =
             _parametersManager.getGeometryParameters();
@@ -741,7 +730,7 @@ private:
      * --scene-file)
      */
     void _loadSceneFile(const std::string& filename,
-                        const Progress::UpdateCallback& progressUpdate)
+                        const ProgressReporter::UpdateCallback& progressUpdate)
     {
         auto& applicationParameters =
             _parametersManager.getApplicationParameters();
@@ -807,7 +796,8 @@ private:
         Loads data from SWC and H5 files located in the folder specified
        in the geometry parameters (command line parameter --morphology-folder)
     */
-    void _loadMorphologyFolder(const Progress::UpdateCallback& progressUpdate)
+    void _loadMorphologyFolder(
+        const ProgressReporter::UpdateCallback& progressUpdate)
     {
         auto& applicationParameters =
             _parametersManager.getApplicationParameters();
@@ -837,7 +827,7 @@ private:
        parameter --circuit-configuration)
     */
     void _loadCircuitConfiguration(
-        const Progress::UpdateCallback& progressUpdate)
+        const ProgressReporter::UpdateCallback& progressUpdate)
     {
         auto& applicationParameters =
             _parametersManager.getApplicationParameters();
@@ -865,7 +855,8 @@ private:
        parameter
         --molecular-system-config )
     */
-    void _loadMolecularSystem(const Progress::UpdateCallback& progressUpdate)
+    void _loadMolecularSystem(
+        const ProgressReporter::UpdateCallback& progressUpdate)
     {
         auto& geometryParameters = _parametersManager.getGeometryParameters();
         auto& scene = _engine->getScene();

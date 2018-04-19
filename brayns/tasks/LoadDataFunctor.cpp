@@ -22,7 +22,6 @@
 
 #include "errors.h"
 
-#include <brayns/common/Progress.h>
 #include <brayns/common/camera/Camera.h>
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/renderer/FrameBuffer.h>

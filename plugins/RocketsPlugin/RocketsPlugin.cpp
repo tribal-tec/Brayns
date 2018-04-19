@@ -56,7 +56,6 @@ const std::string ENDPOINT_FRAME_BUFFERS = "frame-buffers";
 const std::string ENDPOINT_GEOMETRY_PARAMS = "geometry-parameters";
 const std::string ENDPOINT_IMAGE_JPEG = "image-jpeg";
 const std::string ENDPOINT_MATERIAL_LUT = "material-lut";
-const std::string ENDPOINT_PROGRESS = "progress";
 const std::string ENDPOINT_RENDERING_PARAMS = "rendering-parameters";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_SCENE_PARAMS = "scene-parameters";
@@ -174,7 +173,6 @@ public:
         // changes are already broadcasted in preRender().
         _wsBroadcastOperations[ENDPOINT_FRAME]();
         _wsBroadcastOperations[ENDPOINT_IMAGE_JPEG]();
-        _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
     }
 
@@ -184,7 +182,6 @@ public:
             return;
 
         _wsBroadcastOperations[ENDPOINT_CAMERA]();
-        _wsBroadcastOperations[ENDPOINT_PROGRESS]();
         _wsBroadcastOperations[ENDPOINT_STATISTICS]();
     }
 
@@ -421,6 +418,7 @@ public:
                     {
                         if (progress.isModified())
                         {
+                            std::lock_guard<std::mutex> lock_(progress.mutex());
                             progressCb(progress.operation(), progress.amount());
                             progress.resetModified();
                         }
@@ -538,7 +536,6 @@ public:
 
         // following endpoints need a valid engine
         _handle(ENDPOINT_CAMERA, _engine->getCamera());
-        _handleGET(ENDPOINT_PROGRESS, _engine->getProgress());
         _handle(ENDPOINT_MATERIAL_LUT,
                 _engine->getScene().getTransferFunction());
         _handleGET(ENDPOINT_SCENE, _engine->getScene());

@@ -20,39 +20,32 @@
 
 #pragma once
 
-#include <brayns/common/types.h>
-#include <brayns/io/ProgressReporter.h>
-
-#include <memory>
+#include <brayns/common/loader/Loader.h>
 
 namespace brayns
 {
-class Loader : public ProgressReporter
+
+class LoaderRegistry
 {
 public:
-    virtual ~Loader() = default;
+    LoaderRegistry() = default;
 
-    virtual bool canHandle(const Blob& blob) const = 0;
-    virtual bool canHandle(const std::string& filename) const = 0;
-
-    virtual void importFromBlob(Blob&& blob, Scene& scene,
-                                const Matrix4f& transformation,
-                                const size_t materialID) = 0;
-
-    virtual void importFromFile(const std::string& filename, Scene& scene,
-                                const Matrix4f& transformation,
-                                const size_t materialID) = 0;
-
-    using LoaderPtr = std::shared_ptr<Loader>;
-    static void registerLoader(LoaderPtr loader) { _loaders.push_back(loader); }
-    static void load(Blob&& blob, Scene& scene, const Matrix4f& transformation,
-                     const size_t materialID,
-                     ProgressReporter::UpdateCallback cb)
+    struct LoaderInfo
     {
-        for (auto loader : _loaders)
+        std::function<bool(std::string)> canHandle;
+        std::function<LoaderPtr()> createLoader;
+    };
+
+    void registerLoader(LoaderInfo loaderInfo) { _loaders.push_back(loaderInfo); }
+    void load(Blob&& blob, Scene& scene, const Matrix4f& transformation,
+                     const size_t materialID,
+                     Loader::UpdateCallback cb)
+    {
+        for (auto entry : _loaders)
         {
-            if (!loader->canHandle(blob))
+            if (!entry.canHandle(blob.type))
                 continue;
+            auto loader = entry.createLoader();
             loader->setProgressCallback(cb);
             loader->importFromBlob(std::move(blob), scene, transformation,
                                    materialID);
@@ -60,14 +53,15 @@ public:
         }
     }
 
-    static void load(const std::string& filename, Scene& scene,
+    void load(const std::string& filename, Scene& scene,
                      const Matrix4f& transformation, const size_t materialID,
-                     ProgressReporter::UpdateCallback cb)
+                     Loader::UpdateCallback cb)
     {
-        for (auto loader : _loaders)
+        for (auto entry : _loaders)
         {
-            if (!loader->canHandle(filename))
+            if (!entry.canHandle(filename))
                 continue;
+            auto loader = entry.createLoader();
             loader->setProgressCallback(cb);
             loader->importFromFile(filename, scene, transformation, materialID);
             break;
@@ -75,6 +69,6 @@ public:
     }
 
 private:
-    static std::vector<LoaderPtr> _loaders;
+    std::vector<LoaderInfo> _loaders;
 };
 }

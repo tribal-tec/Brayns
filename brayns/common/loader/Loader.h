@@ -1,6 +1,6 @@
-/* Copyright (c) 2015-2017, EPFL/Blue Brain Project
- *
- * Responsible Author: Daniel.Nachbaur@epfl.ch
+/* Copyright (c) 2015-2018, EPFL/Blue Brain Project
+ * All rights reserved. Do not distribute without permission.
+ * Responsible Author: Daniel.Nachbaur <daniel.nachbaur@epfl.ch>
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -20,7 +20,9 @@
 
 #pragma once
 
-#include <functional>
+#include <brayns/common/types.h>
+
+#include <memory>
 
 #ifdef BRAYNS_USE_OPENMP
 #include <omp.h>
@@ -28,14 +30,18 @@
 
 namespace brayns
 {
-/**
- * A base class for any loader who wishes to report progress during loading
- * operations.
- */
-class ProgressReporter
+class Loader
 {
 public:
-    virtual ~ProgressReporter() = default;
+    virtual ~Loader() = default;
+
+    virtual void importFromBlob(Blob&& blob, Scene& scene,
+                                const Matrix4f& transformation,
+                                const size_t materialID) = 0;
+
+    virtual void importFromFile(const std::string& filename, Scene& scene,
+                                const Matrix4f& transformation,
+                                const size_t materialID) = 0;
 
     /**
      * The callback for each progress update with the signature (message,

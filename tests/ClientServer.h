@@ -22,6 +22,8 @@
 
 #include <brayns/Brayns.h>
 #include <brayns/common/engine/Engine.h>
+#include <brayns/common/loader/Loader.h>
+#include <brayns/common/scene/Scene.h>
 #include <brayns/parameters/ParametersManager.h>
 
 #include <boost/test/unit_test.hpp>
@@ -39,6 +41,31 @@ bool is_ready(const std::future<T>& f)
 
 const size_t CLIENT_PROCESS_TIMEOUT = 5;  /*ms*/
 const size_t SERVER_PROCESS_RETRIES = 10; /*ms*/
+
+class ForeverLoader : public brayns::Loader
+{
+public:
+    static bool canHandle(const std::string& type) { return type == "forever"; }
+    void importFromBlob(brayns::Blob&&, brayns::Scene&, const brayns::Matrix4f&,
+                        const size_t) final
+    {
+        for (;;)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            updateProgress("still not done", 0, 1);
+        }
+    }
+
+    void importFromFile(const std::string&, brayns::Scene&,
+                        const brayns::Matrix4f&, const size_t) final
+    {
+        for (;;)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            updateProgress("still not done", 0, 1);
+        }
+    }
+};
 
 class ClientServer
 {
@@ -65,6 +92,10 @@ public:
             .getApplicationParameters()
             .setImageStreamFPS(0);
         _brayns->render();
+
+        _brayns->getEngine().getScene().getLoaderRegistry().registerLoader(
+            {std::bind(&ForeverLoader::canHandle, std::placeholders::_1),
+             [] { return std::make_shared<ForeverLoader>(); }});
 
         connect(_wsClient);
         _instance = this;

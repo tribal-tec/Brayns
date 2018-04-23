@@ -27,6 +27,7 @@
 #include <brayns/common/geometry/Cylinder.h>
 #include <brayns/common/geometry/Sphere.h>
 #include <brayns/common/geometry/TrianglesMesh.h>
+#include <brayns/common/loader/LoaderRegistry.h>
 #include <brayns/common/material/Material.h>
 #include <brayns/common/material/Texture2D.h>
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
@@ -361,6 +362,12 @@ public:
 
     /** @return the current size in bytes of the loaded geometry. */
     size_t getSizeInBytes() const { return _sizeInBytes; }
+    void load(Blob&& blob, const Matrix4f& transformation,
+              const size_t materialID, Loader::UpdateCallback cb);
+    void load(const std::string& filename, const Matrix4f& transformation,
+              const size_t materialID, Loader::UpdateCallback cb);
+
+    LoaderRegistry& getLoaderRegistry() { return _loaderRegistry; }
 protected:
     void _buildMissingMaterials(const size_t materialId);
     void _processVolumeAABBGeometry();
@@ -394,6 +401,8 @@ protected:
     Boxf _bounds;
 
     size_t _sizeInBytes{0};
+
+    LoaderRegistry _loaderRegistry;
 
 private:
     void _markGeometryDirty();

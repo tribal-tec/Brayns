@@ -44,7 +44,7 @@ const size_t POST_PROCESSING_FRACTION = TOTAL_PROGRESS - LOADING_FRACTION;
 class ProgressWatcher : public Assimp::ProgressHandler
 {
 public:
-    ProgressWatcher(ProgressReporter& parent, const std::string& filename)
+    ProgressWatcher(Loader& parent, const std::string& filename)
         : _parent(parent)
     {
         _msg << "Loading " << shortenString(filename) << " ..." << std::endl;
@@ -58,7 +58,7 @@ public:
     }
 
 private:
-    ProgressReporter& _parent;
+    Loader& _parent;
     std::function<void()> _cancelCheck;
     std::stringstream _msg;
 };
@@ -69,22 +69,14 @@ MeshLoader::MeshLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool MeshLoader::canHandle(const Blob& blob) const
+bool MeshLoader::canHandle(const std::string& type)
 {
-    auto types = getSupportedDataTypes();
-    auto found = std::find_if(types.cbegin(), types.cend(), [&](auto val) {
-        return lowerCase(val).find(lowerCase(blob.type)) != std::string::npos;
-    });
-    return found != types.end();
-}
-
-bool MeshLoader::canHandle(const std::string& filename) const
-{
-    auto extension = boost::filesystem::extension(filename);
+    auto extension = boost::filesystem::extension(type);
     if (extension.empty())
-        return false;
+        extension = type;
+    else
+        extension = extension.erase(0, 1);
 
-    extension = extension.erase(0, 1);
     auto types = getSupportedDataTypes();
     auto found = std::find_if(types.cbegin(), types.cend(), [&](auto val) {
         return lowerCase(val).find(lowerCase(extension)) != std::string::npos;

@@ -41,6 +41,8 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   light/DirectionalLight.h
   light/Light.h
   light/PointLight.h
+  loader/Loader.h
+  loader/LoaderRegistry.h
   log.h
   material/Material.h
   material/Texture2D.h

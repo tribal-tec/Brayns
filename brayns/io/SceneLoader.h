@@ -21,19 +21,28 @@
 #ifndef SceneLoader_H
 #define SceneLoader_H
 
+#include <brayns/common/loader/Loader.h>
 #include <brayns/common/types.h>
-#include <brayns/io/ProgressReporter.h>
 
 namespace brayns
 {
 /**
  * Loads meshes according to given positions in space
  */
-class SceneLoader : public ProgressReporter
+class SceneLoader : public Loader
 {
 public:
     SceneLoader(const ApplicationParameters& applicationParameters,
                 const GeometryParameters& geometryParameters);
+
+    virtual void importFromBlob(Blob&&, Scene&, const Matrix4f&, const size_t)
+    {
+    }
+
+    virtual void importFromFile(const std::string&, Scene&, const Matrix4f&,
+                                const size_t)
+    {
+    }
 
     /** Imports a file containing the positions and the filename of a list
      * of meshes. All loaded meshes are positioned at the corresponding

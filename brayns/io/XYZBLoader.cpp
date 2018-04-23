@@ -34,15 +34,14 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool XYZBLoader::canHandle(const Blob& blob) const
+bool XYZBLoader::canHandle(const std::string& type)
 {
-    return blob.type == "xyz";
-}
-
-bool XYZBLoader::canHandle(const std::string& filename) const
-{
-    auto extension = boost::filesystem::extension(filename);
-    return !extension.empty() && extension == ".xyz";
+    auto extension = boost::filesystem::extension(type);
+    if (extension.empty())
+        extension = type;
+    else
+        extension = extension.erase(0, 1);
+    return extension == "xyz";
 }
 
 void XYZBLoader::importFromBlob(Blob&& blob, Scene& scene,

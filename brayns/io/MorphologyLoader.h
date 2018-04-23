@@ -21,8 +21,8 @@
 #ifndef MORPHOLOGY_LOADER_H
 #define MORPHOLOGY_LOADER_H
 
+#include <brayns/common/loader/Loader.h>
 #include <brayns/common/types.h>
-#include <brayns/io/ProgressReporter.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 #include <vector>
@@ -36,7 +36,7 @@ namespace brayns
 {
 /** Loads morphologies from SWC and H5, and Circuit Config files
  */
-class MorphologyLoader : public ProgressReporter
+class MorphologyLoader : public Loader
 {
 public:
     /**
@@ -48,6 +48,15 @@ public:
                      const GeometryParameters& geometryParameters,
                      Scene& scene);
     ~MorphologyLoader();
+
+    virtual void importFromBlob(Blob&&, Scene&, const Matrix4f&, const size_t)
+    {
+    }
+
+    virtual void importFromFile(const std::string&, Scene&, const Matrix4f&,
+                                const size_t)
+    {
+    }
 
     /**
      * @brief Imports morphology from a given SWC or H5 file

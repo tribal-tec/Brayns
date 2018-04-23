@@ -21,9 +21,9 @@
 #ifndef NEST_LOADER_H
 #define NEST_LOADER_H
 
+#include <brayns/common/loader/Loader.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/types.h>
-#include <brayns/io/ProgressReporter.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
@@ -51,10 +51,19 @@ namespace brayns
  * forward.
  * @todo Move this loaded to Brion
  */
-class NESTLoader : public ProgressReporter
+class NESTLoader : public Loader
 {
 public:
     NESTLoader(const GeometryParameters& geometryParameters);
+
+    virtual void importFromBlob(Blob&&, Scene&, const Matrix4f&, const size_t)
+    {
+    }
+
+    virtual void importFromFile(const std::string&, Scene&, const Matrix4f&,
+                                const size_t)
+    {
+    }
 
     /**
      * Imports a circuit into a scene. Every neuron is represented as a sphere,

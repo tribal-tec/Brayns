@@ -400,6 +400,9 @@ struct Blob
     std::string name;
     std::string data;
 };
+
+class Loader;
+using LoaderPtr = std::shared_ptr<Loader>;
 }
 
 #endif // TYPES_H

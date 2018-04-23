@@ -21,7 +21,7 @@
 #ifndef XYZBLOADER_H
 #define XYZBLOADER_H
 
-#include <brayns/io/Loader.h>
+#include <brayns/common/loader/Loader.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 namespace brayns
@@ -31,8 +31,7 @@ class XYZBLoader : public Loader
 public:
     XYZBLoader(const GeometryParameters& geometryParameters);
 
-    bool canHandle(const Blob& blob) const final;
-    bool canHandle(const std::string& filename) const final;
+    static bool canHandle(const std::string& type);
 
     void importFromBlob(Blob&& blob, Scene& scene,
                         const Matrix4f& transformation,

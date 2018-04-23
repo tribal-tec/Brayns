@@ -22,9 +22,9 @@
 #define MESHLOADER_H
 
 #include <brayns/common/geometry/TrianglesMesh.h>
+#include <brayns/common/loader/Loader.h>
 #include <brayns/common/material/Material.h>
 #include <brayns/common/material/Texture2D.h>
-#include <brayns/io/Loader.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 #include <string>
@@ -41,8 +41,7 @@ class MeshLoader : public Loader
 public:
     MeshLoader(const GeometryParameters& geometryParameters);
 
-    bool canHandle(const Blob& blob) const final;
-    bool canHandle(const std::string& filename) const final;
+    static bool canHandle(const std::string& type);
 
     static std::set<std::string> getSupportedDataTypes();
 

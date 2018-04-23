@@ -27,12 +27,14 @@
 #include <brayns/common/renderer/FrameBuffer.h>
 #include <brayns/common/scene/Scene.h>
 
-#include <brayns/io/MeshLoader.h>
-#include <brayns/io/XYZBLoader.h>
+#include <brayns/io/Loader.h>
+
+//#include <brayns/io/MeshLoader.h>
+//#include <brayns/io/XYZBLoader.h>
 
 #include <brayns/parameters/ParametersManager.h>
 
-#include <boost/filesystem.hpp>
+//#include <boost/filesystem.hpp>
 
 namespace brayns
 {
@@ -113,73 +115,64 @@ void LoadDataFunctor::_loadData(Blob&& blob)
     if (_forever(blob.type))
         return;
 
-    if (blob.type == "xyz")
-        _loadXYZBBlob(std::move(blob));
-    else
-        _loadMeshBlob(std::move(blob));
+    Loader::load(std::move(blob), _engine->getScene(), Matrix4f(), NO_MATERIAL,
+                 _getProgressFunc());
 }
 
-void LoadDataFunctor::_loadXYZBBlob(Blob&& blob)
-{
-    auto& scene = _engine->getScene();
-    XYZBLoader xyzbLoader(
-        _engine->getParametersManager().getGeometryParameters());
-    xyzbLoader.setProgressCallback(_getProgressFunc());
-    xyzbLoader.importFromBlob(blob, scene);
-}
+// void LoadDataFunctor::_loadXYZBBlob(Blob&& blob)
+//{
+//    auto& scene = _engine->getScene();
+//    XYZBLoader xyzbLoader(
+//        _engine->getParametersManager().getGeometryParameters());
+//    xyzbLoader.importFromBlob(std::move(blob), scene, Matrix4f(),
+//    NO_MATERIAL);
+//}
 
-void LoadDataFunctor::_loadMeshBlob(Blob&& blob)
-{
-    const auto& geometryParameters =
-        _engine->getParametersManager().getGeometryParameters();
-    auto& scene = _engine->getScene();
-    const size_t material =
-        geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
-            ? NB_SYSTEM_MATERIALS
-            : NO_MATERIAL;
-    MeshLoader meshLoader(geometryParameters);
-    meshLoader.setProgressCallback(_getProgressFunc());
-    meshLoader.importMeshFromBlob(blob, scene, Matrix4f(), material);
-}
+// void LoadDataFunctor::_loadMeshBlob(Blob&& blob)
+//{
+//    const auto& geometryParameters =
+//        _engine->getParametersManager().getGeometryParameters();
+//    auto& scene = _engine->getScene();
+//    const size_t material =
+//        geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
+//            ? NB_SYSTEM_MATERIALS
+//            : NO_MATERIAL;
+//    MeshLoader meshLoader(geometryParameters);
+//    meshLoader.setProgressCallback(_getProgressFunc());
+//    meshLoader.importFromBlob(std::move(blob), scene, Matrix4f(), material);
+//}
 
 void LoadDataFunctor::_loadData(const std::string& path)
 {
     if (_forever(path))
         return;
 
-    auto extension = boost::filesystem::extension(path);
-    if (extension.empty())
-        return;
-
-    extension = extension.erase(0, 1);
-    if (extension == "xyz")
-        _loadXYZBFile(path);
-    else
-        _loadMeshFile(path);
+    Loader::load(path, _engine->getScene(), Matrix4f(), NO_MATERIAL,
+                 _getProgressFunc());
 }
 
-void LoadDataFunctor::_loadXYZBFile(const std::string& path)
-{
-    auto& scene = _engine->getScene();
-    XYZBLoader xyzbLoader(
-        _engine->getParametersManager().getGeometryParameters());
-    xyzbLoader.setProgressCallback(_getProgressFunc());
-    xyzbLoader.importFromFile(path, scene);
-}
+// void LoadDataFunctor::_loadXYZBFile(const std::string& path)
+//{
+//    auto& scene = _engine->getScene();
+//    XYZBLoader xyzbLoader(
+//        _engine->getParametersManager().getGeometryParameters());
+//    xyzbLoader.setProgressCallback(_getProgressFunc());
+//    xyzbLoader.importFromFile(path, scene, Matrix4f(), NO_MATERIAL);
+//}
 
-void LoadDataFunctor::_loadMeshFile(const std::string& path)
-{
-    const auto& geometryParameters =
-        _engine->getParametersManager().getGeometryParameters();
-    auto& scene = _engine->getScene();
-    const size_t material =
-        geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
-            ? NB_SYSTEM_MATERIALS
-            : NO_MATERIAL;
-    MeshLoader meshLoader(geometryParameters);
-    meshLoader.setProgressCallback(_getProgressFunc());
-    meshLoader.importMeshFromFile(path, scene, Matrix4f(), material);
-}
+// void LoadDataFunctor::_loadMeshFile(const std::string& path)
+//{
+//    const auto& geometryParameters =
+//        _engine->getParametersManager().getGeometryParameters();
+//    auto& scene = _engine->getScene();
+//    const size_t material =
+//        geometryParameters.getColorScheme() == ColorScheme::neuron_by_id
+//            ? NB_SYSTEM_MATERIALS
+//            : NO_MATERIAL;
+//    MeshLoader meshLoader(geometryParameters);
+//    meshLoader.setProgressCallback(_getProgressFunc());
+//    meshLoader.importFromFile(path, scene, Matrix4f(), material);
+//}
 
 void LoadDataFunctor::_postLoad(const bool cancellable)
 {

@@ -843,10 +843,16 @@ private:
                 _geometryParameters.getCircuitMeshTransformation()
                     ? transformations[meshIndex]
                     : Matrix4f();
-            if (!meshLoader.importMeshFromFile(
-                    meshLoader.getMeshFilenameFromGID(gid), _scene,
-                    transformation, materialId))
+            try
+            {
+                meshLoader.importFromFile(meshLoader.getMeshFilenameFromGID(
+                                              gid),
+                                          _scene, transformation, materialId);
+            }
+            catch (...)
+            {
                 ++loadingFailures;
+            }
             ++meshIndex;
             _parent.updateProgress(message.str(), meshIndex, gids.size());
         }

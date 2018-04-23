@@ -44,12 +44,12 @@ private:
     void _performLoad(const std::function<void()>& loadData);
 
     void _loadData(Blob&& blob);
-    void _loadXYZBBlob(Blob&& blob);
-    void _loadMeshBlob(Blob&& blob);
+    //    void _loadXYZBBlob(Blob&& blob);
+    //    void _loadMeshBlob(Blob&& blob);
 
     void _loadData(const std::string& path);
-    void _loadXYZBFile(const std::string& path);
-    void _loadMeshFile(const std::string& path);
+    //    void _loadXYZBFile(const std::string& path);
+    //    void _loadMeshFile(const std::string& path);
 
     void _postLoad(bool cancellable = true);
 

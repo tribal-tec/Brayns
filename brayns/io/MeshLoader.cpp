@@ -69,6 +69,29 @@ MeshLoader::MeshLoader(const GeometryParameters& geometryParameters)
 {
 }
 
+bool MeshLoader::canHandle(const Blob& blob) const
+{
+    auto types = getSupportedDataTypes();
+    auto found = std::find_if(types.cbegin(), types.cend(), [&](auto val) {
+        return lowerCase(val).find(lowerCase(blob.type)) != std::string::npos;
+    });
+    return found != types.end();
+}
+
+bool MeshLoader::canHandle(const std::string& filename) const
+{
+    auto extension = boost::filesystem::extension(filename);
+    if (extension.empty())
+        return false;
+
+    extension = extension.erase(0, 1);
+    auto types = getSupportedDataTypes();
+    auto found = std::find_if(types.cbegin(), types.cend(), [&](auto val) {
+        return lowerCase(val).find(lowerCase(extension)) != std::string::npos;
+    });
+    return found != types.end();
+}
+
 std::set<std::string> MeshLoader::getSupportedDataTypes()
 {
     std::set<std::string> types;
@@ -94,9 +117,9 @@ void MeshLoader::clear()
 }
 
 #ifdef BRAYNS_USE_ASSIMP
-bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
-                                    const Matrix4f& transformation,
-                                    const size_t defaultMaterial)
+void MeshLoader::importFromFile(const std::string& filename, Scene& scene,
+                                const Matrix4f& transformation,
+                                const size_t materialID)
 {
     _materialOffset = scene.getMaterials().size();
     const boost::filesystem::path file = filename;
@@ -104,43 +127,37 @@ bool MeshLoader::importMeshFromFile(const std::string& filename, Scene& scene,
     importer.SetProgressHandler(new ProgressWatcher(*this, filename));
     if (!importer.IsExtensionSupported(file.extension().c_str()))
     {
-        BRAYNS_DEBUG << "File extension " << file.extension()
-                     << " is not supported" << std::endl;
-        return false;
+        std::stringstream msg;
+        msg << "File extension " << file.extension() << " is not supported";
+        throw std::runtime_error(msg.str());
     }
 
     std::ifstream meshFile(filename, std::ios::in);
     if (!meshFile.good())
-    {
-        BRAYNS_DEBUG << "Could not open file " << filename << std::endl;
-        return false;
-    }
+        throw std::runtime_error("Could not open file " + filename);
     meshFile.close();
 
     const aiScene* aiScene = importer.ReadFile(filename.c_str(), _getQuality());
 
     if (!aiScene)
     {
-        BRAYNS_DEBUG << "Error parsing mesh " << filename.c_str() << ": "
-                     << importer.GetErrorString() << std::endl;
-        return false;
+        std::stringstream msg;
+        msg << "Error parsing mesh " << filename.c_str() << ": "
+            << importer.GetErrorString();
+        throw std::runtime_error(msg.str());
     }
 
     if (!aiScene->HasMeshes())
-    {
-        BRAYNS_DEBUG << "Error finding meshes in scene" << std::endl;
-        return false;
-    }
+        throw std::runtime_error("Error finding meshes in scene");
 
     boost::filesystem::path filepath = filename;
-    _postLoad(aiScene, scene, transformation, defaultMaterial,
+    _postLoad(aiScene, scene, transformation, materialID,
               filepath.parent_path().string());
-    return true;
 }
 
-void MeshLoader::importMeshFromBlob(const Blob& blob, Scene& scene,
-                                    const Matrix4f& transformation,
-                                    const size_t defaultMaterial)
+void MeshLoader::importFromBlob(Blob&& blob, Scene& scene,
+                                const Matrix4f& transformation,
+                                const size_t materialID)
 {
     _materialOffset = scene.getMaterials().size();
     Assimp::Importer importer;
@@ -156,7 +173,7 @@ void MeshLoader::importMeshFromBlob(const Blob& blob, Scene& scene,
     if (!aiScene->HasMeshes())
         throw std::runtime_error("No meshes found");
 
-    _postLoad(aiScene, scene, transformation, defaultMaterial);
+    _postLoad(aiScene, scene, transformation, materialID);
 }
 
 bool MeshLoader::exportMeshToFile(const std::string& filename,
@@ -443,14 +460,14 @@ const std::string NO_ASSIMP_MESSAGE =
     "The assimp library is required to load meshes";
 }
 
-bool MeshLoader::importMeshFromFile(const std::string&, Scene&, const Matrix4f&,
-                                    const size_t)
+bool MeshLoader::importMeshFromFile(const std::string &, Scene &,
+                                    const Matrix4f &, const size_t)
 {
     BRAYNS_ERROR << NO_ASSIMP_MESSAGE << std::endl;
     return false;
 }
 
-bool MeshLoader::exportMeshToFile(const std::string&, Scene&) const
+bool MeshLoader::exportMeshToFile(const std::string &, Scene &) const
 {
     BRAYNS_ERROR << NO_ASSIMP_MESSAGE << std::endl;
     return false;

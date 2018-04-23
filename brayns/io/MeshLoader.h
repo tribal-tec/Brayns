@@ -24,8 +24,7 @@
 #include <brayns/common/geometry/TrianglesMesh.h>
 #include <brayns/common/material/Material.h>
 #include <brayns/common/material/Texture2D.h>
-#include <brayns/common/types.h>
-#include <brayns/io/ProgressReporter.h>
+#include <brayns/io/Loader.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 #include <string>
@@ -37,10 +36,13 @@ namespace brayns
 /** Loads meshes from files using the assimp library
  * http://assimp.sourceforge.net
  */
-class MeshLoader : public ProgressReporter
+class MeshLoader : public Loader
 {
 public:
     MeshLoader(const GeometryParameters& geometryParameters);
+
+    bool canHandle(const Blob& blob) const final;
+    bool canHandle(const std::string& filename) const final;
 
     static std::set<std::string> getSupportedDataTypes();
 
@@ -55,13 +57,13 @@ public:
      *        all meshes are forced to that specific material.
      * @return true if the file was successfully imported. False otherwise.
      */
-    bool importMeshFromFile(const std::string& filename, Scene& scene,
-                            const Matrix4f& transformation,
-                            const size_t defaultMaterial);
+    void importFromBlob(Blob&& blob, Scene& scene,
+                        const Matrix4f& transformation,
+                        const size_t materialID) final;
 
-    void importMeshFromBlob(const Blob& blob, Scene& scene,
-                            const Matrix4f& transformation,
-                            const size_t defaultMaterial);
+    void importFromFile(const std::string& filename, Scene& scene,
+                        const Matrix4f& transformation,
+                        const size_t materialID) final;
 
     /** Exports meshes to a given file
      *

@@ -19,6 +19,7 @@ set(BRAYNSIO_SOURCES
 set(BRAYNSIO_PUBLIC_HEADERS
   algorithms/MetaballsGenerator.h
   ImageManager.h
+  Loader.h
   MeshLoader.h
   MolecularSystemReader.h
   ProgressReporter.h

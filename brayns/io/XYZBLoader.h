@@ -21,20 +21,26 @@
 #ifndef XYZBLOADER_H
 #define XYZBLOADER_H
 
-#include <brayns/common/types.h>
-#include <brayns/io/ProgressReporter.h>
+#include <brayns/io/Loader.h>
 #include <brayns/parameters/GeometryParameters.h>
 
 namespace brayns
 {
-class XYZBLoader : public ProgressReporter
+class XYZBLoader : public Loader
 {
 public:
     XYZBLoader(const GeometryParameters& geometryParameters);
 
-    void importFromBlob(const Blob& blob, Scene& scene);
+    bool canHandle(const Blob& blob) const final;
+    bool canHandle(const std::string& filename) const final;
 
-    void importFromFile(const std::string& filename, Scene& scene);
+    void importFromBlob(Blob&& blob, Scene& scene,
+                        const Matrix4f& transformation,
+                        const size_t materialID) final;
+
+    void importFromFile(const std::string& filename, Scene& scene,
+                        const Matrix4f& transformation,
+                        const size_t materialID) final;
 
 private:
     const GeometryParameters& _geometryParameters;

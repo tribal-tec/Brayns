@@ -83,6 +83,7 @@ const size_t LOADING_PROGRESS_STEP = 10;
 
 namespace brayns
 {
+std::vector<Loader::LoaderPtr> Loader::_loaders{};
 struct Brayns::Impl : public PluginAPI
 {
     Impl(int argc, const char** argv)
@@ -105,6 +106,11 @@ struct Brayns::Impl : public PluginAPI
         BRAYNS_INFO << "Parsing command line options" << std::endl;
         _parametersManager.parse(argc, argv);
         _parametersManager.print();
+
+        Loader::registerLoader(std::make_shared<MeshLoader>(
+            _parametersManager.getGeometryParameters()));
+        Loader::registerLoader(std::make_shared<XYZBLoader>(
+            _parametersManager.getGeometryParameters()));
 
         _registerKeyboardShortcuts();
 
@@ -646,7 +652,8 @@ private:
         xyzbLoader.setProgressCallback(progressUpdate);
         try
         {
-            xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene);
+            xyzbLoader.importFromFile(geometryParameters.getXYZBFile(), scene,
+                                      Matrix4f(), NO_MATERIAL);
         }
         catch (const std::runtime_error& e)
         {
@@ -680,9 +687,14 @@ private:
                     ? NB_SYSTEM_MATERIALS + i
                     : NO_MATERIAL;
 
-            if (!_meshLoader.importMeshFromFile(file, scene, Matrix4f(),
-                                                material))
+            try
+            {
+                _meshLoader.importFromFile(file, scene, Matrix4f(), material);
+            }
+            catch (...)
+            {
                 BRAYNS_ERROR << "Failed to import " << file << std::endl;
+            }
             ++i;
             progressUpdate(msg.str(), float(i) / files.size());
         }
@@ -701,9 +713,7 @@ private:
                 ? NB_SYSTEM_MATERIALS
                 : NO_MATERIAL;
 
-        if (!_meshLoader.importMeshFromFile(filename, scene, Matrix4f(),
-                                            material))
-            BRAYNS_ERROR << "Failed to import " << filename << std::endl;
+        _meshLoader.importFromFile(filename, scene, Matrix4f(), material);
     }
 
 #if (BRAYNS_USE_BRION)

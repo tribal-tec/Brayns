@@ -111,9 +111,8 @@ void SceneLoader::_importMorphology(Scene& scene, const Node& node,
 void SceneLoader::_importMesh(Scene& scene, MeshLoader& loader,
                               const Node& node, const Matrix4f& transformation)
 {
-    if (!loader.importMeshFromFile(node.filename, scene, transformation,
-                                   NB_SYSTEM_MATERIALS + node.materialId))
-        BRAYNS_ERROR << "Failed to load " << node.filename << std::endl;
+    loader.importFromFile(node.filename, scene, transformation,
+                          NB_SYSTEM_MATERIALS + node.materialId);
 }
 
 bool SceneLoader::_processNodes(Scene& scene, MeshLoader& meshLoader)

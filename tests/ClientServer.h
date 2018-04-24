@@ -45,7 +45,6 @@ const size_t SERVER_PROCESS_RETRIES = 10; /*ms*/
 class ForeverLoader : public brayns::Loader
 {
 public:
-    static bool canHandle(const std::string& type) { return type == "forever"; }
     void importFromBlob(brayns::Blob&&, brayns::Scene&, const brayns::Matrix4f&,
                         const size_t) final
     {
@@ -94,7 +93,7 @@ public:
         _brayns->render();
 
         _brayns->getEngine().getScene().getLoaderRegistry().registerLoader(
-            {std::bind(&ForeverLoader::canHandle, std::placeholders::_1),
+            {[] { return std::set<std::string>{std::string("forever")}; },
              [] { return std::make_shared<ForeverLoader>(); }});
 
         connect(_wsClient);

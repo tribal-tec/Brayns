@@ -309,11 +309,6 @@ public:
         return _connectivityConfiguration._connectivityScale;
     }
 
-    std::set<std::string>& getSupportedDataTypes()
-    {
-        return _supportedDataTypes;
-    }
-
 protected:
     bool _parse(const po::variables_map& vm) final;
 
@@ -359,8 +354,6 @@ protected:
 
     // System parameters
     MemoryMode _memoryMode;
-
-    std::set<std::string> _supportedDataTypes;
 
     ConnectivityConfiguration _connectivityConfiguration;
 

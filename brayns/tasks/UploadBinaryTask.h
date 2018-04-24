@@ -40,9 +40,7 @@ using BinaryParams = std::vector<BinaryParam>;
 class UploadBinaryTask : public Task<bool>
 {
 public:
-    UploadBinaryTask(const BinaryParams& params,
-                     const std::set<std::string>& supportedTypes,
-                     EnginePtr engine);
+    UploadBinaryTask(const BinaryParams& params, EnginePtr engine);
 
     void appendBlob(const std::string& blob);
 

@@ -31,7 +31,7 @@ class XYZBLoader : public Loader
 public:
     XYZBLoader(const GeometryParameters& geometryParameters);
 
-    static bool canHandle(const std::string& type);
+    static std::set<std::string> getSupportedDataTypes();
 
     void importFromBlob(Blob&& blob, Scene& scene,
                         const Matrix4f& transformation,

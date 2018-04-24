@@ -41,8 +41,6 @@ class MeshLoader : public Loader
 public:
     MeshLoader(const GeometryParameters& geometryParameters);
 
-    static bool canHandle(const std::string& type);
-
     static std::set<std::string> getSupportedDataTypes();
 
     /** Imports meshes from a given file

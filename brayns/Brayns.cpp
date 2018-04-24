@@ -89,11 +89,6 @@ struct Brayns::Impl : public PluginAPI
         : _engineFactory{argc, argv, _parametersManager}
         , _meshLoader(_parametersManager.getGeometryParameters())
     {
-        auto& types =
-            _parametersManager.getGeometryParameters().getSupportedDataTypes();
-        types = MeshLoader::getSupportedDataTypes();
-        types.insert("xyz");
-
         BRAYNS_INFO << "     ____                             " << std::endl;
         BRAYNS_INFO << "    / __ )_________ ___  ______  _____" << std::endl;
         BRAYNS_INFO << "   / __  / ___/ __ `/ / / / __ \\/ ___/" << std::endl;
@@ -290,11 +285,11 @@ struct Brayns::Impl : public PluginAPI
         _engine->getScene().commitLights();
 
         auto& registry = _engine->getScene().getLoaderRegistry();
-        registry.registerLoader({std::bind(&MeshLoader::canHandle, std::placeholders::_1),
+        registry.registerLoader({std::bind(&MeshLoader::getSupportedDataTypes),
                                  [&params = _parametersManager.getGeometryParameters()]{ return std::make_shared<MeshLoader>(params);
     }});
 
-        registry.registerLoader({std::bind(&XYZBLoader::canHandle, std::placeholders::_1),
+        registry.registerLoader({std::bind(&XYZBLoader::getSupportedDataTypes),
                                  [&params = _parametersManager.getGeometryParameters()]{ return std::make_shared<XYZBLoader>(params);
         }
         });

@@ -21,6 +21,7 @@ set(BRAYNSCOMMON_SOURCES
   light/Light.cpp
   light/PointLight.cpp
   light/DirectionalLight.cpp
+  loader/LoaderRegistry.cpp
   utils/Utils.cpp
 )
 

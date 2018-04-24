@@ -24,7 +24,6 @@
 
 namespace brayns
 {
-
 class LoaderRegistry
 {
 public:
@@ -32,43 +31,26 @@ public:
 
     struct LoaderInfo
     {
-        std::function<bool(std::string)> canHandle;
+        std::function<std::set<std::string>()> supportedTypes;
         std::function<LoaderPtr()> createLoader;
     };
 
-    void registerLoader(LoaderInfo loaderInfo) { _loaders.push_back(loaderInfo); }
+    void registerLoader(LoaderInfo loaderInfo);
+
+    bool isSupported(const std::string& type) const;
+
+    std::set<std::string> supportedTypes() const;
+
     void load(Blob&& blob, Scene& scene, const Matrix4f& transformation,
-                     const size_t materialID,
-                     Loader::UpdateCallback cb)
-    {
-        for (auto entry : _loaders)
-        {
-            if (!entry.canHandle(blob.type))
-                continue;
-            auto loader = entry.createLoader();
-            loader->setProgressCallback(cb);
-            loader->importFromBlob(std::move(blob), scene, transformation,
-                                   materialID);
-            break;
-        }
-    }
+              const size_t materialID, Loader::UpdateCallback cb);
 
     void load(const std::string& filename, Scene& scene,
-                     const Matrix4f& transformation, const size_t materialID,
-                     Loader::UpdateCallback cb)
-    {
-        for (auto entry : _loaders)
-        {
-            if (!entry.canHandle(filename))
-                continue;
-            auto loader = entry.createLoader();
-            loader->setProgressCallback(cb);
-            loader->importFromFile(filename, scene, transformation, materialID);
-            break;
-        }
-    }
+              const Matrix4f& transformation, const size_t materialID,
+              Loader::UpdateCallback cb);
 
 private:
     std::vector<LoaderInfo> _loaders;
+
+    bool _canHandle(const LoaderInfo& loader, const std::string& type) const;
 };
 }

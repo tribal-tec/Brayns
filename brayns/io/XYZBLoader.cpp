@@ -24,7 +24,6 @@
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/utils/Utils.h>
 
-#include <boost/filesystem.hpp>
 #include <fstream>
 
 namespace brayns
@@ -34,14 +33,9 @@ XYZBLoader::XYZBLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool XYZBLoader::canHandle(const std::string& type)
+std::set<std::string> XYZBLoader::getSupportedDataTypes()
 {
-    auto extension = boost::filesystem::extension(type);
-    if (extension.empty())
-        extension = type;
-    else
-        extension = extension.erase(0, 1);
-    return extension == "xyz";
+    return {"xyz"};
 }
 
 void XYZBLoader::importFromBlob(Blob&& blob, Scene& scene,

@@ -69,21 +69,6 @@ MeshLoader::MeshLoader(const GeometryParameters& geometryParameters)
 {
 }
 
-bool MeshLoader::canHandle(const std::string& type)
-{
-    auto extension = boost::filesystem::extension(type);
-    if (extension.empty())
-        extension = type;
-    else
-        extension = extension.erase(0, 1);
-
-    auto types = getSupportedDataTypes();
-    auto found = std::find_if(types.cbegin(), types.cend(), [&](auto val) {
-        return lowerCase(val).find(lowerCase(extension)) != std::string::npos;
-    });
-    return found != types.end();
-}
-
 std::set<std::string> MeshLoader::getSupportedDataTypes()
 {
     std::set<std::string> types;

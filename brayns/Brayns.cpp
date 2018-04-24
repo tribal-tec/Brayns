@@ -37,6 +37,7 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
+#include <brayns/io/CircuitLoader.h>
 #include <brayns/io/MeshLoader.h>
 #include <brayns/io/MolecularSystemReader.h>
 #include <brayns/io/ProteinLoader.h>
@@ -58,7 +59,6 @@
 #include <brayns/io/ConnectivityLoader.h>
 #include <brayns/io/MorphologyLoader.h>
 #include <brayns/io/NESTLoader.h>
-#include <brayns/io/SceneLoader.h>
 #include <servus/uri.h>
 #endif
 
@@ -295,7 +295,12 @@ struct Brayns::Impl : public PluginAPI
         });
 
         registry.registerLoader({std::bind(&MorphologyLoader::getSupportedDataTypes),
-                                 [&params = _parametersManager]{ return std::make_shared<MorphologyLoader>(params.getApplicationParameters(), params.getGeometryParameters());
+                                 [&params = _parametersManager.getGeometryParameters()]{ return std::make_shared<MorphologyLoader>(params);
+        }
+        });
+
+        registry.registerLoader({std::bind(&CircuitLoader::getSupportedDataTypes),
+                                 [&params = _parametersManager]{ return std::make_shared<CircuitLoader>(params.getApplicationParameters(), params.getGeometryParameters());
         }
         });
 
@@ -569,10 +574,6 @@ struct Brayns::Impl : public PluginAPI
             }
 
 #if (BRAYNS_USE_BRION)
-            if (!geometryParameters.getSceneFile().empty())
-                _loadSceneFile(geometryParameters.getSceneFile(),
-                               updateProgress);
-
             if (!geometryParameters.getNESTCircuit().empty())
             {
                 _loadNESTCircuit();
@@ -766,23 +767,6 @@ struct Brayns::Impl : public PluginAPI
         }
 
         /**
-         * Loads data from a scene description file (command line parameter
-         * --scene-file)
-         */
-        void _loadSceneFile(const std::string& filename,
-                            const Loader::UpdateCallback& progressUpdate)
-        {
-            auto& applicationParameters =
-                _parametersManager.getApplicationParameters();
-            auto& geometryParameters =
-                _parametersManager.getGeometryParameters();
-            auto& scene = _engine->getScene();
-            SceneLoader sceneLoader(applicationParameters, geometryParameters);
-            sceneLoader.setProgressCallback(progressUpdate);
-            sceneLoader.importFromFile(filename, scene, _meshLoader);
-        }
-
-        /**
          * Loads data from a NEST circuit file (command line parameter
          * --nest-circuit)
          */
@@ -844,14 +828,11 @@ struct Brayns::Impl : public PluginAPI
         */
         void _loadMorphologyFolder(const Loader::UpdateCallback& progressUpdate)
         {
-            auto& applicationParameters =
-                _parametersManager.getApplicationParameters();
             auto& geometryParameters =
                 _parametersManager.getGeometryParameters();
             auto& scene = _engine->getScene();
             const auto& folder = geometryParameters.getMorphologyFolder();
-            MorphologyLoader morphologyLoader(applicationParameters,
-                                              geometryParameters);
+            MorphologyLoader morphologyLoader(geometryParameters);
 
             const strings filters = {".swc", ".h5"};
             const strings files = parseFolder(folder, filters);
@@ -889,13 +870,12 @@ struct Brayns::Impl : public PluginAPI
             BRAYNS_INFO << "Loading circuit configuration from " << filename
                         << std::endl;
             const std::string& report = geometryParameters.getCircuitReport();
-            MorphologyLoader morphologyLoader(applicationParameters,
-                                              geometryParameters);
-            morphologyLoader.setProgressCallback(progressUpdate);
+            CircuitLoader circuitLoader(applicationParameters,
+                                        geometryParameters);
+            circuitLoader.setProgressCallback(progressUpdate);
 
             const servus::URI uri(filename);
-            morphologyLoader.importCircuit(uri, targets, report, scene,
-                                           _meshLoader);
+            circuitLoader.importCircuit(uri, targets, report, scene);
         }
 #endif // BRAYNS_USE_BRION
 

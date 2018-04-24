@@ -279,10 +279,6 @@ public:
      * underlying renderer
      */
     MemoryMode getMemoryMode() const { return _memoryMode; };
-    /**
-     * Return the full path of the file containing a scene description
-     */
-    const std::string& getSceneFile() const { return _sceneFile; };
     /** File containing neuron matrix */
     const std::string& getConnectivityFile() const
     {
@@ -336,7 +332,6 @@ protected:
     std::string _saveCacheFile;
     SceneEnvironment _sceneEnvironment;
     std::string _splashSceneFolder;
-    std::string _sceneFile;
 
     // Morphology
     std::string _morphologyFolder;

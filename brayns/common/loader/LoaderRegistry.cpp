@@ -115,7 +115,12 @@ bool LoaderRegistry::_canHandle(const LoaderInfo& loader,
     }
     auto extension = fs::extension(type);
     if (extension.empty())
-        extension = type;
+    {
+        if (fs::is_regular_file(type))
+            extension = fs::path(type).filename().string();
+        else
+            extension = type; // just the type from blob, e.g. xyz, obj, ...
+    }
     else
         extension = extension.erase(0, 1);
 

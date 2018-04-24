@@ -32,14 +32,8 @@
 #include <brion/brion.h>
 #include <servus/types.h>
 
-#if (BRAYNS_USE_ASSIMP)
-#include <brayns/io/MeshLoader.h>
-#endif
-
-#include <algorithm>
-#include <fstream>
-
-#include <boost/filesystem.hpp>
+//#include <algorithm>
+#include <sstream>
 
 namespace
 {
@@ -49,8 +43,6 @@ const float INDEX_MAGIC = 1e6;
 
 namespace brayns
 {
-typedef std::vector<uint64_t> GIDOffsets;
-
 struct ParallelSceneContainer
 {
 public:
@@ -105,11 +97,10 @@ public:
 class MorphologyLoader::Impl
 {
 public:
-    Impl(const ApplicationParameters& applicationParameters,
-         const GeometryParameters& geometryParameters, MorphologyLoader& parent)
-        : _parent(parent)
-        , _applicationParameters(applicationParameters)
-        , _geometryParameters(geometryParameters)
+    Impl(const GeometryParameters& geometryParameters,
+         const size_t materialOffset)
+        : _geometryParameters(geometryParameters)
+        , _materialsOffset(materialOffset)
     {
     }
 
@@ -139,137 +130,6 @@ public:
         return _importMorphology(source, index, material, transformation,
                                  compartmentReport, targetGIDOffsets,
                                  sceneContainer);
-    }
-
-    /**
-     * @brief importCircuit Imports a circuit from a specified URI
-     * @param uri URI of the CircuitConfig
-     * @param target Target to load
-     * @param report Report to load
-     * @param meshLoader Mesh loader used to load meshes
-     * @return True is the circuit was successfully imported, false otherwise
-     */
-    bool importCircuit(const servus::URI& uri, const strings& targets,
-                       const std::string& report, Scene& scene,
-                       MeshLoader& meshLoader)
-    {
-        _materialsOffset = scene.getMaterials().size();
-
-        bool returnValue = true;
-        try
-        {
-            // Open Circuit and select GIDs according to specified target
-            const brain::Circuit circuit(uri);
-            const brion::BlueConfig bc(uri.getPath());
-            const auto circuitDensity =
-                _geometryParameters.getCircuitDensity() / 100.f;
-
-            brain::GIDSet allGids;
-            GIDOffsets targetGIDOffsets;
-            targetGIDOffsets.push_back(0);
-
-            strings localTargets;
-            if (targets.empty())
-                localTargets.push_back("");
-            else
-                localTargets = targets;
-
-            for (const auto& target : localTargets)
-            {
-                const auto targetGids =
-                    (target.empty()
-                         ? circuit.getRandomGIDs(circuitDensity)
-                         : circuit.getRandomGIDs(circuitDensity, target));
-                const Matrix4fs& allTransformations =
-                    circuit.getTransforms(targetGids);
-
-                brain::GIDSet gids;
-                const auto& aabb = _geometryParameters.getCircuitBoundingBox();
-                if (aabb.getSize() == Vector3f(0.f))
-                    gids = targetGids;
-                else
-                {
-                    auto gidIterator = targetGids.begin();
-                    for (size_t i = 0; i < allTransformations.size(); ++i)
-                    {
-                        if (aabb.isIn(allTransformations[i].getTranslation()))
-                            gids.insert(*gidIterator);
-                        ++gidIterator;
-                    }
-                }
-
-                if (gids.empty())
-                {
-                    BRAYNS_ERROR << "Target " << target
-                                 << " does not contain any cells" << std::endl;
-                    continue;
-                }
-
-                BRAYNS_INFO << "Target " << target << ": " << gids.size()
-                            << " cells" << std::endl;
-                allGids.insert(gids.begin(), gids.end());
-                targetGIDOffsets.push_back(allGids.size());
-            }
-
-            if (allGids.empty())
-                return false;
-
-            // Load simulation information from compartment report
-            CompartmentReportPtr compartmentReport = nullptr;
-            if (!report.empty())
-                try
-                {
-                    CircuitSimulationHandlerPtr simulationHandler(
-                        new CircuitSimulationHandler(_applicationParameters,
-                                                     _geometryParameters,
-                                                     bc.getReportSource(report),
-                                                     allGids));
-                    compartmentReport =
-                        simulationHandler->getCompartmentReport();
-                    // Only keep simulated GIDs
-                    if (compartmentReport)
-                        allGids = compartmentReport->getGIDs();
-                    // Attach simulation handler
-                    scene.setSimulationHandler(simulationHandler);
-                }
-                catch (const std::exception& e)
-                {
-                    BRAYNS_ERROR << e.what() << std::endl;
-                }
-
-            if (!_geometryParameters.getLoadCacheFile().empty())
-                return true;
-
-            const Matrix4fs& transformations = circuit.getTransforms(allGids);
-            _logLoadedGIDs(allGids);
-
-            _populateLayerIds(bc, allGids);
-            _electrophysiologyTypes =
-                circuit.getElectrophysiologyTypes(allGids);
-            _morphologyTypes = circuit.getMorphologyTypes(allGids);
-
-            // Import meshes
-            returnValue =
-                returnValue && _importMeshes(allGids, scene, transformations,
-                                             targetGIDOffsets, meshLoader);
-
-            // Import morphologies
-            if (_geometryParameters.getCircuitMeshFolder().empty() ||
-                _geometryParameters.getCircuitUseSimulationModel())
-                returnValue =
-                    returnValue &&
-                    _importMorphologies(circuit, scene, allGids,
-                                        transformations, targetGIDOffsets,
-                                        compartmentReport);
-        }
-        catch (const std::exception& error)
-        {
-            BRAYNS_ERROR << "Failed to open " << uri.getPath() << ": "
-                         << error.what() << std::endl;
-            return false;
-        }
-
-        return returnValue;
     }
 
 private:
@@ -392,31 +252,6 @@ private:
     }
 
     /**
-     * @brief _populateLayerIds populates the neuron layer IDs. This is
-     * currently only supported for the MVD2 format.
-     * @param blueConfig Configuration of the circuit
-     * @param gids GIDs of the neurons
-     */
-    void _populateLayerIds(const brion::BlueConfig& blueConfig,
-                           const brain::GIDSet& gids)
-    {
-        _layerIds.clear();
-        try
-        {
-            brion::Circuit brionCircuit(blueConfig.getCircuitSource());
-            for (const auto& a : brionCircuit.get(gids, brion::NEURON_LAYER))
-                _layerIds.push_back(std::stoi(a[0]));
-        }
-        catch (...)
-        {
-            BRAYNS_WARN << "Only MVD2 format is currently supported by Brion "
-                           "circuits. Color scheme by layer not available for "
-                           "this circuit"
-                        << std::endl;
-        }
-    }
-
-    /**
      * @brief _getIndexAsTextureCoordinates converts a uint64_t index into 2
      * floats so that it can be stored in the texture coordinates of the the
      * geometry to which it is attached
@@ -434,18 +269,6 @@ private:
         textureCoordinates.x() = x;
         textureCoordinates.y() = y;
         return textureCoordinates;
-    }
-
-    /**
-     * @brief _logLoadedGIDs Logs selected GIDs for debugging purpose
-     * @param gids to trace
-     */
-    void _logLoadedGIDs(const brain::GIDSet& gids) const
-    {
-        std::stringstream gidsStr;
-        for (const auto& gid : gids)
-            gidsStr << gid << " ";
-        BRAYNS_DEBUG << "Loaded GIDs: " << gidsStr.str() << std::endl;
     }
 
     /**
@@ -818,61 +641,7 @@ private:
         return true;
     }
 
-#if (BRAYNS_USE_ASSIMP)
-    bool _importMeshes(const brain::GIDSet& gids, Scene& scene,
-                       const Matrix4fs& transformations,
-                       const GIDOffsets& targetGIDOffsets,
-                       MeshLoader& meshLoader)
-    {
-        size_t loadingFailures = 0;
-        const auto meshedMorphologiesFolder =
-            _geometryParameters.getCircuitMeshFolder();
-        if (meshedMorphologiesFolder.empty())
-            return true;
-
-        uint64_t meshIndex = 0;
-        // Loading meshes is currently sequential. TODO: Make it parallel!!!
-        std::stringstream message;
-        message << "Loading " << gids.size() << " meshes...";
-        for (const auto& gid : gids)
-        {
-            const size_t materialId = _getMaterialFromGeometryParameters(
-                meshIndex, NO_MATERIAL, brain::neuron::SectionType::undefined,
-                targetGIDOffsets, true);
-
-            // Load mesh from file
-            const auto transformation =
-                _geometryParameters.getCircuitMeshTransformation()
-                    ? transformations[meshIndex]
-                    : Matrix4f();
-            try
-            {
-                meshLoader.importFromFile(meshLoader.getMeshFilenameFromGID(
-                                              gid),
-                                          scene, transformation, materialId);
-            }
-            catch (...)
-            {
-                ++loadingFailures;
-            }
-            ++meshIndex;
-            _parent.updateProgress(message.str(), meshIndex, gids.size());
-        }
-        if (loadingFailures != 0)
-            BRAYNS_WARN << "Failed to import " << loadingFailures << " meshes"
-                        << std::endl;
-        return true;
-    }
-#else
-    bool _importMeshes(const brain::GIDSet&, const Matrix4fs&,
-                       const GIDOffsets&, MeshLoader&)
-    {
-        BRAYNS_ERROR << "assimp dependency is required to load meshes"
-                     << std::endl;
-        return false;
-    }
-#endif
-
+public:
     bool _importMorphology(const servus::URI& source, const uint64_t index,
                            const size_t material,
                            const Matrix4f& transformation,
@@ -900,111 +669,17 @@ private:
         return returnValue;
     }
 
-    bool _importMorphologies(const brain::Circuit& circuit, Scene& scene,
-                             const brain::GIDSet& gids,
-                             const Matrix4fs& transformations,
-                             const GIDOffsets& targetGIDOffsets,
-                             CompartmentReportPtr compartmentReport)
-    {
-        const brain::URIs& uris = circuit.getMorphologyURIs(gids);
-        size_t loadingFailures = 0;
-        std::stringstream message;
-        message << "Loading " << uris.size() << " morphologies...";
-        std::atomic_size_t current{0};
-#pragma omp parallel
-        {
-#pragma omp for nowait
-            for (uint64_t morphologyIndex = 0; morphologyIndex < uris.size();
-                 ++morphologyIndex)
-            {
-                ++current;
-                _parent.updateProgress(message.str(), current, uris.size());
-
-                SpheresMap spheres;
-                CylindersMap cylinders;
-                ConesMap cones;
-                TrianglesMeshMap triangleMeshes;
-                Materials materials;
-                Boxf bounds;
-                ParallelSceneContainer sceneContainer(spheres, cylinders, cones,
-                                                      triangleMeshes, materials,
-                                                      bounds);
-                const auto& uri = uris[morphologyIndex];
-
-                const size_t materialId = _getMaterialFromGeometryParameters(
-                    morphologyIndex, NO_MATERIAL,
-                    brain::neuron::SectionType::undefined, targetGIDOffsets);
-
-                if (!_importMorphology(uri, morphologyIndex, materialId,
-                                       transformations[morphologyIndex],
-                                       compartmentReport, targetGIDOffsets,
-                                       sceneContainer))
-#pragma omp atomic
-                    ++loadingFailures;
-
-#pragma omp critical
-                for (size_t i = 0; i < materials.size(); ++i)
-                    scene.setMaterial(i, materials[i]);
-
-#pragma omp critical
-                for (const auto& sphere : spheres)
-                {
-                    const auto id = sphere.first;
-                    scene.getSpheres()[id].insert(
-                        scene.getSpheres()[id].end(),
-                        sceneContainer.spheres[id].begin(),
-                        sceneContainer.spheres[id].end());
-                }
-
-#pragma omp critical
-                for (const auto& cylinder : cylinders)
-                {
-                    const auto id = cylinder.first;
-                    scene.getCylinders()[id].insert(
-                        scene.getCylinders()[id].end(),
-                        sceneContainer.cylinders[id].begin(),
-                        sceneContainer.cylinders[id].end());
-                }
-
-#pragma omp critical
-                for (const auto& cone : cones)
-                {
-                    const auto id = cone.first;
-                    scene.getCones()[id].insert(
-                        scene.getCones()[id].end(),
-                        sceneContainer.cones[id].begin(),
-                        sceneContainer.cones[id].end());
-                }
-
-#pragma omp critical
-                scene.getWorldBounds().merge(bounds);
-            }
-        }
-
-        if (loadingFailures != 0)
-        {
-            BRAYNS_ERROR << loadingFailures << " could not be loaded"
-                         << std::endl;
-            return false;
-        }
-        return true;
-    }
-
 private:
-    MorphologyLoader& _parent;
-    const ApplicationParameters& _applicationParameters;
     const GeometryParameters& _geometryParameters;
     size_ts _layerIds;
     size_ts _electrophysiologyTypes;
     size_ts _morphologyTypes;
-    size_t _materialsOffset;
+    size_t _materialsOffset{0};
 };
 
-MorphologyLoader::MorphologyLoader(
-    const ApplicationParameters& applicationParameters,
-    const GeometryParameters& geometryParameters)
-    : _impl(new MorphologyLoader::Impl(applicationParameters,
-                                       geometryParameters, *this))
+MorphologyLoader::MorphologyLoader(const GeometryParameters& geometryParameters,
+                                   const size_t materialOffset)
+    : _impl(new MorphologyLoader::Impl(geometryParameters, materialOffset))
 {
 }
 
@@ -1042,11 +717,15 @@ bool MorphologyLoader::importMorphology(const servus::URI& uri, Scene& scene,
                                    targetGIDOffsets);
 }
 
-bool MorphologyLoader::importCircuit(const servus::URI& uri,
-                                     const strings& targets,
-                                     const std::string& report, Scene& scene,
-                                     MeshLoader& meshLoader)
+bool MorphologyLoader::_importMorphology(const servus::URI& source,
+                                         const uint64_t index,
+                                         const size_t material,
+                                         const vmml::Matrix4f& transformation,
+                                         CompartmentReportPtr compartmentReport,
+                                         const GIDOffsets& targetGIDOffsets,
+                                         ParallelSceneContainer& scene)
 {
-    return _impl->importCircuit(uri, targets, report, scene, meshLoader);
+    return _impl->_importMorphology(source, index, material, transformation,
+                                    compartmentReport, targetGIDOffsets, scene);
 }
 }

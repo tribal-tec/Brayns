@@ -121,7 +121,7 @@ public:
      * @param report Report to load
      * @return True is the circuit was successfully imported, false otherwise
      */
-    bool importCircuit(const servus::URI& uri, const strings& targets,
+    bool importCircuit(const std::string& source, const strings& targets,
                        const std::string& report, Scene& scene)
     {
         _materialsOffset = scene.getMaterials().size();
@@ -131,8 +131,8 @@ public:
         try
         {
             // Open Circuit and select GIDs according to specified target
-            const brain::Circuit circuit(uri);
-            const brion::BlueConfig bc(uri.getPath());
+            const brion::BlueConfig bc(source);
+            const brain::Circuit circuit(bc);
             const auto circuitDensity =
                 _geometryParameters.getCircuitDensity() / 100.f;
 
@@ -236,8 +236,8 @@ public:
         }
         catch (const std::exception& error)
         {
-            BRAYNS_ERROR << "Failed to open " << uri.getPath() << ": "
-                         << error.what() << std::endl;
+            BRAYNS_ERROR << "Failed to open " << source << ": " << error.what()
+                         << std::endl;
             return false;
         }
 
@@ -531,27 +531,27 @@ CircuitLoader::~CircuitLoader()
 
 std::set<std::string> CircuitLoader::getSupportedDataTypes()
 {
-    return {"BlueConfig", "BlueConfig3", "CircuitConfig"};
+    return {"BlueConfig", "BlueConfig3", "CircuitConfig", "circuit"};
 }
 
-void CircuitLoader::importFromBlob(Blob&& /*blob*/, Scene& /*scene*/,
+void CircuitLoader::importFromBlob(Blob&& blob, Scene& scene,
                                    const Matrix4f& /*transformation*/,
                                    const size_t /*materialID*/)
 {
-    throw std::runtime_error("Load circuit from memory not supported");
+    _impl->importCircuit(blob.data, {}, "", scene);
 }
 
 void CircuitLoader::importFromFile(const std::string& filename, Scene& scene,
                                    const Matrix4f& /*transformation*/,
                                    const size_t /*materialID*/)
 {
-    importCircuit(servus::URI(filename), {}, "", scene);
+    _impl->importCircuit(filename, {}, "", scene);
 }
 
 bool CircuitLoader::importCircuit(const servus::URI& uri,
                                   const strings& targets,
                                   const std::string& report, Scene& scene)
 {
-    return _impl->importCircuit(uri, targets, report, scene);
+    return _impl->importCircuit(uri.getPath(), targets, report, scene);
 }
 }

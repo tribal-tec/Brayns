@@ -294,6 +294,11 @@ struct Brayns::Impl : public PluginAPI
         }
         });
 
+        registry.registerLoader({std::bind(&MorphologyLoader::getSupportedDataTypes),
+                                 [&params = _parametersManager]{ return std::make_shared<MorphologyLoader>(params.getApplicationParameters(), params.getGeometryParameters());
+        }
+        });
+
         buildScene();
         }
 
@@ -846,7 +851,7 @@ struct Brayns::Impl : public PluginAPI
             auto& scene = _engine->getScene();
             const auto& folder = geometryParameters.getMorphologyFolder();
             MorphologyLoader morphologyLoader(applicationParameters,
-                                              geometryParameters, scene);
+                                              geometryParameters);
 
             const strings filters = {".swc", ".h5"};
             const strings files = parseFolder(folder, filters);
@@ -854,7 +859,8 @@ struct Brayns::Impl : public PluginAPI
             for (const auto& file : files)
             {
                 servus::URI uri(file);
-                if (!morphologyLoader.importMorphology(uri, morphologyIndex,
+                if (!morphologyLoader.importMorphology(uri, scene,
+                                                       morphologyIndex,
                                                        NO_MATERIAL))
                     BRAYNS_ERROR << "Failed to import " << file << std::endl;
                 ++morphologyIndex;
@@ -884,7 +890,7 @@ struct Brayns::Impl : public PluginAPI
                         << std::endl;
             const std::string& report = geometryParameters.getCircuitReport();
             MorphologyLoader morphologyLoader(applicationParameters,
-                                              geometryParameters, scene);
+                                              geometryParameters);
             morphologyLoader.setProgressCallback(progressUpdate);
 
             const servus::URI uri(filename);

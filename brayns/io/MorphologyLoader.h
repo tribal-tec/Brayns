@@ -42,21 +42,20 @@ public:
     /**
      * @brief MorphologyLoader
      * @param geometryParameters
-     * @param scene
      */
     MorphologyLoader(const ApplicationParameters& applicationParameters,
-                     const GeometryParameters& geometryParameters,
-                     Scene& scene);
+                     const GeometryParameters& geometryParameters);
     ~MorphologyLoader();
 
-    virtual void importFromBlob(Blob&&, Scene&, const Matrix4f&, const size_t)
-    {
-    }
+    static std::set<std::string> getSupportedDataTypes();
 
-    virtual void importFromFile(const std::string&, Scene&, const Matrix4f&,
-                                const size_t)
-    {
-    }
+    void importFromBlob(Blob&& blob, Scene& scene,
+                        const Matrix4f& transformation,
+                        const size_t materialID) final;
+
+    void importFromFile(const std::string& filename, Scene& scene,
+                        const Matrix4f& transformation,
+                        const size_t materialID) final;
 
     /**
      * @brief Imports morphology from a given SWC or H5 file
@@ -66,8 +65,8 @@ public:
      * @param transformation Transformation to apply to the morphology
      * @return True if the morphology is successfully loaded, false otherwise
      */
-    bool importMorphology(const servus::URI& source, const uint64_t index,
-                          const size_t material,
+    bool importMorphology(const servus::URI& source, Scene& scene,
+                          const uint64_t index, const size_t material,
                           const Matrix4f& transformation = Matrix4f());
 
     /**

@@ -106,13 +106,10 @@ class MorphologyLoader::Impl
 {
 public:
     Impl(const ApplicationParameters& applicationParameters,
-         const GeometryParameters& geometryParameters, Scene& scene,
-         MorphologyLoader& parent)
+         const GeometryParameters& geometryParameters, MorphologyLoader& parent)
         : _parent(parent)
         , _applicationParameters(applicationParameters)
         , _geometryParameters(geometryParameters)
-        , _scene(scene)
-        , _materialsOffset(scene.getMaterials().size())
     {
     }
 
@@ -125,17 +122,19 @@ public:
      * @param compartmentReport Compartment report to map to the morphology
      * @return True is the morphology was successfully imported, false otherwise
      */
-    bool importMorphology(const servus::URI& source, const uint64_t index,
-                          const size_t material, const Matrix4f& transformation,
+    bool importMorphology(const servus::URI& source, Scene& scene,
+                          const uint64_t index, const size_t material,
+                          const Matrix4f& transformation,
                           const GIDOffsets& targetGIDOffsets,
                           CompartmentReportPtr compartmentReport = nullptr)
     {
-        ParallelSceneContainer sceneContainer(_scene.getSpheres(),
-                                              _scene.getCylinders(),
-                                              _scene.getCones(),
-                                              _scene.getTriangleMeshes(),
-                                              _scene.getMaterials(),
-                                              _scene.getWorldBounds());
+        _materialsOffset = scene.getMaterials().size();
+        ParallelSceneContainer sceneContainer(scene.getSpheres(),
+                                              scene.getCylinders(),
+                                              scene.getCones(),
+                                              scene.getTriangleMeshes(),
+                                              scene.getMaterials(),
+                                              scene.getWorldBounds());
 
         return _importMorphology(source, index, material, transformation,
                                  compartmentReport, targetGIDOffsets,
@@ -154,6 +153,8 @@ public:
                        const std::string& report, Scene& scene,
                        MeshLoader& meshLoader)
     {
+        _materialsOffset = scene.getMaterials().size();
+
         bool returnValue = true;
         try
         {
@@ -249,7 +250,7 @@ public:
 
             // Import meshes
             returnValue =
-                returnValue && _importMeshes(allGids, transformations,
+                returnValue && _importMeshes(allGids, scene, transformations,
                                              targetGIDOffsets, meshLoader);
 
             // Import morphologies
@@ -257,8 +258,9 @@ public:
                 _geometryParameters.getCircuitUseSimulationModel())
                 returnValue =
                     returnValue &&
-                    _importMorphologies(circuit, allGids, transformations,
-                                        targetGIDOffsets, compartmentReport);
+                    _importMorphologies(circuit, scene, allGids,
+                                        transformations, targetGIDOffsets,
+                                        compartmentReport);
         }
         catch (const std::exception& error)
         {
@@ -817,7 +819,7 @@ private:
     }
 
 #if (BRAYNS_USE_ASSIMP)
-    bool _importMeshes(const brain::GIDSet& gids,
+    bool _importMeshes(const brain::GIDSet& gids, Scene& scene,
                        const Matrix4fs& transformations,
                        const GIDOffsets& targetGIDOffsets,
                        MeshLoader& meshLoader)
@@ -847,7 +849,7 @@ private:
             {
                 meshLoader.importFromFile(meshLoader.getMeshFilenameFromGID(
                                               gid),
-                                          _scene, transformation, materialId);
+                                          scene, transformation, materialId);
             }
             catch (...)
             {
@@ -898,7 +900,7 @@ private:
         return returnValue;
     }
 
-    bool _importMorphologies(const brain::Circuit& circuit,
+    bool _importMorphologies(const brain::Circuit& circuit, Scene& scene,
                              const brain::GIDSet& gids,
                              const Matrix4fs& transformations,
                              const GIDOffsets& targetGIDOffsets,
@@ -942,14 +944,14 @@ private:
 
 #pragma omp critical
                 for (size_t i = 0; i < materials.size(); ++i)
-                    _scene.setMaterial(i, materials[i]);
+                    scene.setMaterial(i, materials[i]);
 
 #pragma omp critical
                 for (const auto& sphere : spheres)
                 {
                     const auto id = sphere.first;
-                    _scene.getSpheres()[id].insert(
-                        _scene.getSpheres()[id].end(),
+                    scene.getSpheres()[id].insert(
+                        scene.getSpheres()[id].end(),
                         sceneContainer.spheres[id].begin(),
                         sceneContainer.spheres[id].end());
                 }
@@ -958,8 +960,8 @@ private:
                 for (const auto& cylinder : cylinders)
                 {
                     const auto id = cylinder.first;
-                    _scene.getCylinders()[id].insert(
-                        _scene.getCylinders()[id].end(),
+                    scene.getCylinders()[id].insert(
+                        scene.getCylinders()[id].end(),
                         sceneContainer.cylinders[id].begin(),
                         sceneContainer.cylinders[id].end());
                 }
@@ -968,14 +970,14 @@ private:
                 for (const auto& cone : cones)
                 {
                     const auto id = cone.first;
-                    _scene.getCones()[id].insert(
-                        _scene.getCones()[id].end(),
+                    scene.getCones()[id].insert(
+                        scene.getCones()[id].end(),
                         sceneContainer.cones[id].begin(),
                         sceneContainer.cones[id].end());
                 }
 
 #pragma omp critical
-                _scene.getWorldBounds().merge(bounds);
+                scene.getWorldBounds().merge(bounds);
             }
         }
 
@@ -992,7 +994,6 @@ private:
     MorphologyLoader& _parent;
     const ApplicationParameters& _applicationParameters;
     const GeometryParameters& _geometryParameters;
-    Scene& _scene;
     size_ts _layerIds;
     size_ts _electrophysiologyTypes;
     size_ts _morphologyTypes;
@@ -1001,9 +1002,9 @@ private:
 
 MorphologyLoader::MorphologyLoader(
     const ApplicationParameters& applicationParameters,
-    const GeometryParameters& geometryParameters, Scene& scene)
+    const GeometryParameters& geometryParameters)
     : _impl(new MorphologyLoader::Impl(applicationParameters,
-                                       geometryParameters, scene, *this))
+                                       geometryParameters, *this))
 {
 }
 
@@ -1011,13 +1012,33 @@ MorphologyLoader::~MorphologyLoader()
 {
 }
 
-bool MorphologyLoader::importMorphology(const servus::URI& uri,
+std::set<std::string> MorphologyLoader::getSupportedDataTypes()
+{
+    return {"h5", "swc"};
+}
+
+void MorphologyLoader::importFromBlob(Blob&& /*blob*/, Scene& /*scene*/,
+                                      const Matrix4f& /*transformation*/,
+                                      const size_t /*materialID*/)
+{
+    throw std::runtime_error("Load morphology from memory not supported");
+}
+
+void MorphologyLoader::importFromFile(const std::string& filename, Scene& scene,
+                                      const Matrix4f& transformation,
+                                      const size_t materialID)
+{
+    importMorphology(servus::URI(filename), scene, 0, materialID,
+                     transformation);
+}
+
+bool MorphologyLoader::importMorphology(const servus::URI& uri, Scene& scene,
                                         const uint64_t index,
                                         const size_t material,
                                         const Matrix4f& transformation)
 {
     const GIDOffsets targetGIDOffsets;
-    return _impl->importMorphology(uri, index, material, transformation,
+    return _impl->importMorphology(uri, scene, index, material, transformation,
                                    targetGIDOffsets);
 }
 

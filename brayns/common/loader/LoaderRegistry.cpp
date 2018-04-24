@@ -23,6 +23,7 @@
 #include <brayns/common/utils/Utils.h>
 
 #include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 
 namespace brayns
 {
@@ -56,7 +57,7 @@ void LoaderRegistry::load(Blob&& blob, Scene& scene,
                           const Matrix4f& transformation,
                           const size_t materialID, Loader::UpdateCallback cb)
 {
-    for (auto entry : _loaders)
+    for (const auto& entry : _loaders)
     {
         if (!_canHandle(entry, blob.type))
             continue;
@@ -68,17 +69,31 @@ void LoaderRegistry::load(Blob&& blob, Scene& scene,
     }
 }
 
-void LoaderRegistry::load(const std::string& filename, Scene& scene,
+void LoaderRegistry::load(const std::string& path, Scene& scene,
                           const Matrix4f& transformation,
                           const size_t materialID, Loader::UpdateCallback cb)
 {
-    for (auto entry : _loaders)
+    for (const auto& entry : _loaders)
     {
-        if (!_canHandle(entry, filename))
+        if (!_canHandle(entry, path))
             continue;
+
         auto loader = entry.createLoader();
         loader->setProgressCallback(cb);
-        loader->importFromFile(filename, scene, transformation, materialID);
+
+        if (fs::is_directory(path))
+        {
+            for (const auto& i :
+                 boost::make_iterator_range(fs::directory_iterator(path), {}))
+            {
+                const auto& currentPath = i.path().string();
+                if (_canHandle(entry, currentPath))
+                    loader->importFromFile(currentPath, scene, transformation,
+                                           materialID);
+            }
+        }
+        else
+            loader->importFromFile(path, scene, transformation, materialID);
         return;
     }
     throw std::runtime_error("no loader found");
@@ -87,7 +102,18 @@ void LoaderRegistry::load(const std::string& filename, Scene& scene,
 bool LoaderRegistry::_canHandle(const LoaderInfo& loader,
                                 const std::string& type) const
 {
-    auto extension = boost::filesystem::extension(type);
+    // the first file in the folder that is supported by this loader wins
+    if (fs::is_directory(type))
+    {
+        for (const auto& i :
+             boost::make_iterator_range(fs::directory_iterator(type), {}))
+        {
+            if (_canHandle(loader, i.path().string()))
+                return true;
+        }
+        return false;
+    }
+    auto extension = fs::extension(type);
     if (extension.empty())
         extension = type;
     else
@@ -96,8 +122,7 @@ bool LoaderRegistry::_canHandle(const LoaderInfo& loader,
     auto types = loader.supportedTypes();
     auto found =
         std::find_if(types.cbegin(), types.cend(), [extension](auto val) {
-            return lowerCase(val).find(lowerCase(extension)) !=
-                   std::string::npos;
+            return lowerCase(val) == lowerCase(extension);
         });
     return found != types.end();
 }

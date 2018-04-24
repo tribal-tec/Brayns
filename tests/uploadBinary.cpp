@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE(xyz)
 {
     brayns::BinaryParam params;
     params.size = [] {
-        std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
+        std::ifstream file(BRAYNS_TESTDATA + std::string("files/monkey.xyz"),
                            std::ios::binary | std::ios::ate);
         return file.tellg();
     }();
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(xyz)
             process();
     });
 
-    std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
+    std::ifstream file(BRAYNS_TESTDATA + std::string("files/monkey.xyz"),
                        std::ios::binary);
 
     std::vector<char> buffer(1024, 0);
@@ -328,14 +328,14 @@ BOOST_AUTO_TEST_CASE(multiple_files)
 {
     std::vector<brayns::BinaryParam> params{2};
     params[0].size = [] {
-        std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+        std::ifstream file(BRAYNS_TESTDATA + std::string("files/bennu.obj"),
                            std::ios::binary | std::ios::ate);
         return file.tellg();
     }();
     params[0].type = "obj";
 
     params[1].size = [] {
-        std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
+        std::ifstream file(BRAYNS_TESTDATA + std::string("files/monkey.xyz"),
                            std::ios::binary | std::ios::ate);
         return file.tellg();
     }();
@@ -353,7 +353,7 @@ BOOST_AUTO_TEST_CASE(multiple_files)
     std::vector<char> buffer(1024, 0);
 
     {
-        std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+        std::ifstream file(BRAYNS_TESTDATA + std::string("files/bennu.obj"),
                            std::ios::binary);
 
         while (file.read(buffer.data(), buffer.size()))
@@ -371,7 +371,7 @@ BOOST_AUTO_TEST_CASE(multiple_files)
         }
     }
 
-    std::ifstream file(BRAYNS_TESTDATA + std::string("monkey.xyz"),
+    std::ifstream file(BRAYNS_TESTDATA + std::string("files/monkey.xyz"),
                        std::ios::binary);
 
     while (file.read(buffer.data(), buffer.size()))
@@ -396,7 +396,7 @@ BOOST_AUTO_TEST_CASE(obj)
 {
     brayns::BinaryParam params;
     params.size = [] {
-        std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+        std::ifstream file(BRAYNS_TESTDATA + std::string("files/bennu.obj"),
                            std::ios::binary | std::ios::ate);
         return file.tellg();
     }();
@@ -411,7 +411,7 @@ BOOST_AUTO_TEST_CASE(obj)
             process();
     });
 
-    std::ifstream file(BRAYNS_TESTDATA + std::string("bennu.obj"),
+    std::ifstream file(BRAYNS_TESTDATA + std::string("files/bennu.obj"),
                        std::ios::binary);
 
     std::vector<char> buffer(1024, 0);

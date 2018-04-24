@@ -51,16 +51,7 @@ UploadPathTask::UploadPathTask(const std::vector<std::string>& paths,
         if (!boost::filesystem::exists(path_))
             throw INVALID_PATH;
 
-        if (boost::filesystem::is_directory(path_))
-            throw UNSUPPORTED_FOLDERS;
-
-        if (!path_.has_extension())
-            throw UNSUPPORTED_TYPE(
-                {i, {supportedTypes.begin(), supportedTypes.end()}});
-
-        const auto extension = boost::filesystem::extension(path_);
-
-        if (!registry.isSupported(extension))
+        if (!registry.isSupported(path))
             throw UNSUPPORTED_TYPE(
                 {i, {supportedTypes.begin(), supportedTypes.end()}});
     }

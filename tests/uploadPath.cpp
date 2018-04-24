@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(multiple_files_one_unsupported)
     try
     {
         makeRequest<std::vector<std::string>, bool>(
-            UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("monkey.xyz"),
+            UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("files/monkey.xyz"),
                           BRAYNS_TESTDATA + std::string("unsupported.abc")});
     }
     catch (const rockets::jsonrpc::response_error& e)
@@ -110,20 +110,20 @@ BOOST_AUTO_TEST_CASE(multiple_files_one_unsupported)
 BOOST_AUTO_TEST_CASE(xyz)
 {
     BOOST_CHECK((makeRequest<std::vector<std::string>, bool>(
-        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("monkey.xyz")})));
+        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("files/monkey.xyz")})));
 }
 
 BOOST_AUTO_TEST_CASE(obj)
 {
     BOOST_CHECK((makeRequest<std::vector<std::string>, bool>(
-        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("bennu.obj")})));
+        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("files/bennu.obj")})));
 }
 
 BOOST_AUTO_TEST_CASE(multiple_files)
 {
     BOOST_CHECK((makeRequest<std::vector<std::string>, bool>(
-        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("monkey.xyz"),
-                      BRAYNS_TESTDATA + std::string("bennu.obj")})));
+        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("files/monkey.xyz"),
+                      BRAYNS_TESTDATA + std::string("files/bennu.obj")})));
 }
 
 BOOST_AUTO_TEST_CASE(broken_xyz)
@@ -167,7 +167,8 @@ BOOST_AUTO_TEST_CASE(close_client_while_pending_request)
     auto responseFuture =
         rockets::jsonrpc::Client<rockets::ws::Client>{*wsClient}
             .request<std::vector<std::string>, bool>(
-                UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("monkey.xyz")});
+                UPLOAD_PATH,
+                {BRAYNS_TESTDATA + std::string("files/monkey.xyz")});
 
     auto asyncWait =
         std::async(std::launch::async, [&responseFuture, &wsClient] {
@@ -185,16 +186,8 @@ BOOST_AUTO_TEST_CASE(close_client_while_pending_request)
 
 BOOST_AUTO_TEST_CASE(folder)
 {
-    try
-    {
-        makeRequest<std::vector<std::string>, bool>(UPLOAD_PATH,
-                                                    {BRAYNS_TESTDATA});
-    }
-    catch (const rockets::jsonrpc::response_error& e)
-    {
-        BOOST_CHECK_EQUAL(e.code, -1736);
-        BOOST_CHECK(e.data.empty());
-    }
+    BOOST_CHECK((makeRequest<std::vector<std::string>, bool>(
+        UPLOAD_PATH, {BRAYNS_TESTDATA + std::string("files")})));
 }
 
 #ifdef BRAYNS_USE_BBPTESTDATA

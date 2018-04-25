@@ -45,6 +45,7 @@ BOOST_AUTO_TEST_CASE(illegal_no_params)
     try
     {
         makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY, {});
+        BOOST_REQUIRE(false);
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
@@ -60,6 +61,7 @@ BOOST_AUTO_TEST_CASE(missing_params)
     {
         makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
+        BOOST_REQUIRE(false);
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
@@ -77,6 +79,7 @@ BOOST_AUTO_TEST_CASE(invalid_size)
     {
         makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
+        BOOST_REQUIRE(false);
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
@@ -94,6 +97,7 @@ BOOST_AUTO_TEST_CASE(unsupported_type)
     {
         makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             {params});
+        BOOST_REQUIRE(false);
     }
     catch (const rockets::jsonrpc::response_error& e)
     {
@@ -116,6 +120,7 @@ BOOST_AUTO_TEST_CASE(multiple_files_one_unsupported)
     {
         makeRequest<std::vector<brayns::BinaryParam>, bool>(UPLOAD_BINARY,
                                                             params);
+        BOOST_REQUIRE(false);
     }
     catch (const rockets::jsonrpc::response_error& e)
     {

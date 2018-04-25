@@ -26,8 +26,6 @@
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/scene/Scene.h>
 
-#include <boost/filesystem.hpp>
-
 namespace brayns
 {
 UploadPathTask::UploadPathTask(const std::vector<std::string>& paths,
@@ -43,14 +41,6 @@ UploadPathTask::UploadPathTask(const std::vector<std::string>& paths,
     for (size_t i = 0; i < paths.size(); ++i)
     {
         const auto& path = paths[i];
-
-        if (path == "forever")
-            continue;
-
-        const boost::filesystem::path path_ = path;
-        if (!boost::filesystem::exists(path_))
-            throw INVALID_PATH;
-
         if (!registry.isSupported(path))
             throw UNSUPPORTED_TYPE(
                 {i, {supportedTypes.begin(), supportedTypes.end()}});

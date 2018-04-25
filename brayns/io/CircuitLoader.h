@@ -36,10 +36,6 @@ namespace brayns
 class CircuitLoader : public Loader
 {
 public:
-    /**
-     * @brief MorphologyLoader
-     * @param geometryParameters
-     */
     CircuitLoader(const ApplicationParameters& applicationParameters,
                   const GeometryParameters& geometryParameters);
     ~CircuitLoader();

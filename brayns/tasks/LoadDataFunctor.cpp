@@ -29,6 +29,8 @@
 
 #include <brayns/parameters/ParametersManager.h>
 
+#include <boost/filesystem.hpp>
+
 namespace brayns
 {
 const size_t LOADING_PROGRESS_DATA = 100;
@@ -62,6 +64,9 @@ void LoadDataFunctor::operator()(Blob&& blob)
 
 void LoadDataFunctor::operator()(const std::string& path)
 {
+    const boost::filesystem::path path_ = path;
+    if (!boost::filesystem::exists(path_))
+        throw INVALID_PATH;
     _performLoad([&] { _loadData(path); });
 }
 

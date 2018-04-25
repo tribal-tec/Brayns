@@ -460,11 +460,11 @@ std::set<std::string> CircuitLoader::getSupportedDataTypes()
     return {"BlueConfig", "BlueConfig3", "CircuitConfig", "circuit"};
 }
 
-void CircuitLoader::importFromBlob(Blob&& blob, Scene& scene,
+void CircuitLoader::importFromBlob(Blob&& /*blob*/, Scene& /*scene*/,
                                    const Matrix4f& /*transformation*/,
                                    const size_t /*materialID*/)
 {
-    _impl->importCircuit(blob.data, {}, "", scene);
+    throw std::runtime_error("Loading circuit from blob is not supported");
 }
 
 void CircuitLoader::importFromFile(const std::string& filename, Scene& scene,

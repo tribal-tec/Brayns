@@ -23,17 +23,13 @@
 #include <brayns/common/geometry/Cone.h>
 #include <brayns/common/geometry/Cylinder.h>
 #include <brayns/common/geometry/Sphere.h>
-#include <brayns/common/log.h>
 #include <brayns/common/scene/Scene.h>
+#include <brayns/common/utils/Utils.h>
+
 #include <brayns/io/algorithms/MetaballsGenerator.h>
-#include <brayns/io/simulation/CircuitSimulationHandler.h>
 
 #include <brain/brain.h>
 #include <brion/brion.h>
-#include <servus/types.h>
-
-//#include <algorithm>
-#include <sstream>
 
 namespace
 {
@@ -703,8 +699,10 @@ void MorphologyLoader::importFromFile(const std::string& filename, Scene& scene,
                                       const Matrix4f& transformation,
                                       const size_t materialID)
 {
+    updateProgress("Loading " + shortenString(filename) + " ...", 0, 100);
     importMorphology(servus::URI(filename), scene, 0, materialID,
                      transformation);
+    updateProgress("Loading " + shortenString(filename) + " ...", 100, 100);
 }
 
 bool MorphologyLoader::importMorphology(const servus::URI& uri, Scene& scene,

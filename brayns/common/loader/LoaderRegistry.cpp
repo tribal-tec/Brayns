@@ -79,10 +79,21 @@ void LoaderRegistry::load(const std::string& path, Scene& scene,
             continue;
 
         auto loader = entry.createLoader();
-        loader->setProgressCallback(cb);
 
         if (fs::is_directory(path))
         {
+            fs::directory_iterator begin(path), end;
+            const int numFiles = std::count_if(begin, end, [](const auto& d) {
+                return !fs::is_directory(d.path());
+            });
+
+            float total = 0.f;
+            auto progressCb = [cb, numFiles, &total](auto msg, auto amount) {
+                total += amount / numFiles;
+                cb(msg, total);
+            };
+            loader->setProgressCallback(progressCb);
+
             for (const auto& i :
                  boost::make_iterator_range(fs::directory_iterator(path), {}))
             {
@@ -93,7 +104,10 @@ void LoaderRegistry::load(const std::string& path, Scene& scene,
             }
         }
         else
+        {
+            loader->setProgressCallback(cb);
             loader->importFromFile(path, scene, transformation, materialID);
+        }
         return;
     }
     throw std::runtime_error("no loader found");

@@ -23,30 +23,16 @@
 #include <brayns/common/geometry/Cone.h>
 #include <brayns/common/geometry/Cylinder.h>
 #include <brayns/common/geometry/Sphere.h>
-#include <brayns/common/log.h>
 #include <brayns/common/scene/Scene.h>
-#include <brayns/io/algorithms/MetaballsGenerator.h>
 #include <brayns/io/simulation/CircuitSimulationHandler.h>
 
 #include <brain/brain.h>
 #include <brion/brion.h>
-#include <servus/types.h>
 
 #include <brayns/io/MorphologyLoader.h>
 #if (BRAYNS_USE_ASSIMP)
 #include <brayns/io/MeshLoader.h>
 #endif
-
-#include <algorithm>
-#include <fstream>
-
-#include <boost/filesystem.hpp>
-
-namespace
-{
-// needs to be the same in SimulationRenderer.ispc
-const float INDEX_MAGIC = 1e6;
-}
 
 namespace brayns
 {
@@ -408,7 +394,7 @@ private:
         return true;
     }
 #else
-    bool _importMeshes(const brain::GIDSet&, const Matrix4fs&,
+    bool _importMeshes(const brain::GIDSet&, Scene&, const Matrix4fs&,
                        const GIDOffsets&)
     {
         BRAYNS_ERROR << "assimp dependency is required to load meshes"

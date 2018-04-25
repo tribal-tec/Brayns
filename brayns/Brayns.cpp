@@ -291,20 +291,20 @@ struct Brayns::Impl : public PluginAPI
         REGISTER_LOADER(MeshLoader,
                         [& params =
                                 _parametersManager.getGeometryParameters()] {
-                            return std::make_shared<MeshLoader>(params);
+                            return std::make_unique<MeshLoader>(params);
                         });
         REGISTER_LOADER(XYZBLoader,
                         [& params =
                                 _parametersManager.getGeometryParameters()] {
-                            return std::make_shared<XYZBLoader>(params);
+                            return std::make_unique<XYZBLoader>(params);
                         });
         REGISTER_LOADER(MorphologyLoader,
                         [& params =
                                 _parametersManager.getGeometryParameters()] {
-                            return std::make_shared<MorphologyLoader>(params);
+                            return std::make_unique<MorphologyLoader>(params);
                         });
         REGISTER_LOADER(CircuitLoader, [& params = _parametersManager] {
-            return std::make_shared<CircuitLoader>(
+            return std::make_unique<CircuitLoader>(
                 params.getApplicationParameters(),
                 params.getGeometryParameters());
         });
@@ -760,8 +760,7 @@ private:
         {
             NESTLoader loader(geometryParameters);
 
-            // need to import circuit first to determine _frameSize for
-            // report
+            // need to import circuit first to determine _frameSize for report
             // loading
             loader.importCircuit(circuit, scene);
 
@@ -800,8 +799,7 @@ private:
 
     /**
         Loads data from SWC and H5 files located in the folder specified
-       in the geometry parameters (command line parameter
-       --morphology-folder)
+       in the geometry parameters (command line parameter --morphology-folder)
     */
     void _loadMorphologyFolder(const Loader::UpdateCallback& progressUpdate)
     {
@@ -1296,8 +1294,7 @@ private:
 #ifdef BRAYNS_USE_LUNCHBOX
     // it is important to perform loading and unloading in the same thread,
     // otherwise we leak memory from within ospray/embree. So we don't use
-    // std::async(std::launch::async), but rather a thread pool with one
-    // thread
+    // std::async(std::launch::async), but rather a thread pool with one thread
     // that remains for the entire application lifetime.
     lunchbox::ThreadPool _loadingThread{1};
 #endif

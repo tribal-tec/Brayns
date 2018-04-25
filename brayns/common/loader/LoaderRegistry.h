@@ -1,6 +1,6 @@
 /* Copyright (c) 2015-2018, EPFL/Blue Brain Project
- * All rights reserved. Do not distribute without permission.
- * Responsible Author: Daniel.Nachbaur <daniel.nachbaur@epfl.ch>
+ *
+ * Responsible Author: Daniel.Nachbaur@epfl.ch
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -24,26 +24,60 @@
 
 namespace brayns
 {
+/**
+ * Holds information about registered loaders and helps creating and using the
+ * appropriate loader for a given blob or file.
+ */
 class LoaderRegistry
 {
 public:
-    LoaderRegistry() = default;
-
     struct LoaderInfo
     {
+        /**
+         * The function that returns the supported types (extension, filename
+         * patterns) of the loader.
+         */
         std::function<std::set<std::string>()> supportedTypes;
+
+        /** The function to create the loader. */
         std::function<LoaderPtr()> createLoader;
     };
 
+    /** Register the given loader. */
     void registerLoader(LoaderInfo loaderInfo);
 
+    /**
+     * @return true if any of the registered loaders can handle the given type
+     * (extension, filename).
+     */
     bool isSupported(const std::string& type) const;
 
+    /** @return the list of all supported types from all registered loaders. */
     std::set<std::string> supportedTypes() const;
 
+    /**
+     * Load the given blob into the given scene by choosing the first matching
+     * loader based on the blob's type.
+     *
+     * @param blob the blob containing the data to import
+     * @param scene the scene where to add the loaded model to
+     * @param transformation the transformation to apply for the added model
+     * @param materialID the default material ot use
+     * @param cb the callback for progress updates from the loader
+     */
     void load(Blob&& blob, Scene& scene, const Matrix4f& transformation,
               const size_t materialID, Loader::UpdateCallback cb);
 
+    /**
+     * Load the given file into the given scene by choosing the first matching
+     * loader based on the filename or filetype.
+     *
+     * @param filename the file containing the data to import
+     * @param scene the scene where to add the loaded model to
+     * @param transformation the transformation to apply for the added model
+     * @param materialID the default material ot use
+     * @param cb the callback for progress updates from the loader
+     */
     void load(const std::string& filename, Scene& scene,
               const Matrix4f& transformation, const size_t materialID,
               Loader::UpdateCallback cb);
@@ -51,6 +85,6 @@ public:
 private:
     std::vector<LoaderInfo> _loaders;
 
-    bool _canHandle(const LoaderInfo& loader, const std::string& type) const;
+    bool _isSupported(const LoaderInfo& loader, const std::string& type) const;
 };
 }

@@ -402,7 +402,7 @@ struct Blob
 };
 
 class Loader;
-using LoaderPtr = std::shared_ptr<Loader>;
+using LoaderPtr = std::unique_ptr<Loader>;
 }
 
 #endif // TYPES_H

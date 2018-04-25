@@ -37,13 +37,15 @@ class ConnectivityLoader : public Loader
 public:
     ConnectivityLoader(const GeometryParameters& geometryParameters);
 
-    virtual void importFromBlob(Blob&&, Scene&, const Matrix4f&, const size_t)
+    void importFromBlob(Blob&&, Scene&, const Matrix4f&, const size_t) final
     {
+        throw std::runtime_error("Unsupported");
     }
 
-    virtual void importFromFile(const std::string&, Scene&, const Matrix4f&,
-                                const size_t)
+    void importFromFile(const std::string&, Scene&, const Matrix4f&,
+                        const size_t) final
     {
+        throw std::runtime_error("Unsupported");
     }
 
     /**

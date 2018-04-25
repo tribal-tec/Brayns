@@ -36,7 +36,7 @@ bool LoaderRegistry::isSupported(const std::string& type) const
 {
     for (auto entry : _loaders)
     {
-        if (_canHandle(entry, type))
+        if (_isSupported(entry, type))
             return true;
     }
     return false;
@@ -59,7 +59,7 @@ void LoaderRegistry::load(Blob&& blob, Scene& scene,
 {
     for (const auto& entry : _loaders)
     {
-        if (!_canHandle(entry, blob.type))
+        if (!_isSupported(entry, blob.type))
             continue;
         auto loader = entry.createLoader();
         loader->setProgressCallback(cb);
@@ -75,7 +75,7 @@ void LoaderRegistry::load(const std::string& path, Scene& scene,
 {
     for (const auto& entry : _loaders)
     {
-        if (!_canHandle(entry, path))
+        if (!_isSupported(entry, path))
             continue;
 
         auto loader = entry.createLoader();
@@ -98,9 +98,11 @@ void LoaderRegistry::load(const std::string& path, Scene& scene,
                  boost::make_iterator_range(fs::directory_iterator(path), {}))
             {
                 const auto& currentPath = i.path().string();
-                if (_canHandle(entry, currentPath))
+                if (_isSupported(entry, currentPath))
                     loader->importFromFile(currentPath, scene, transformation,
                                            materialID);
+                else
+                    progressCb("Skip file", 1.f);
             }
         }
         else
@@ -113,8 +115,8 @@ void LoaderRegistry::load(const std::string& path, Scene& scene,
     throw std::runtime_error("no loader found");
 }
 
-bool LoaderRegistry::_canHandle(const LoaderInfo& loader,
-                                const std::string& type) const
+bool LoaderRegistry::_isSupported(const LoaderInfo& loader,
+                                  const std::string& type) const
 {
     // the first file in the folder that is supported by this loader wins
     if (fs::is_directory(type))
@@ -122,7 +124,7 @@ bool LoaderRegistry::_canHandle(const LoaderInfo& loader,
         for (const auto& i :
              boost::make_iterator_range(fs::directory_iterator(type), {}))
         {
-            if (_canHandle(loader, i.path().string()))
+            if (_isSupported(loader, i.path().string()))
                 return true;
         }
         return false;
@@ -130,6 +132,7 @@ bool LoaderRegistry::_canHandle(const LoaderInfo& loader,
     auto extension = fs::extension(type);
     if (extension.empty())
     {
+        // if the path has no extension, treat the filename as the type
         if (fs::is_regular_file(type))
             extension = fs::path(type).filename().string();
         else

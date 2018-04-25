@@ -45,13 +45,6 @@ public:
     {
     }
 
-    /**
-     * @brief importCircuit Imports a circuit from a specified URI
-     * @param uri URI of the CircuitConfig
-     * @param target Target to load
-     * @param report Report to load
-     * @return True is the circuit was successfully imported, false otherwise
-     */
     bool importCircuit(const std::string& source, const strings& targets,
                        const std::string& report, Scene& scene)
     {

@@ -362,11 +362,29 @@ public:
 
     /** @return the current size in bytes of the loaded geometry. */
     size_t getSizeInBytes() const { return _sizeInBytes; }
+    /**
+     * Load the data from the given blob.
+     *
+     * @param blob the blob containing the data to import
+     * @param transformation the transformation to apply for the added model
+     * @param materialID the default material ot use
+     * @param cb the callback for progress updates from the loader
+     */
     void load(Blob&& blob, const Matrix4f& transformation,
               const size_t materialID, Loader::UpdateCallback cb);
+
+    /**
+     * Load the data from the given file.
+     *
+     * @param filename the file containing the data to import
+     * @param transformation the transformation to apply for the added model
+     * @param materialID the default material ot use
+     * @param cb the callback for progress updates from the loader
+     */
     void load(const std::string& filename, const Matrix4f& transformation,
               const size_t materialID, Loader::UpdateCallback cb);
 
+    /** @return the registry for all supported loaders of this scene. */
     LoaderRegistry& getLoaderRegistry() { return _loaderRegistry; }
 protected:
     void _buildMissingMaterials(const size_t materialId);

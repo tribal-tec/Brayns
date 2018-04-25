@@ -1,6 +1,6 @@
 /* Copyright (c) 2015-2018, EPFL/Blue Brain Project
- * All rights reserved. Do not distribute without permission.
- * Responsible Author: Daniel.Nachbaur <daniel.nachbaur@epfl.ch>
+ *
+ * Responsible Author: Daniel.Nachbaur@epfl.ch
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -22,23 +22,41 @@
 
 #include <brayns/common/types.h>
 
-#include <memory>
-
 #ifdef BRAYNS_USE_OPENMP
 #include <omp.h>
 #endif
 
 namespace brayns
 {
+/**
+ * A base class for data loaders to unify loading data from blobs and files, and
+ * provide progress feedback.
+ */
 class Loader
 {
 public:
     virtual ~Loader() = default;
 
+    /**
+     * Import the data from the blob and add it to the scene.
+     *
+     * @param blob the blob containing the data to import
+     * @param scene the scene where to add the loaded model to
+     * @param transformation the transformation to apply for the added model
+     * @param materialID the default material ot use
+     */
     virtual void importFromBlob(Blob&& blob, Scene& scene,
                                 const Matrix4f& transformation,
                                 const size_t materialID) = 0;
 
+    /**
+     * Import the data from the given file and add it to the scene.
+     *
+     * @param filename the file containing the data to import
+     * @param scene the scene where to add the loaded model to
+     * @param transformation the transformation to apply for the added model
+     * @param materialID the default material ot use
+     */
     virtual void importFromFile(const std::string& filename, Scene& scene,
                                 const Matrix4f& transformation,
                                 const size_t materialID) = 0;

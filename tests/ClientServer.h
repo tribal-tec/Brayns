@@ -94,7 +94,7 @@ public:
 
         _brayns->getEngine().getScene().getLoaderRegistry().registerLoader(
             {[] { return std::set<std::string>{std::string("forever")}; },
-             [] { return std::make_shared<ForeverLoader>(); }});
+             [] { return std::make_unique<ForeverLoader>(); }});
 
         connect(_wsClient);
         _instance = this;

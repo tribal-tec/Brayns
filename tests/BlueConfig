@@ -1,0 +1,8 @@
+Run Default
+{
+    MorphologyPath /home/nachbaur/dev/viz.stable/BBPTestData/circuitBuilding_1000neurons/morphologies
+    CircuitPath /home/nachbaur/dev/viz.stable/BBPTestData/circuitBuilding_1000neurons/circuits
+    nrnPath /home/nachbaur/dev/viz.stable/BBPTestData/circuitBuilding_1000neurons/Functionalizer_output
+    TargetFile /home/nachbaur/dev/viz.stable/BBPTestData/circuitBuilding_1000neurons/default_user.target
+    CircuitTarget Layer1
+}

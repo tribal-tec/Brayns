@@ -29,6 +29,10 @@ set(BRAYNSIO_PUBLIC_HEADERS
   XYZBLoader.h
 )
 
+set(BRAYNSIO_HEADERS
+  circuitLoaderCommon.h
+)
+
 set(BRAYNSIO_LINK_LIBRARIES
   PRIVATE braynsParameters braynsCommon vmmlib
     ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${ASSIMP_LIBRARIES} ${assimp_LIBRARIES}

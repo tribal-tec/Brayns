@@ -25,6 +25,7 @@
 #include <brayns/common/types.h>
 #include <brayns/parameters/GeometryParameters.h>
 
+#include <brain/neuron/types.h>
 #include <brion/types.h>
 
 #include <vector>
@@ -38,17 +39,13 @@ namespace brayns
 {
 class CircuitLoader;
 struct ParallelSceneContainer;
-/** Loads morphologies from SWC and H5, and Circuit Config files
- */
+using GIDOffsets = std::vector<uint64_t>;
+
+/** Loads morphologies from SWC and H5, and Circuit Config files */
 class MorphologyLoader : public Loader
 {
 public:
-    /**
-     * @brief MorphologyLoader
-     * @param geometryParameters
-     */
-    MorphologyLoader(const GeometryParameters& geometryParameters,
-                     const size_t materialOffset = 0);
+    MorphologyLoader(const GeometryParameters& geometryParameters);
     ~MorphologyLoader();
 
     static std::set<std::string> getSupportedDataTypes();
@@ -75,12 +72,11 @@ public:
 
 private:
     typedef std::shared_ptr<brion::CompartmentReport> CompartmentReportPtr;
-    typedef std::vector<uint64_t> GIDOffsets;
+    using MaterialFunc = std::function<size_t(brain::neuron::SectionType)>;
     bool _importMorphology(const servus::URI& source, const uint64_t index,
-                           const size_t material,
+                           MaterialFunc materialFunc,
                            const Matrix4f& transformation,
                            CompartmentReportPtr compartmentReport,
-                           const GIDOffsets& targetGIDOffsets,
                            ParallelSceneContainer& scene);
     friend class CircuitLoader;
     class Impl;

@@ -19,10 +19,8 @@
  */
 
 #include "CircuitLoader.h"
+#include "circuitLoaderCommon.h"
 
-#include <brayns/common/geometry/Cone.h>
-#include <brayns/common/geometry/Cylinder.h>
-#include <brayns/common/geometry/Sphere.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/io/simulation/CircuitSimulationHandler.h>
 
@@ -36,59 +34,6 @@
 
 namespace brayns
 {
-typedef std::vector<uint64_t> GIDOffsets;
-
-struct ParallelSceneContainer
-{
-public:
-    ParallelSceneContainer(SpheresMap& s, CylindersMap& cy, ConesMap& co,
-                           TrianglesMeshMap& tm, Materials& m, Boxf& wb)
-        : spheres(s)
-        , cylinders(cy)
-        , cones(co)
-        , trianglesMeshes(tm)
-        , materials(m)
-        , worldBounds(wb)
-    {
-    }
-
-    void _buildMissingMaterials(const size_t materialId)
-    {
-        if (materialId >= materials.size())
-            materials.resize(materialId + 1);
-    }
-
-    void addSphere(const size_t materialId, const Sphere& sphere)
-    {
-        _buildMissingMaterials(materialId);
-        spheres[materialId].push_back(sphere);
-        worldBounds.merge(sphere.center);
-    }
-
-    void addCylinder(const size_t materialId, const Cylinder& cylinder)
-    {
-        _buildMissingMaterials(materialId);
-        cylinders[materialId].push_back(cylinder);
-        worldBounds.merge(cylinder.center);
-        worldBounds.merge(cylinder.up);
-    }
-
-    void addCone(const size_t materialId, const Cone& cone)
-    {
-        _buildMissingMaterials(materialId);
-        cones[materialId].push_back(cone);
-        worldBounds.merge(cone.center);
-        worldBounds.merge(cone.up);
-    }
-
-    SpheresMap& spheres;
-    CylindersMap& cylinders;
-    ConesMap& cones;
-    TrianglesMeshMap& trianglesMeshes;
-    Materials& materials;
-    Boxf& worldBounds;
-};
-
 class CircuitLoader::Impl
 {
 public:
@@ -111,7 +56,6 @@ public:
                        const std::string& report, Scene& scene)
     {
         _materialsOffset = scene.getMaterials().size();
-        MorphologyLoader morphLoader(_geometryParameters, _materialsOffset);
 
         bool returnValue = true;
         try
@@ -214,11 +158,14 @@ public:
             // Import morphologies
             if (_geometryParameters.getCircuitMeshFolder().empty() ||
                 _geometryParameters.getCircuitUseSimulationModel())
+            {
+                MorphologyLoader morphLoader(_geometryParameters);
                 returnValue =
                     returnValue &&
                     _importMorphologies(circuit, scene, allGids,
                                         transformations, targetGIDOffsets,
                                         compartmentReport, morphLoader);
+            }
         }
         catch (const std::exception& error)
         {
@@ -435,14 +382,14 @@ private:
                                                       bounds);
                 const auto& uri = uris[morphologyIndex];
 
-                const size_t materialId = _getMaterialFromGeometryParameters(
-                    morphologyIndex, NO_MATERIAL,
-                    brain::neuron::SectionType::undefined, targetGIDOffsets);
-
                 if (!morphLoader._importMorphology(
-                        uri, morphologyIndex, materialId,
+                        uri, morphologyIndex,
+                        std::bind(&Impl::_getMaterialFromGeometryParameters,
+                                  this, morphologyIndex, NO_MATERIAL,
+                                  std::placeholders::_1, targetGIDOffsets,
+                                  false),
                         transformations[morphologyIndex], compartmentReport,
-                        targetGIDOffsets, sceneContainer))
+                        sceneContainer))
 #pragma omp atomic
                     ++loadingFailures;
 

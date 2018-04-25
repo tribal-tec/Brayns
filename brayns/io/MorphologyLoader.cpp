@@ -19,10 +19,8 @@
  */
 
 #include "MorphologyLoader.h"
+#include "circuitLoaderCommon.h"
 
-#include <brayns/common/geometry/Cone.h>
-#include <brayns/common/geometry/Cylinder.h>
-#include <brayns/common/geometry/Sphere.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/utils/Utils.h>
 
@@ -39,64 +37,11 @@ const float INDEX_MAGIC = 1e6;
 
 namespace brayns
 {
-struct ParallelSceneContainer
-{
-public:
-    ParallelSceneContainer(SpheresMap& s, CylindersMap& cy, ConesMap& co,
-                           TrianglesMeshMap& tm, Materials& m, Boxf& wb)
-        : spheres(s)
-        , cylinders(cy)
-        , cones(co)
-        , trianglesMeshes(tm)
-        , materials(m)
-        , worldBounds(wb)
-    {
-    }
-
-    void _buildMissingMaterials(const size_t materialId)
-    {
-        if (materialId >= materials.size())
-            materials.resize(materialId + 1);
-    }
-
-    void addSphere(const size_t materialId, const Sphere& sphere)
-    {
-        _buildMissingMaterials(materialId);
-        spheres[materialId].push_back(sphere);
-        worldBounds.merge(sphere.center);
-    }
-
-    void addCylinder(const size_t materialId, const Cylinder& cylinder)
-    {
-        _buildMissingMaterials(materialId);
-        cylinders[materialId].push_back(cylinder);
-        worldBounds.merge(cylinder.center);
-        worldBounds.merge(cylinder.up);
-    }
-
-    void addCone(const size_t materialId, const Cone& cone)
-    {
-        _buildMissingMaterials(materialId);
-        cones[materialId].push_back(cone);
-        worldBounds.merge(cone.center);
-        worldBounds.merge(cone.up);
-    }
-
-    SpheresMap& spheres;
-    CylindersMap& cylinders;
-    ConesMap& cones;
-    TrianglesMeshMap& trianglesMeshes;
-    Materials& materials;
-    Boxf& worldBounds;
-};
-
 class MorphologyLoader::Impl
 {
 public:
-    Impl(const GeometryParameters& geometryParameters,
-         const size_t materialOffset)
+    Impl(const GeometryParameters& geometryParameters)
         : _geometryParameters(geometryParameters)
-        , _materialsOffset(materialOffset)
     {
     }
 
@@ -112,10 +57,8 @@ public:
     bool importMorphology(const servus::URI& source, Scene& scene,
                           const uint64_t index, const size_t material,
                           const Matrix4f& transformation,
-                          const GIDOffsets& targetGIDOffsets,
                           CompartmentReportPtr compartmentReport = nullptr)
     {
-        _materialsOffset = scene.getMaterials().size();
         ParallelSceneContainer sceneContainer(scene.getSpheres(),
                                               scene.getCylinders(),
                                               scene.getCones(),
@@ -123,9 +66,48 @@ public:
                                               scene.getMaterials(),
                                               scene.getWorldBounds());
 
-        return _importMorphology(source, index, material, transformation,
-                                 compartmentReport, targetGIDOffsets,
-                                 sceneContainer);
+        auto materialFunc = [
+            material, offset = scene.getMaterials().size(),
+            colorScheme = _geometryParameters.getColorScheme(), index
+        ](auto sectionType)
+        {
+            if (material != NO_MATERIAL)
+                return offset + material;
+
+            size_t materialId = 0;
+            switch (colorScheme)
+            {
+            case ColorScheme::neuron_by_id:
+                materialId = index;
+                break;
+            case ColorScheme::neuron_by_segment_type:
+                switch (sectionType)
+                {
+                case brain::neuron::SectionType::soma:
+                    materialId = 1;
+                    break;
+                case brain::neuron::SectionType::axon:
+                    materialId = 2;
+                    break;
+                case brain::neuron::SectionType::dendrite:
+                    materialId = 3;
+                    break;
+                case brain::neuron::SectionType::apicalDendrite:
+                    materialId = 4;
+                    break;
+                default:
+                    materialId = 0;
+                    break;
+                }
+                break;
+            default:
+                materialId = NO_MATERIAL;
+            }
+            return offset + materialId;
+        };
+
+        return _importMorphology(source, index, materialFunc, transformation,
+                                 compartmentReport, sceneContainer);
     }
 
 private:
@@ -140,86 +122,6 @@ private:
         return (_geometryParameters.getRadiusCorrection() != 0.f
                     ? _geometryParameters.getRadiusCorrection()
                     : radius * _geometryParameters.getRadiusMultiplier());
-    }
-
-    /**
-     * @brief _getMaterialFromSectionType return a material determined by the
-     * --color-scheme geometry parameter
-     * @param index Index of the element to which the material will attached
-     * @param material Material that is forced in case geometry parameters
-     * do not apply
-     * @param sectionType Section type of the geometry to which the material
-     * will be applied
-     * @return Material ID determined by the geometry parameters
-     */
-    size_t _getMaterialFromGeometryParameters(
-        const uint64_t index, const size_t material,
-        const brain::neuron::SectionType sectionType,
-        const GIDOffsets& targetGIDOffsets, bool isMesh = false) const
-    {
-        if (material != NO_MATERIAL)
-            return _materialsOffset + material;
-
-        if (!isMesh && _geometryParameters.getCircuitUseSimulationModel())
-            return _materialsOffset;
-
-        size_t materialId = 0;
-        switch (_geometryParameters.getColorScheme())
-        {
-        case ColorScheme::neuron_by_id:
-            materialId = index;
-            break;
-        case ColorScheme::neuron_by_segment_type:
-            switch (sectionType)
-            {
-            case brain::neuron::SectionType::soma:
-                materialId = 1;
-                break;
-            case brain::neuron::SectionType::axon:
-                materialId = 2;
-                break;
-            case brain::neuron::SectionType::dendrite:
-                materialId = 3;
-                break;
-            case brain::neuron::SectionType::apicalDendrite:
-                materialId = 4;
-                break;
-            default:
-                materialId = 0;
-                break;
-            }
-            break;
-        case ColorScheme::neuron_by_target:
-            for (size_t i = 0; i < targetGIDOffsets.size() - 1; ++i)
-                if (index >= targetGIDOffsets[i] &&
-                    index < targetGIDOffsets[i + 1])
-                {
-                    materialId = i;
-                    break;
-                }
-            break;
-        case ColorScheme::neuron_by_etype:
-            if (index < _electrophysiologyTypes.size())
-                materialId = _electrophysiologyTypes[index];
-            else
-                BRAYNS_DEBUG << "Failed to get neuron E-type" << std::endl;
-            break;
-        case ColorScheme::neuron_by_mtype:
-            if (index < _morphologyTypes.size())
-                materialId = _morphologyTypes[index];
-            else
-                BRAYNS_DEBUG << "Failed to get neuron M-type" << std::endl;
-            break;
-        case ColorScheme::neuron_by_layer:
-            if (index < _layerIds.size())
-                materialId = _layerIds[index];
-            else
-                BRAYNS_DEBUG << "Failed to get neuron layer" << std::endl;
-            break;
-        default:
-            materialId = NO_MATERIAL;
-        }
-        return _materialsOffset + materialId;
     }
 
     /**
@@ -278,10 +180,10 @@ private:
      * @param scene Scene to which the morphology should be loaded into
      * @return True if the loading was successful, false otherwise
      */
-    bool _importMorphologyAsPoint(const uint64_t index, const size_t material,
+    bool _importMorphologyAsPoint(const uint64_t index,
+                                  MaterialFunc materialFunc,
                                   const Matrix4f& transformation,
                                   CompartmentReportPtr compartmentReport,
-                                  const GIDOffsets& targetGIDOffsets,
                                   ParallelSceneContainer& scene)
     {
         uint64_t offset = 0;
@@ -291,10 +193,7 @@ private:
         const auto radius = _geometryParameters.getRadiusMultiplier();
         const auto textureCoordinates = _getIndexAsTextureCoordinates(offset);
         const auto somaPosition = transformation.getTranslation();
-        const auto materialId =
-            _getMaterialFromGeometryParameters(index, material,
-                                               brain::neuron::SectionType::soma,
-                                               targetGIDOffsets);
+        const auto materialId = materialFunc(brain::neuron::SectionType::soma);
         scene.addSphere(materialId,
                         {somaPosition, radius, 0.f, textureCoordinates});
         return true;
@@ -311,10 +210,8 @@ private:
      * @param scene Scene to which the morphology should be loaded into
      * @return True if the loading was successful, false otherwise
      */
-    bool _createRealisticSoma(const servus::URI& uri, const uint64_t index,
-                              const size_t material,
+    bool _createRealisticSoma(const servus::URI& uri, MaterialFunc materialFunc,
                               const Matrix4f& transformation,
-                              const GIDOffsets& targetGIDOffsets,
                               ParallelSceneContainer& scene)
     {
         try
@@ -375,9 +272,8 @@ private:
             const auto gridSize = _geometryParameters.getMetaballsGridSize();
             const auto threshold = _geometryParameters.getMetaballsThreshold();
             MetaballsGenerator metaballsGenerator;
-            const auto materialId = _getMaterialFromGeometryParameters(
-                index, material, brain::neuron::SectionType::soma,
-                targetGIDOffsets);
+            const auto materialId =
+                materialFunc(brain::neuron::SectionType::soma);
             metaballsGenerator.generateMesh(metaballs, gridSize, threshold,
                                             scene.materials, materialId,
                                             scene.trianglesMeshes);
@@ -403,10 +299,9 @@ private:
      * @return True if the loading was successful, false otherwise
      */
     bool _importMorphologyFromURI(const servus::URI& uri, const uint64_t index,
-                                  const size_t material,
+                                  MaterialFunc materialFunc,
                                   const Matrix4f& transformation,
                                   CompartmentReportPtr compartmentReport,
-                                  const GIDOffsets& targetGIDOffsets,
                                   ParallelSceneContainer& scene) const
     {
         try
@@ -451,9 +346,8 @@ private:
                     static_cast<size_t>(MorphologySectionType::soma))
             {
                 const auto& soma = morphology.getSoma();
-                const size_t materialId = _getMaterialFromGeometryParameters(
-                    index, material, brain::neuron::SectionType::soma,
-                    targetGIDOffsets);
+                const size_t materialId =
+                    materialFunc(brain::neuron::SectionType::soma);
                 const auto somaPosition = soma.getCentroid() + translation;
                 const auto radius = _getCorrectedRadius(soma.getMeanRadius());
                 const auto textureCoordinates =
@@ -509,10 +403,7 @@ private:
                 if (section.getType() == brain::neuron::SectionType::soma)
                     continue;
 
-                const auto materialId =
-                    _getMaterialFromGeometryParameters(index, material,
-                                                       section.getType(),
-                                                       targetGIDOffsets);
+                const auto materialId = materialFunc(section.getType());
                 const auto& samples = section.getSamples();
                 if (samples.empty())
                     continue;
@@ -639,10 +530,9 @@ private:
 
 public:
     bool _importMorphology(const servus::URI& source, const uint64_t index,
-                           const size_t material,
+                           MaterialFunc materialFunc,
                            const Matrix4f& transformation,
                            CompartmentReportPtr compartmentReport,
-                           const GIDOffsets& targetGIDOffsets,
                            ParallelSceneContainer& scene)
     {
         bool returnValue = true;
@@ -650,32 +540,24 @@ public:
             enumsToBitmask(_geometryParameters.getMorphologySectionTypes());
         if (morphologySectionTypes ==
             static_cast<size_t>(MorphologySectionType::soma))
-            return _importMorphologyAsPoint(index, material, transformation,
-                                            compartmentReport, targetGIDOffsets,
-                                            scene);
+            return _importMorphologyAsPoint(index, materialFunc, transformation,
+                                            compartmentReport, scene);
         else if (_geometryParameters.useRealisticSomas())
-            returnValue =
-                _createRealisticSoma(source, index, material, transformation,
-                                     targetGIDOffsets, scene);
+            returnValue = _createRealisticSoma(source, materialFunc,
+                                               transformation, scene);
         returnValue =
             returnValue &&
-            _importMorphologyFromURI(source, index, material, transformation,
-                                     compartmentReport, targetGIDOffsets,
-                                     scene);
+            _importMorphologyFromURI(source, index, materialFunc,
+                                     transformation, compartmentReport, scene);
         return returnValue;
     }
 
 private:
     const GeometryParameters& _geometryParameters;
-    size_ts _layerIds;
-    size_ts _electrophysiologyTypes;
-    size_ts _morphologyTypes;
-    size_t _materialsOffset{0};
 };
 
-MorphologyLoader::MorphologyLoader(const GeometryParameters& geometryParameters,
-                                   const size_t materialOffset)
-    : _impl(new MorphologyLoader::Impl(geometryParameters, materialOffset))
+MorphologyLoader::MorphologyLoader(const GeometryParameters& geometryParameters)
+    : _impl(new MorphologyLoader::Impl(geometryParameters))
 {
 }
 
@@ -710,20 +592,17 @@ bool MorphologyLoader::importMorphology(const servus::URI& uri, Scene& scene,
                                         const size_t material,
                                         const Matrix4f& transformation)
 {
-    const GIDOffsets targetGIDOffsets;
-    return _impl->importMorphology(uri, scene, index, material, transformation,
-                                   targetGIDOffsets);
+    return _impl->importMorphology(uri, scene, index, material, transformation);
 }
 
 bool MorphologyLoader::_importMorphology(const servus::URI& source,
                                          const uint64_t index,
-                                         const size_t material,
-                                         const vmml::Matrix4f& transformation,
+                                         MaterialFunc materialFunc,
+                                         const Matrix4f& transformation,
                                          CompartmentReportPtr compartmentReport,
-                                         const GIDOffsets& targetGIDOffsets,
                                          ParallelSceneContainer& scene)
 {
-    return _impl->_importMorphology(source, index, material, transformation,
-                                    compartmentReport, targetGIDOffsets, scene);
+    return _impl->_importMorphology(source, index, materialFunc, transformation,
+                                    compartmentReport, scene);
 }
 }

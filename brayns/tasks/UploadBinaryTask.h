@@ -52,7 +52,7 @@ private:
     std::string _blob;
     size_t _index{0};
 
-    void _checkValidity(const std::set<std::string>& supportedTypes);
+    void _checkValidity(EnginePtr engine);
     void _cancel() final
     {
         for (auto& i : _chunks)

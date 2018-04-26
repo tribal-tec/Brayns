@@ -34,7 +34,7 @@ UploadBinaryTask::UploadBinaryTask(const BinaryParams& params, EnginePtr engine)
     if (params.empty())
         throw MISSING_PARAMS;
 
-    _checkValidity(supportedTypes);
+    _checkValidity(engine);
 
     _chunks.resize(params.size());
 
@@ -110,15 +110,14 @@ void UploadBinaryTask::appendBlob(const std::string& blob)
     }
 }
 
-void UploadBinaryTask::_checkValidity(
-    const std::set<std::string>& supportedTypes)
+void UploadBinaryTask::_checkValidity(EnginePtr engine)
 {
     const auto& registry = engine->getScene().getLoaderRegistry();
 
     // pre-check for validity of given params
-    for (size_t i = 0; i < params.size(); ++i)
+    for (size_t i = 0; i < _params.size(); ++i)
     {
-        const auto& param = params[i];
+        const auto& param = _params[i];
         if (param.type.empty() || param.size == 0)
             throw MISSING_PARAMS;
 

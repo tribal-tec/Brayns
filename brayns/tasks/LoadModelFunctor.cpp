@@ -18,7 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "LoadDataFunctor.h"
+#include "LoadModelFunctor.h"
 
 #include "errors.h"
 
@@ -37,64 +37,66 @@ namespace brayns
 {
 const float TOTAL_PROGRESS = 100.f;
 
-LoadDataFunctor::LoadDataFunctor(EnginePtr engine)
+LoadModelFunctor::LoadModelFunctor(EnginePtr engine)
     : _engine(engine)
 {
 }
 
-void LoadDataFunctor::operator()(Blob&& blob)
+size_t LoadModelFunctor::operator()(Blob&& blob)
 {
     // extract the archive and treat it as 'load from folder'
     if (isArchive(blob))
     {
         struct Scope
         {
-            Scope(Blob&& blob, LoadDataFunctor& parent)
-            {
-                fs::create_directories(path);
+            Scope() { fs::create_directories(_path); }
+            ~Scope() { fs::remove_all(_path); }
 
-                extractBlob(std::move(blob), path.string());
-                parent._performLoad([&] { parent._loadData(path.string()); });
+            size_t operator()(Blob&& blob, LoadModelFunctor& parent)
+            {
+                extractBlob(std::move(blob), _path.string());
+                return parent._performLoad([&] { return parent._loadData(_path.string()); });
             }
 
-            ~Scope() { fs::remove_all(path); }
-            fs::path path = fs::temp_directory_path() / fs::unique_path();
-        } scope(std::move(blob), *this);
-        return;
+        private:
+            fs::path _path = fs::temp_directory_path() / fs::unique_path();
+        } scope;
+        return scope(std::move(blob), *this);
     }
 
-    _performLoad([&] { _loadData(std::move(blob)); });
+    return _performLoad([&] { return _loadData(std::move(blob)); });
 }
 
-void LoadDataFunctor::operator()(const std::string& path)
+size_t LoadModelFunctor::operator()(const std::string& path)
 {
     // extract the archive and treat it as 'load from folder'
     if (isArchive(path))
     {
         struct Scope
         {
-            Scope(const std::string& file, LoadDataFunctor& parent)
-            {
-                fs::create_directories(path);
+            Scope() { fs::create_directories(_path); }
+            ~Scope() { fs::remove_all(_path); }
 
-                extractFile(file, path.string());
-                parent._performLoad([&] { parent._loadData(path.string()); });
+            size_t operator()(const std::string& file, LoadModelFunctor& parent)
+            {
+                extractFile(file, _path.string());
+                return parent._performLoad([&] { return parent._loadData(_path.string()); });
             }
 
-            ~Scope() { fs::remove_all(path); }
-            fs::path path = fs::temp_directory_path() / fs::unique_path();
-        } scope(path, *this);
-        return;
+        private:
+            fs::path _path = fs::temp_directory_path() / fs::unique_path();
+        } scope;
+        return scope(path, *this);
     }
 
-    _performLoad([&] { _loadData(path); });
+    return _performLoad([&] { return _loadData(path); });
 }
 
-void LoadDataFunctor::_performLoad(const std::function<void()>& loadData)
+size_t LoadModelFunctor::_performLoad(const std::function<size_t()>& loadData)
 {
     try
     {
-        loadData();
+        return loadData();
     }
     catch (const std::exception& e)
     {
@@ -104,18 +106,20 @@ void LoadDataFunctor::_performLoad(const std::function<void()>& loadData)
     }
 }
 
-void LoadDataFunctor::_loadData(Blob&& blob)
+size_t LoadModelFunctor::_loadData(Blob&& blob)
 {
     _engine->getScene().load(std::move(blob), Matrix4f(), NO_MATERIAL,
                              _getProgressFunc());
+    return _engine->getScene().getModelDescriptors().size()-1;
 }
 
-void LoadDataFunctor::_loadData(const std::string& path)
+size_t LoadModelFunctor::_loadData(const std::string& path)
 {
     _engine->getScene().load(path, Matrix4f(), NO_MATERIAL, _getProgressFunc());
+    return _engine->getScene().getModelDescriptors().size()-1;
 }
 
-void LoadDataFunctor::_updateProgress(const std::string& message,
+void LoadModelFunctor::_updateProgress(const std::string& message,
                                       const size_t increment)
 {
     _currentProgress += increment;
@@ -123,7 +127,7 @@ void LoadDataFunctor::_updateProgress(const std::string& message,
              _currentProgress / TOTAL_PROGRESS);
 }
 
-std::function<void(std::string, float)> LoadDataFunctor::_getProgressFunc()
+std::function<void(std::string, float)> LoadModelFunctor::_getProgressFunc()
 {
     return [this](const std::string& msg, const float progress) {
         cancelCheck();

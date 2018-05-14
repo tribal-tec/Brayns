@@ -104,6 +104,7 @@ void Scene::addModel(ModelPtr model, const std::string& name,
 {
     model->buildBoundingBox();
     model->commit();
+    // LOCK!!!
     _modelDescriptors.push_back(
         std::make_shared<ModelDescriptor>(_modelID++, name, path, metadata,
                                           std::move(model)));
@@ -112,6 +113,7 @@ void Scene::addModel(ModelPtr model, const std::string& name,
 
 void Scene::removeModel(const size_t id)
 {
+    // LOCK!!!
     auto i = std::remove_if(_modelDescriptors.begin(), _modelDescriptors.end(),
                             [id](auto desc) { return id == desc->getID(); });
     if (i == _modelDescriptors.end())

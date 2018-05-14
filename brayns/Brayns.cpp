@@ -46,7 +46,7 @@
 #include <brayns/io/XYZBLoader.h>
 #include <brayns/io/simulation/SpikeSimulationHandler.h>
 
-#include <brayns/tasks/UploadPathTask.h>
+#include <brayns/tasks/AddModelTask.h>
 
 #include <brayns/pluginapi/ExtensionPluginFactory.h>
 #include <brayns/pluginapi/PluginAPI.h>
@@ -319,9 +319,12 @@ struct Brayns::Impl : public PluginAPI
                 return;
             }
 
-            UploadPathTask task(paths, _engine);
-            if (!task.result())
-                throw std::runtime_error("Loading failed");
+            for (const auto& path : paths)
+            {
+                AddModelTask task({path, path}, _engine);
+                if (!task.result())
+                    throw std::runtime_error("Loading failed");
+            }
             return;
         }
 

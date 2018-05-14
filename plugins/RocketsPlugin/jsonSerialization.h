@@ -37,7 +37,7 @@
 #include <brayns/parameters/SceneParameters.h>
 #include <brayns/parameters/StreamParameters.h>
 #include <brayns/parameters/VolumeParameters.h>
-#include <brayns/tasks/UploadBinaryTask.h>
+#include <brayns/tasks/AddModelFromBlobTask.h>
 #include <brayns/tasks/errors.h>
 #include <brayns/version.h>
 
@@ -149,15 +149,18 @@ namespace staticjson
 {
 inline void init(brayns::BinaryParam* s, ObjectHandler* h)
 {
+    h->add_property("bounding_box", &s->_boundingBox, Flags::Optional);
+    h->add_property("name", &s->_name);
     h->add_property("size", &s->size);
+    h->add_property("transformation", &s->_transformation, Flags::Optional);
     h->add_property("type", &s->type);
-    h->add_property("name", &s->name, Flags::Optional);
+    h->add_property("visible", &s->_visible, Flags::Optional);
+    h->set_flags(Flags::DisallowUnknownKey);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
 inline void init(brayns::BinaryError* s, ObjectHandler* h)
 {
-    h->add_property("index", &s->index);
     h->add_property("supported_types", &s->supportedTypes);
     h->set_flags(Flags::DisallowUnknownKey);
 }
@@ -290,6 +293,16 @@ inline void init(brayns::Transformation* g, ObjectHandler* h)
     h->add_property("translation", Vector3fArray(g->_translation));
     h->add_property("scaling", Vector3fArray(g->_scale));
     h->add_property("rotation", Vector4fArray(g->_rotation));
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+
+inline void init(brayns::ModelParams* g, ObjectHandler* h)
+{
+    h->add_property("bounding_box", &g->_boundingBox, Flags::Optional);
+    h->add_property("name", &g->_name);
+    h->add_property("path", &g->_path);
+    h->add_property("transformation", &g->_transformation, Flags::Optional);
+    h->add_property("visible", &g->_visible, Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

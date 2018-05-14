@@ -27,12 +27,17 @@
 
 namespace brayns
 {
+ModelParams::ModelParams(const std::string& name, const std::string& path)
+    : _name(name)
+    , _path(path)
+{
+}
+
 ModelDescriptor::ModelDescriptor(const size_t id, const std::string& name,
                                  const std::string& path,
                                  const ModelMetadata& metadata, ModelPtr model)
-    : _id(id)
-    , _name(name)
-    , _path(path)
+    : ModelParams(name, path)
+    , _id(id)
     , _metadata(metadata)
     , _model(std::move(model))
 {

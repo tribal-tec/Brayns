@@ -31,8 +31,8 @@
 #include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
-#include <brayns/tasks/UploadBinaryTask.h>
-#include <brayns/tasks/UploadPathTask.h>
+#include <brayns/tasks/AddModelFromBlobTask.h>
+#include <brayns/tasks/AddModelTask.h>
 
 #ifdef BRAYNS_USE_LIBUV
 #include <uvw.hpp>
@@ -66,13 +66,13 @@ const std::string ENDPOINT_VERSION = "version";
 const std::string ENDPOINT_VOLUME_HISTOGRAM = "volume-histogram";
 const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
+const std::string METHOD_ADD_MODEL = "add-model";
 const std::string METHOD_INSPECT = "inspect";
 const std::string METHOD_QUIT = "quit";
 const std::string METHOD_REMOVE_MODEL = "remove-model";
 const std::string METHOD_RESET_CAMERA = "reset-camera";
 const std::string METHOD_SNAPSHOT = "snapshot";
 const std::string METHOD_UPDATE_MODEL = "update-model";
-const std::string METHOD_UPLOAD_PATH = "upload-path";
 
 const std::string JSON_TYPE = "application/json";
 
@@ -551,8 +551,8 @@ public:
         _handleResetCamera();
         _handleSnapshot();
 
-        _handleUploadBinary();
-        _handleUploadPath();
+        _handleRequestModelUpload();
+        _handleAddModel();
 
         _handleRemoveModel();
         _handleUpdateModel();
@@ -772,28 +772,31 @@ public:
             METHOD_SNAPSHOT, doc, func);
     }
 
-    void _handleUploadBinary()
+    void _handleRequestModelUpload()
     {
-        RpcDocumentation doc{"Upload files to load geometry", "params",
-                             "Array of file parameters: size, type and name"};
+        RpcDocumentation doc{
+            "Request upload of blob to trigger adding of model after all blobs "
+            "have been received; returns model ID on success",
+            "params", "size, type, name, transformation, etc."};
 
-        _handleTask<BinaryParams, bool>(
-            METHOD_UPLOAD_BINARY, doc,
+        _handleTask<BinaryParam, size_t>(
+            METHOD_REQUEST_MODEL_UPLOAD, doc,
             std::bind(&BinaryRequests::createTask, std::ref(_binaryRequests),
                       std::placeholders::_1, std::placeholders::_2, _engine));
     }
 
-    void _handleUploadPath()
+    void _handleAddModel()
     {
-        RpcDocumentation doc{"Upload remote path to load geometry from",
-                             "params", "Array of paths, either file or folder"};
+        RpcDocumentation doc{
+            "Add model from remote path; returns model ID on success",
+            "model_param",
+            "Model parameters including name, path, transformation, etc."};
 
-        auto func = [engine = _engine](const auto& paths, const auto)
+        auto func = [engine = _engine](const auto& modelParam, const auto)
         {
-            return std::make_shared<UploadPathTask>(paths, engine);
+            return std::make_shared<AddModelTask>(modelParam, engine);
         };
-        _handleTask<std::vector<std::string>, bool>(METHOD_UPLOAD_PATH, doc,
-                                                    func);
+        _handleTask<ModelParams, size_t>(METHOD_ADD_MODEL, doc, func);
     }
 
     void _handleRemoveModel()

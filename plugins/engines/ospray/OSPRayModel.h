@@ -36,9 +36,9 @@ public:
 
     void setMemoryFlags(const size_t memoryManagementFlags);
 
-    VolumePtr createVolume() final;
     void addVolume(VolumePtr) final;
     void removeVolume(VolumePtr) final;
+    void commitVolumes() final;
 
     void commit() final;
 
@@ -78,8 +78,6 @@ private:
     std::map<size_t, OSPData> _ospSDFGeometryRefsData;
     OSPData _ospSDFGeometryData = nullptr;
     OSPData _ospSDFNeighboursData = nullptr;
-
-    OSPTransferFunction _ospTransferFunction{ospNewTransferFunction("piecewise_linear")};
 
     size_t _memoryManagementFlags{OSP_DATA_SHARED_BUFFER};
 };

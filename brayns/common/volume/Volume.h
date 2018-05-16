@@ -50,7 +50,16 @@ public:
     virtual void commit() = 0;
 
     size_t getSizeInBytes() const { return _sizeInBytes; }
+    Boxf getBounds() const
+    {
+        return {{0, 0, 0},
+                {_dim.x() * _spacing.x(), _dim.y() * _spacing.y(),
+                 _dim.z() * _spacing.z()}};
+    }
+
 protected:
     size_t _sizeInBytes{0};
+    Vector3ui _dim;
+    Vector3f _spacing;
 };
 }

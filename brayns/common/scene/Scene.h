@@ -108,6 +108,7 @@ public:
     BRAYNS_API void clearLights();
 
     BRAYNS_API virtual ModelPtr createModel() const = 0;
+    BRAYNS_API virtual VolumePtr createVolume() const = 0;
 
     /**
         Adds a model to the scene

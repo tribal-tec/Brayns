@@ -19,7 +19,6 @@
  */
 
 #include "OSPRayModel.h"
-
 #include "OSPRayMaterial.h"
 #include "OSPRayVolume.h"
 #include "utils.h"
@@ -32,8 +31,6 @@ namespace brayns
 {
 OSPRayModel::~OSPRayModel()
 {
-    ospRelease(_ospTransferFunction);
-
     if (_useSimulationModel)
     {
         for (auto geom : _ospExtendedSpheres)
@@ -370,17 +367,11 @@ void OSPRayModel::_commitSDFGeometries()
     }
 }
 
-VolumePtr OSPRayModel::createVolume()
-{
-    VolumeParameters params;
-    return std::make_shared<OSPRayVolume>(
-        params/*_parametersManager.getVolumeParameters()*/, _ospTransferFunction);
-}
-
 void OSPRayModel::addVolume(VolumePtr volume)
 {
     _volumes.push_back(volume);
     _sizeInBytes += volume->getSizeInBytes();
+    _bounds.merge(volume->getBounds());
     _volumesDirty = true;
 
     auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
@@ -390,14 +381,14 @@ void OSPRayModel::addVolume(VolumePtr volume)
 void OSPRayModel::removeVolume(VolumePtr volume)
 {
     auto i = std::find(_volumes.begin(), _volumes.end(), volume);
-    if (i != _volumes.end())
-    {
-        _volumes.erase(i);
-        _sizeInBytes -= volume->getSizeInBytes();
-        _volumesDirty = true;
-        auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
-        ospRemoveVolume(_model, ospVolume->impl());
-    }
+    if (i == _volumes.end())
+        return;
+
+    _volumes.erase(i);
+    _sizeInBytes -= volume->getSizeInBytes();
+    _volumesDirty = true;
+    auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+    ospRemoveVolume(_model, ospVolume->impl());
 }
 
 void OSPRayModel::commit()
@@ -453,23 +444,22 @@ void OSPRayModel::commit()
     // handled by the scene
     _instancesDirty = false;
 
-    //const auto& vp = _parametersManager.getVolumeParameters();
-    //if (vp.isModified())
-    if(_volumesDirty)
-    {
-        for (auto volume : _volumes)
-        {
-            auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
-            ospVolume->commit();
-        }
-        _volumesDirty = false;
-    }
+    _volumesDirty = false;
 
     // Commit models
     ospCommit(_model);
     if (_boundingBoxModel)
         ospCommit(_boundingBoxModel);
     ospCommit(_simulationModel);
+}
+
+void OSPRayModel::commitVolumes()
+{
+    for (auto volume : _volumes)
+    {
+        auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+        ospVolume->commit();
+    }
 }
 
 MaterialPtr OSPRayModel::createMaterial(const size_t materialId,

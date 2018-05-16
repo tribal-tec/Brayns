@@ -161,11 +161,11 @@ public:
 
     BRAYNS_API virtual ~Model() = default;
 
-    virtual VolumePtr createVolume() = 0;
     virtual void addVolume(VolumePtr) = 0;
     virtual void removeVolume(VolumePtr) = 0;
 
     virtual void commit() = 0;
+    virtual void commitVolumes() = 0;
 
     /**
      * @return true if the geometry Model does not contain any geometry, false
@@ -303,6 +303,7 @@ public:
     size_t getSizeInBytes() const { return _sizeInBytes; }
     void markInstancesDirty() { _instancesDirty = true; }
     void updateSizeInBytes(const size_t bytes) { _sizeInBytes += bytes; }
+    void markVolumeDirty() { _volumesDirty = true; }
 protected:
     MaterialMap _materials;
     SpheresMap _spheres;
@@ -313,7 +314,7 @@ protected:
     bool _conesDirty{true};
     TrianglesMeshMap _trianglesMeshes;
     bool _trianglesMeshesDirty{true};
-    Boxf _bounds;
+    Boxf _bounds{{0, 0, 0}, {0, 0, 0}};
     bool _useSimulationModel{false};
 
     struct SDFGeometryData

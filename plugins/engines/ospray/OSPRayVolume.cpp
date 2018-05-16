@@ -38,12 +38,14 @@ OSPRayVolume::~OSPRayVolume()
 
 void OSPRayVolume::setDimensions(const Vector3ui &dim)
 {
+    _dim = dim;
     const ospcommon::vec3i dimension(dim.x(), dim.y(), dim.z());
     ospSetVec3i(_volume, "dimensions", (osp::vec3i &)dimension);
 }
 
 void OSPRayVolume::setGridSpacing(const Vector3f &gridSpacing)
 {
+    _spacing = gridSpacing;
     const ospcommon::vec3f spacing(gridSpacing.x(), gridSpacing.y(),
                                    gridSpacing.z());
     ospSetVec3f(_volume, "gridSpacing", (osp::vec3f &)spacing);

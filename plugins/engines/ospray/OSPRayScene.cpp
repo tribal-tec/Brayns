@@ -22,6 +22,7 @@
 #include "OSPRayMaterial.h"
 #include "OSPRayModel.h"
 #include "OSPRayRenderer.h"
+#include "OSPRayVolume.h"
 #include "utils.h"
 
 #include <brayns/common/ImageManager.h>
@@ -52,6 +53,8 @@ OSPRayScene::OSPRayScene(const Renderers& renderers,
 
 OSPRayScene::~OSPRayScene()
 {
+    ospRelease(_ospTransferFunction);
+
     if (_ospSimulationData)
         ospRelease(_ospSimulationData);
 
@@ -133,6 +136,10 @@ void OSPRayScene::commit()
 
             if (modelDescriptor->getVisible() && instance.getVisible())
                 addInstance(_rootModel, impl.getModel(), instanceTransform);
+
+            const auto& vp = _parametersManager.getVolumeParameters();
+            if (vp.isModified())
+                impl.commitVolumes();
 
             instancesBounds.merge(transformBox(modelBounds, instanceTransform));
         }
@@ -227,26 +234,26 @@ bool OSPRayScene::commitTransferFunctionData()
     if (!_transferFunction.isModified())
         return false;
 
-//    Vector3fs colors;
-//    colors.reserve(_transferFunction.getDiffuseColors().size());
-//    floats opacities;
-//    opacities.reserve(_transferFunction.getDiffuseColors().size());
+    Vector3fs colors;
+    colors.reserve(_transferFunction.getDiffuseColors().size());
+    floats opacities;
+    opacities.reserve(_transferFunction.getDiffuseColors().size());
 
-//    for (const auto& i : _transferFunction.getDiffuseColors())
-//    {
-//        colors.push_back({i.x(), i.y(), i.z()});
-//        opacities.push_back(i.w());
-//    }
+    for (const auto& i : _transferFunction.getDiffuseColors())
+    {
+        colors.push_back({i.x(), i.y(), i.z()});
+        opacities.push_back(i.w());
+    }
 
-//    OSPData colorsData = ospNewData(colors.size(), OSP_FLOAT3, colors.data());
-//    ospSetData(_ospTransferFunction, "colors", colorsData);
-//    ospSet2f(_ospTransferFunction, "valueRange",
-//             _transferFunction.getValuesRange().x(),
-//             _transferFunction.getValuesRange().y());
-//    OSPData opacityValuesData =
-//        ospNewData(opacities.size(), OSP_FLOAT, opacities.data());
-//    ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
-//    ospCommit(_ospTransferFunction);
+    OSPData colorsData = ospNewData(colors.size(), OSP_FLOAT3, colors.data());
+    ospSetData(_ospTransferFunction, "colors", colorsData);
+    ospSet2f(_ospTransferFunction, "valueRange",
+             _transferFunction.getValuesRange().x(),
+             _transferFunction.getValuesRange().y());
+    OSPData opacityValuesData =
+        ospNewData(opacities.size(), OSP_FLOAT, opacities.data());
+    ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
+    ospCommit(_ospTransferFunction);
 
     if (_ospTransferFunctionDiffuseData)
         ospRelease(_ospTransferFunctionDiffuseData);
@@ -402,5 +409,11 @@ bool OSPRayScene::isVolumeSupported(const std::string& volumeFile) const
 ModelPtr OSPRayScene::createModel() const
 {
     return std::make_unique<OSPRayModel>();
+}
+
+VolumePtr OSPRayScene::createVolume() const
+{
+    return std::make_shared<OSPRayVolume>(
+        _parametersManager.getVolumeParameters(), _ospTransferFunction);
 }
 }

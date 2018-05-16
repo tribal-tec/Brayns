@@ -58,6 +58,7 @@ public:
     /** @copydoc Scene::isVolumeSupported */
     bool isVolumeSupported(const std::string& volumeFile) const final;
 
+    VolumePtr createVolume() const final;
     ModelPtr createModel() const final;
 
     OSPModel getModel() { return _rootModel; }
@@ -76,6 +77,8 @@ private:
 
     OSPData _ospTransferFunctionEmissionData{nullptr};
     OSPData _ospTransferFunctionDiffuseData{nullptr};
+    OSPTransferFunction _ospTransferFunction{
+        ospNewTransferFunction("piecewise_linear")};
 
     size_t _memoryManagementFlags{0};
 

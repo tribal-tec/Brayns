@@ -304,6 +304,7 @@ public:
     void markInstancesDirty() { _instancesDirty = true; }
     void updateSizeInBytes(const size_t bytes) { _sizeInBytes += bytes; }
     void markVolumeDirty() { _volumesDirty = true; }
+    const Volumes& getVolumes() const { return _volumes; }
 protected:
     MaterialMap _materials;
     SpheresMap _spheres;

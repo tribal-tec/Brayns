@@ -123,6 +123,14 @@ void OSPRayScene::commit()
                         transformation);
         }
 
+        // add volumes to root model, because scivis renderer does not consider
+        // volumes from instances
+        for (auto volume : modelDescriptor->getModel().getVolumes())
+        {
+            auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+            ospAddVolume(_rootModel, ospVolume->impl());
+        }
+
         Boxf instancesBounds;
         const auto& modelBounds = modelDescriptor->getModel().getBounds();
         for (const auto& instance : modelDescriptor->getInstances())

@@ -373,9 +373,6 @@ void OSPRayModel::addVolume(VolumePtr volume)
     _sizeInBytes += volume->getSizeInBytes();
     _bounds.merge(volume->getBounds());
     _volumesDirty = true;
-
-    auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
-    ospAddVolume(_model, ospVolume->impl());
 }
 
 void OSPRayModel::removeVolume(VolumePtr volume)
@@ -387,8 +384,6 @@ void OSPRayModel::removeVolume(VolumePtr volume)
     _volumes.erase(i);
     _sizeInBytes -= volume->getSizeInBytes();
     _volumesDirty = true;
-    auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
-    ospRemoveVolume(_model, ospVolume->impl());
 }
 
 void OSPRayModel::commit()

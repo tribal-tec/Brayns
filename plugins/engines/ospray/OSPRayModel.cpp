@@ -452,7 +452,7 @@ void OSPRayModel::commitVolumes()
 {
     for (auto volume : _volumes)
     {
-        auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+        auto ospVolume = std::dynamic_pointer_cast<OSPRayVolume>(volume);
         ospVolume->commit();
     }
 }

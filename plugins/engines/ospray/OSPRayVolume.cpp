@@ -26,10 +26,11 @@ namespace brayns
 {
 OSPRayVolume::OSPRayVolume(const Vector3ui &dimension, const Vector3f &spacing,
                            const DataType type, VolumeParameters &params,
-                           OSPTransferFunction transferFunction)
+                           OSPTransferFunction transferFunction,
+                           const std::string &volumeType)
     : Volume(dimension, spacing, type)
     , _parameters(params)
-    , _volume(ospNewVolume("shared_structured_volume"))
+    , _volume(ospNewVolume(volumeType.c_str()))
 {
     const ospcommon::vec3i ospDim(dimension.x(), dimension.y(), dimension.z());
     ospSetVec3i(_volume, "dimensions", (osp::vec3i &)ospDim);
@@ -79,27 +80,51 @@ OSPRayVolume::OSPRayVolume(const Vector3ui &dimension, const Vector3f &spacing,
     ospSetObject(_volume, "transferFunction", transferFunction);
 }
 
+OSPRayBrickedVolume::OSPRayBrickedVolume(const Vector3ui &dimension,
+                                         const Vector3f &spacing,
+                                         const DataType type,
+                                         VolumeParameters &params,
+                                         OSPTransferFunction transferFunction)
+    : Volume(dimension, spacing, type)
+    , BrickedVolume(dimension, spacing, type)
+    , OSPRayVolume(dimension, spacing, type, params, transferFunction,
+                   "block_bricked_volume")
+{
+}
+
+OSPRaySharedDataVolume::OSPRaySharedDataVolume(
+    const Vector3ui &dimension, const Vector3f &spacing, const DataType type,
+    VolumeParameters &params, OSPTransferFunction transferFunction)
+    : Volume(dimension, spacing, type)
+    , SharedDataVolume(dimension, spacing, type)
+    , OSPRayVolume(dimension, spacing, type, params, transferFunction,
+                   "shared_structured_volume")
+{
+}
+
 void OSPRayVolume::setDataRange(const Vector2f &range)
 {
     ospSet2f(_volume, "voxelRange", range.x(), range.y());
 }
 
-size_t OSPRayVolume::setBrick(void *data, const Vector3ui &position,
-                              const Vector3ui &size_)
+size_t OSPRayBrickedVolume::setBrick(void *data, const Vector3ui &position,
+                                     const Vector3ui &size_)
 {
     const ospcommon::vec3i pos{int(position.x()), int(position.y()),
                                int(position.z())};
     const ospcommon::vec3i size{int(size_.x()), int(size_.y()), int(size_.z())};
     ospSetRegion(_volume, data, (osp::vec3i &)pos, (osp::vec3i &)size);
     const size_t sizeInBytes = size_.product() * _dataSize;
-    _sizeInBytes += sizeInBytes;
+    BrickedVolume::_sizeInBytes += sizeInBytes;
     return sizeInBytes;
 }
 
-void OSPRayVolume::setVoxels(void *voxels)
+void OSPRaySharedDataVolume::setVoxels(void *voxels)
 {
-    OSPData data = ospNewData(_dimension.product(), _ospType, voxels,
-                              OSP_DATA_SHARED_BUFFER);
+    OSPData data = ospNewData(SharedDataVolume::_dimension.product(), _ospType,
+                              voxels, OSP_DATA_SHARED_BUFFER);
+    SharedDataVolume::_sizeInBytes +=
+        SharedDataVolume::_dimension.product() * _dataSize;
     ospSetData(_volume, "voxelData", data);
 }
 

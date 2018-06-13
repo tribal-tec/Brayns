@@ -127,7 +127,7 @@ void OSPRayScene::commit()
         // volumes from instances
         for (auto volume : modelDescriptor->getModel().getVolumes())
         {
-            auto ospVolume = std::static_pointer_cast<OSPRayVolume>(volume);
+            auto ospVolume = std::dynamic_pointer_cast<OSPRayVolume>(volume);
             ospAddVolume(_rootModel, ospVolume->impl());
         }
 
@@ -342,15 +342,15 @@ void OSPRayScene::commitVolumeData()
     auto data = volumeHandler->getData();
     if (data && !_volume /* && _ospVolumeDataSize == 0*/)
     {
-        _volume =
-            createVolume(volumeHandler->getDimensions(),
-                         volumeHandler->getElementSpacing(), DataType::UINT8);
+        _volume = createSharedDataVolume(volumeHandler->getDimensions(),
+                                         volumeHandler->getElementSpacing(),
+                                         DataType::UINT8);
 
         _volume->setDataRange({0, 255});
         _volume->setVoxels(data);
         _volume->commit();
 
-        auto ospVolume = std::static_pointer_cast<OSPRayVolume>(_volume);
+        auto ospVolume = std::dynamic_pointer_cast<OSPRayVolume>(_volume);
         ospAddVolume(_rootModel, ospVolume->impl());
         ospCommit(_rootModel);
 
@@ -383,7 +383,8 @@ void OSPRayScene::commitVolumeData()
         //                _parametersManager.getRenderingParameters().getSamplesPerRay());
         //            ospSet1f(impl, "volumeEpsilon", epsilon);
         //        }
-        markModified(); // to update scene bounds
+        _computeBounds();
+        markModified();
     }
     if (_parametersManager.getVolumeParameters().isModified())
         _volume->commit();
@@ -436,11 +437,19 @@ ModelPtr OSPRayScene::createModel() const
     return std::make_unique<OSPRayModel>();
 }
 
-VolumePtr OSPRayScene::createVolume(const Vector3ui& dimension,
-                                    const Vector3f& spacing,
-                                    const DataType type) const
+SharedDataVolumePtr OSPRayScene::createSharedDataVolume(
+    const Vector3ui& dimension, const Vector3f& spacing,
+    const DataType type) const
 {
-    return std::make_shared<OSPRayVolume>(
+    return std::make_shared<OSPRaySharedDataVolume>(
+        dimension, spacing, type, _parametersManager.getVolumeParameters(),
+        _ospTransferFunction);
+}
+BrickedVolumePtr OSPRayScene::createBrickedVolume(const Vector3ui& dimension,
+                                                  const Vector3f& spacing,
+                                                  const DataType type) const
+{
+    return std::make_shared<OSPRayBrickedVolume>(
         dimension, spacing, type, _parametersManager.getVolumeParameters(),
         _ospTransferFunction);
 }

@@ -34,6 +34,9 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   ActionInterface.h
   BaseObject.h
   ImageManager.h
+  Progress.h
+  Statistics.h
+  Timer.h
   Transformation.h
   camera/AbstractManipulator.h
   camera/Camera.h
@@ -56,20 +59,19 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   material/Material.h
   material/Texture2D.h
   mathTypes.h
-  Progress.h
   renderer/FrameBuffer.h
   renderer/Renderer.h
   scene/Model.h
   scene/Scene.h
   simulation/AbstractSimulationHandler.h
-  Statistics.h
-  Timer.h
-  transferFunction/TransferFunction.h
   tasks/Task.h
   tasks/TaskFunctor.h
   tasks/TaskRuntimeError.h
+  transferFunction/TransferFunction.h
   types.h
   utils/Utils.h
+  volume/BrickedVolume.h
+  volume/SharedDataVolume.h
   volume/Volume.h
   volume/VolumeHandler.h
 )

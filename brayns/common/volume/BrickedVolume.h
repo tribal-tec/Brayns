@@ -20,34 +20,20 @@
 
 #pragma once
 
-#include <brayns/common/BaseObject.h>
-#include <brayns/common/types.h>
+#include <brayns/common/volume/Volume.h>
 
 namespace brayns
 {
-class Volume : public BaseObject
+class BrickedVolume : public virtual Volume
 {
 public:
-    Volume(const Vector3ui& dimension, const Vector3f& spacing,
-           const DataType type);
-    virtual ~Volume() = default;
-
-    virtual void setDataRange(const Vector2f& range) = 0;
-
-    virtual void commit() = 0;
-
-    size_t getSizeInBytes() const { return _sizeInBytes; }
-    Boxf getBounds() const
+    BrickedVolume(const Vector3ui& dimension, const Vector3f& spacing,
+                  const DataType type)
+        : Volume(dimension, spacing, type)
     {
-        return {{0, 0, 0},
-                {_dimension.x() * _spacing.x(), _dimension.y() * _spacing.y(),
-                 _dimension.z() * _spacing.z()}};
     }
 
-protected:
-    size_t _sizeInBytes{0};
-    const Vector3ui _dimension;
-    const Vector3f _spacing;
-    const DataType _dataType;
+    virtual size_t setBrick(void* data, const Vector3ui& position,
+                            const Vector3ui& size) = 0;
 };
 }

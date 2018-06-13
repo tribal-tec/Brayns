@@ -20,30 +20,49 @@
 
 #pragma once
 
-#include <brayns/common/volume/Volume.h>
+#include <brayns/common/volume/BrickedVolume.h>
+#include <brayns/common/volume/SharedDataVolume.h>
 
 #include <ospray/SDK/volume/Volume.h>
 
 namespace brayns
 {
-class OSPRayVolume : public Volume
+class OSPRayVolume : public virtual Volume
 {
 public:
     OSPRayVolume(const Vector3ui& dimension, const Vector3f& spacing,
                  const DataType type, VolumeParameters& params,
-                 OSPTransferFunction transferFunction);
+                 OSPTransferFunction transferFunction,
+                 const std::string& volumeType);
 
     void setDataRange(const Vector2f& range) final;
-    size_t setBrick(void* data, const Vector3ui& position,
-                    const Vector3ui& size) final;
-    void setVoxels(void* voxels) final;
     void commit() final;
 
     OSPVolume impl() const { return _volume; }
-private:
+protected:
     size_t _dataSize{0};
     VolumeParameters& _parameters;
     OSPVolume _volume;
     OSPDataType _ospType;
+};
+
+class OSPRayBrickedVolume : public BrickedVolume, public OSPRayVolume
+{
+public:
+    OSPRayBrickedVolume(const Vector3ui& dimension, const Vector3f& spacing,
+                        const DataType type, VolumeParameters& params,
+                        OSPTransferFunction transferFunction);
+    size_t setBrick(void* data, const Vector3ui& position,
+                    const Vector3ui& size) final;
+};
+
+class OSPRaySharedDataVolume : public SharedDataVolume, public OSPRayVolume
+{
+public:
+    OSPRaySharedDataVolume(const Vector3ui& dimension, const Vector3f& spacing,
+                           const DataType type, VolumeParameters& params,
+                           OSPTransferFunction transferFunction);
+
+    void setVoxels(void* voxels) final;
 };
 }

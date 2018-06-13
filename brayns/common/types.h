@@ -133,7 +133,11 @@ struct TrianglesMesh;
 typedef std::map<size_t, TrianglesMesh> TrianglesMeshMap;
 
 class Volume;
+class BrickedVolume;
+class SharedDataVolume;
 using VolumePtr = std::shared_ptr<Volume>;
+using SharedDataVolumePtr = std::shared_ptr<SharedDataVolume>;
+using BrickedVolumePtr = std::shared_ptr<BrickedVolume>;
 using Volumes = std::vector<VolumePtr>;
 
 class Texture2D;

@@ -19,3 +19,14 @@
  */
 
 #include "Volume.h"
+
+namespace brayns
+{
+Volume::Volume(const Vector3ui& dimension, const Vector3f& spacing,
+               const DataType type)
+    : _dimension(dimension)
+    , _spacing(spacing)
+    , _dataType(type)
+{
+}
+}

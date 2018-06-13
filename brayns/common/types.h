@@ -397,6 +397,17 @@ struct Blob
 
 class Loader;
 using LoaderPtr = std::unique_ptr<Loader>;
+
+enum class DataType
+{
+    FLOAT,
+    UINT8,
+    UINT16,
+    UINT32,
+    INT8,
+    INT16,
+    INT32
+};
 }
 
 #endif // TYPES_H

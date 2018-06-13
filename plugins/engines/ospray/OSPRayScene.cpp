@@ -317,59 +317,76 @@ void OSPRayScene::commitVolumeData()
     if (!volumeHandler)
         return;
 
-    const auto& vp = _parametersManager.getVolumeParameters();
-    if (vp.isModified())
-    {
-        // Cleanup existing volume data in handler and renderers
-        volumeHandler->clear();
+    // const auto& vp = _parametersManager.getVolumeParameters();
+    //    if (vp.isModified())
+    //    {
+    //        // Cleanup existing volume data in handler and renderers
+    //        volumeHandler->clear();
 
-        // An empty array has to be assigned to the renderers
-        _ospVolumeDataSize = 0;
-        _ospVolumeData = ospNewData(_ospVolumeDataSize, OSP_UCHAR, 0,
-                                    _memoryManagementFlags);
-        ospCommit(_ospVolumeData);
-        for (const auto& renderer : _renderers)
-        {
-            auto impl =
-                std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
-            ospSetData(impl, "volumeData", _ospVolumeData);
-        }
-    }
+    //        // An empty array has to be assigned to the renderers
+    //        _ospVolumeDataSize = 0;
+    //        _ospVolumeData = ospNewData(_ospVolumeDataSize, OSP_UCHAR, 0,
+    //                                    _memoryManagementFlags);
+    //        ospCommit(_ospVolumeData);
+    //        for (const auto& renderer : _renderers)
+    //        {
+    //            auto impl =
+    //                std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
+    //            ospSetData(impl, "volumeData", _ospVolumeData);
+    //        }
+    //    }
 
     const auto& ap = _parametersManager.getAnimationParameters();
     const auto animationFrame = ap.getFrame();
     volumeHandler->setCurrentIndex(animationFrame);
     auto data = volumeHandler->getData();
-    if (data && _ospVolumeDataSize == 0)
+    if (data && !_volume /* && _ospVolumeDataSize == 0*/)
     {
-        // Set volume data to renderers
-        _ospVolumeDataSize = volumeHandler->getSize();
-        _ospVolumeData = ospNewData(_ospVolumeDataSize, OSP_UCHAR, data,
-                                    _memoryManagementFlags);
-        ospCommit(_ospVolumeData);
-        for (const auto& renderer : _renderers)
-        {
-            auto impl =
-                std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
+        _volume =
+            createVolume(volumeHandler->getDimensions(),
+                         volumeHandler->getElementSpacing(), DataType::UINT8);
 
-            ospSetData(impl, "volumeData", _ospVolumeData);
-            const auto& dimensions = volumeHandler->getDimensions();
-            ospSet3i(impl, "volumeDimensions", dimensions.x(), dimensions.y(),
-                     dimensions.z());
-            const auto& elementSpacing =
-                _parametersManager.getVolumeParameters().getElementSpacing();
-            ospSet3f(impl, "volumeElementSpacing", elementSpacing.x(),
-                     elementSpacing.y(), elementSpacing.z());
-            const auto& offset =
-                _parametersManager.getVolumeParameters().getOffset();
-            ospSet3f(impl, "volumeOffset", offset.x(), offset.y(), offset.z());
-            const auto epsilon = volumeHandler->getEpsilon(
-                elementSpacing,
-                _parametersManager.getRenderingParameters().getSamplesPerRay());
-            ospSet1f(impl, "volumeEpsilon", epsilon);
-        }
+        _volume->setDataRange({0, 255});
+        _volume->setVoxels(data);
+        _volume->commit();
+
+        auto ospVolume = std::static_pointer_cast<OSPRayVolume>(_volume);
+        ospAddVolume(_rootModel, ospVolume->impl());
+        ospCommit(_rootModel);
+
+        //        // Set volume data to renderers
+        //        _ospVolumeDataSize = volumeHandler->getSize();
+        //        _ospVolumeData = ospNewData(_ospVolumeDataSize, OSP_UCHAR,
+        //        data,
+        //                                    _memoryManagementFlags);
+        //        ospCommit(_ospVolumeData);
+        //        for (const auto& renderer : _renderers)
+        //        {
+        //            auto impl =
+        //                std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
+
+        //            ospSetData(impl, "volumeData", _ospVolumeData);
+        //            const auto& dimensions = volumeHandler->getDimensions();
+        //            ospSet3i(impl, "volumeDimensions", dimensions.x(),
+        //            dimensions.y(),
+        //                     dimensions.z());
+        //            const auto& elementSpacing =
+        //                _parametersManager.getVolumeParameters().getElementSpacing();
+        //            ospSet3f(impl, "volumeElementSpacing", elementSpacing.x(),
+        //                     elementSpacing.y(), elementSpacing.z());
+        //            const auto& offset =
+        //                _parametersManager.getVolumeParameters().getOffset();
+        //            ospSet3f(impl, "volumeOffset", offset.x(), offset.y(),
+        //            offset.z());
+        //            const auto epsilon = volumeHandler->getEpsilon(
+        //                elementSpacing,
+        //                _parametersManager.getRenderingParameters().getSamplesPerRay());
+        //            ospSet1f(impl, "volumeEpsilon", epsilon);
+        //        }
         markModified(); // to update scene bounds
     }
+    if (_parametersManager.getVolumeParameters().isModified())
+        _volume->commit();
 }
 
 void OSPRayScene::commitSimulationData()
@@ -419,9 +436,12 @@ ModelPtr OSPRayScene::createModel() const
     return std::make_unique<OSPRayModel>();
 }
 
-VolumePtr OSPRayScene::createVolume() const
+VolumePtr OSPRayScene::createVolume(const Vector3ui& dimension,
+                                    const Vector3f& spacing,
+                                    const DataType type) const
 {
     return std::make_shared<OSPRayVolume>(
-        _parametersManager.getVolumeParameters(), _ospTransferFunction);
+        dimension, spacing, type, _parametersManager.getVolumeParameters(),
+        _ospTransferFunction);
 }
 }

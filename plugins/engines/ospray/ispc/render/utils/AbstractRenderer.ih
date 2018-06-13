@@ -155,7 +155,8 @@ float shadedLightIntensity(const uniform AbstractRenderer* uniform self,
     @param ray Current ray used to traverse the volume
     @return Resulting color and alpha value
 */
-vec4f getVolumeContribution(const uniform AbstractRenderer* uniform self,
+vec4f getVolumeContribution(Volume* uniform volume,
+                            const uniform AbstractRenderer* uniform self,
                             const varying Ray& ray,
                             varying ScreenSample& sample);
 

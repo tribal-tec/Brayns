@@ -406,12 +406,18 @@ inline void processElectronShading(varying ScreenSample& sample,
 inline void processVolumeContribution(varying ScreenSample& sample,
                                       ShadingAttributes& attributes, Ray& ray)
 {
-    if (attributes.self->abstract.volumeData)
+    // if (attributes.self->abstract.volumeData)
+    for (uniform int32 i = 0;
+         i < attributes.self->abstract.super.model->volumeCount; i++)
     {
+        Volume* uniform volume_i =
+            attributes.self->abstract.super.model->volumes[i];
         const vec4f volumetricValue =
-            getVolumeContribution(&(attributes.self->abstract), ray, sample);
+            getVolumeContribution(volume_i, &(attributes.self->abstract), ray,
+                                  sample);
         attributes.volumeColor = make_vec3f(volumetricValue);
         attributes.volumeIntensity = volumetricValue.w;
+        break;
     }
 }
 

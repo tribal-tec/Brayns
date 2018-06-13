@@ -20,32 +20,23 @@
 
 #pragma once
 
+#include <brayns/common/BaseObject.h>
 #include <brayns/common/types.h>
 
 namespace brayns
 {
-class Volume
+class Volume : public BaseObject
 {
 public:
+    Volume(const Vector3ui& dimension, const Vector3f& spacing,
+           const DataType type);
     virtual ~Volume() = default;
 
-    virtual void setDimensions(const Vector3ui& dim) = 0;
-    virtual void setGridSpacing(const Vector3f& spacing) = 0;
     virtual void setDataRange(const Vector2f& range) = 0;
-
-    enum class DataType
-    {
-        FLOAT,
-        UINT8,
-        UINT16,
-        UINT32,
-        INT8,
-        INT16,
-        INT32
-    };
-    virtual void setDataType(const DataType type) = 0;
     virtual size_t setBrick(void* data, const Vector3ui& position,
                             const Vector3ui& size) = 0;
+
+    virtual void setVoxels(void* voxels) = 0;
 
     virtual void commit() = 0;
 
@@ -53,13 +44,14 @@ public:
     Boxf getBounds() const
     {
         return {{0, 0, 0},
-                {_dim.x() * _spacing.x(), _dim.y() * _spacing.y(),
-                 _dim.z() * _spacing.z()}};
+                {_dimension.x() * _spacing.x(), _dimension.y() * _spacing.y(),
+                 _dimension.z() * _spacing.z()}};
     }
 
 protected:
     size_t _sizeInBytes{0};
-    Vector3ui _dim;
-    Vector3f _spacing;
+    const Vector3ui _dimension;
+    const Vector3f _spacing;
+    const DataType _dataType;
 };
 }

@@ -58,7 +58,8 @@ public:
     /** @copydoc Scene::isVolumeSupported */
     bool isVolumeSupported(const std::string& volumeFile) const final;
 
-    VolumePtr createVolume() const final;
+    VolumePtr createVolume(const Vector3ui& dimension, const Vector3f& spacing,
+                           const DataType type) const final;
     ModelPtr createModel() const final;
 
     OSPModel getModel() { return _rootModel; }
@@ -83,6 +84,8 @@ private:
     size_t _memoryManagementFlags{0};
 
     ModelDescriptors _activeModels;
+
+    VolumePtr _volume;
 };
 }
 #endif // OSPRAYSCENE_H

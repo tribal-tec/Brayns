@@ -1,6 +1,5 @@
 /* Copyright (c) 2015-2018, EPFL/Blue Brain Project
  * All rights reserved. Do not distribute without permission.
- * Responsible Author: Daniel Nachbaur <daniel.nachbaur@epfl.ch>
  *
  * This file is part of Brayns <https://github.com/BlueBrain/Brayns>
  *
@@ -20,27 +19,27 @@
 
 #pragma once
 
-#include <brayns/common/volume/Volume.h>
+#include <brayns/common/loader/Loader.h>
+#include <brayns/parameters/VolumeParameters.h>
 
 namespace brayns
 {
-class SharedDataVolume : public virtual Volume
+class VolumeLoader : public Loader
 {
 public:
-    SharedDataVolume(const Vector3ui& dimension, const Vector3f& spacing,
-                     const DataType type)
-        : Volume(dimension, spacing, type)
-    {
-    }
+    VolumeLoader(Scene& scene, const VolumeParameters& volumeParameters);
 
-    ~SharedDataVolume();
-    virtual void setVoxels(void* voxels) = 0;
+    static std::set<std::string> getSupportedDataTypes();
 
-    void setData(const std::string& filename);
+    ModelDescriptorPtr importFromBlob(
+        Blob&& blob, const size_t index = 0,
+        const size_t defaultMaterialId = NO_MATERIAL) final;
+
+    ModelDescriptorPtr importFromFile(
+        const std::string& filename, const size_t index = 0,
+        const size_t defaultMaterialId = NO_MATERIAL) final;
 
 private:
-    void* _memoryMapPtr{nullptr};
-    int _cacheFileDescriptor{-1};
-    size_t _size{0};
+    const VolumeParameters& _volumeParameters;
 };
 }

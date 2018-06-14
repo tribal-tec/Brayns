@@ -42,6 +42,7 @@
 #include <brayns/io/MolecularSystemReader.h>
 #include <brayns/io/ProteinLoader.h>
 #include <brayns/io/TransferFunctionLoader.h>
+#include <brayns/io/VolumeLoader.h>
 #include <brayns/io/XYZBLoader.h>
 #include <brayns/io/simulation/SpikeSimulationHandler.h>
 
@@ -308,6 +309,11 @@ struct Brayns::Impl : public PluginAPI
                         ([&scene = _engine->getScene(), & params =
                                 _parametersManager.getGeometryParameters()] {
                             return std::make_unique<ProteinLoader>(scene, params);
+                        }));
+        REGISTER_LOADER(VolumeLoader,
+                        ([&scene = _engine->getScene(), & params =
+                                _parametersManager.getVolumeParameters()] {
+                            return std::make_unique<VolumeLoader>(scene, params);
                         }));
         REGISTER_LOADER(XYZBLoader,
                         ([&scene = _engine->getScene(), & params =

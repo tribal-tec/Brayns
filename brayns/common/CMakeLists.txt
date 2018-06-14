@@ -27,6 +27,7 @@ set(BRAYNSCOMMON_SOURCES
   utils/base64/base64.cpp
   utils/ImageUtils.cpp
   utils/Utils.cpp
+  volume/SharedDataVolume.cpp
   volume/Volume.cpp
 )
 

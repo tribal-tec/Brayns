@@ -98,7 +98,7 @@ void OSPRayScene::commit()
         }
     }
 
-    commitVolumeData();
+    // commitVolumeData();
     commitSimulationData();
     commitTransferFunctionData();
 

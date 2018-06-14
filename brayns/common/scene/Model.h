@@ -301,8 +301,9 @@ public:
     /** @return the size in bytes of all geometries. */
     size_t getSizeInBytes() const { return _sizeInBytes; }
     void markInstancesDirty() { _instancesDirty = true; }
-    void updateSizeInBytes(const size_t bytes) { _sizeInBytes += bytes; }
     const Volumes& getVolumes() const { return _volumes; }
+    void updateSizeInBytes();
+
 protected:
     MaterialMap _materials;
     SpheresMap _spheres;

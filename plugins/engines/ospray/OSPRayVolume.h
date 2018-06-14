@@ -52,8 +52,8 @@ public:
     OSPRayBrickedVolume(const Vector3ui& dimension, const Vector3f& spacing,
                         const DataType type, VolumeParameters& params,
                         OSPTransferFunction transferFunction);
-    size_t setBrick(void* data, const Vector3ui& position,
-                    const Vector3ui& size) final;
+    void setBrick(void* data, const Vector3ui& position,
+                  const Vector3ui& size) final;
 };
 
 class OSPRaySharedDataVolume : public SharedDataVolume, public OSPRayVolume

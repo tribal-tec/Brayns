@@ -195,6 +195,9 @@ struct Brayns::Impl : public PluginAPI
 
         scene.commit();
 
+        _engine->getStatistics().setSceneSizeInBytes(
+            _engine->getScene().getSizeInBytes());
+
         _sceneWasModified = _sceneWasModified || scene.isModified();
         if (scene.isModified())
             _finishLoadScene();
@@ -458,9 +461,6 @@ private:
     {
         if (_dataLoadingFuture.valid())
             _dataLoadingFuture.get();
-
-        _engine->getStatistics().setSceneSizeInBytes(
-            _engine->getScene().getSizeInBytes());
 
         // finish reporting of progress
         postSceneLoading();

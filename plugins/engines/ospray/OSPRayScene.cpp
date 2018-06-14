@@ -80,6 +80,16 @@ OSPRayScene::~OSPRayScene()
 
 void OSPRayScene::commit()
 {
+    {
+        std::shared_lock<std::shared_timed_mutex> lock(_modelMutex);
+        for (auto modelDescriptor : _modelDescriptors)
+        {
+            for (auto volume : modelDescriptor->getModel().getVolumes())
+                volume->commit();
+            modelDescriptor->getModel().updateSizeInBytes();
+        }
+    }
+
     const bool rebuildScene = isModified();
 
     commitVolumeData();

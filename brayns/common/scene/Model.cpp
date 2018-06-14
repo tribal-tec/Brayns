@@ -24,6 +24,7 @@
 #include <brayns/common/log.h>
 #include <brayns/common/material/Material.h>
 #include <brayns/common/material/Texture2D.h>
+#include <brayns/common/volume/Volume.h>
 
 #include <boost/filesystem.hpp>
 
@@ -300,36 +301,18 @@ void Model::setMaterialsColorMap(const MaterialsColorMap colorMap)
 
 void Model::logInformation()
 {
-    _sizeInBytes = 0;
+    updateSizeInBytes();
+
     uint64_t nbSpheres = 0;
     uint64_t nbCylinders = 0;
     uint64_t nbCones = 0;
-    uint64_t nbMeshes = 0;
+    uint64_t nbMeshes = _trianglesMeshes.size();
     for (const auto& spheres : _spheres)
-    {
-        _sizeInBytes += spheres.second.size() * sizeof(Sphere);
         nbSpheres += spheres.second.size();
-    }
     for (const auto& cylinders : _cylinders)
-    {
-        _sizeInBytes += cylinders.second.size() * sizeof(Cylinder);
         nbCylinders += cylinders.second.size();
-    }
     for (const auto& cones : _cones)
-    {
-        _sizeInBytes += cones.second.size() * sizeof(Cones);
         nbCones += cones.second.size();
-    }
-    for (const auto& trianglesMesh : _trianglesMeshes)
-    {
-        const auto& mesh = trianglesMesh.second;
-        _sizeInBytes += mesh.indices.size() * sizeof(Vector3f);
-        _sizeInBytes += mesh.normals.size() * sizeof(Vector3f);
-        _sizeInBytes += mesh.colors.size() * sizeof(Vector4f);
-        _sizeInBytes += mesh.indices.size() * sizeof(Vector3ui);
-        _sizeInBytes += mesh.textureCoordinates.size() * sizeof(Vector2f);
-        ++nbMeshes;
-    }
 
     BRAYNS_DEBUG << "Spheres: " << nbSpheres << ", Cylinders: " << nbCylinders
                  << ", Cones: " << nbCones << ", Meshes: " << nbMeshes
@@ -345,6 +328,28 @@ MaterialPtr Model::getMaterial(const size_t materialId) const
         throw std::runtime_error("Material " + std::to_string(materialId) +
                                  " is not registered in the model");
     return it->second;
+}
+
+void Model::updateSizeInBytes()
+{
+    _sizeInBytes = 0;
+    for (const auto& spheres : _spheres)
+        _sizeInBytes += spheres.second.size() * sizeof(Sphere);
+    for (const auto& cylinders : _cylinders)
+        _sizeInBytes += cylinders.second.size() * sizeof(Cylinder);
+    for (const auto& cones : _cones)
+        _sizeInBytes += cones.second.size() * sizeof(Cones);
+    for (const auto& trianglesMesh : _trianglesMeshes)
+    {
+        const auto& mesh = trianglesMesh.second;
+        _sizeInBytes += mesh.indices.size() * sizeof(Vector3f);
+        _sizeInBytes += mesh.normals.size() * sizeof(Vector3f);
+        _sizeInBytes += mesh.colors.size() * sizeof(Vector4f);
+        _sizeInBytes += mesh.indices.size() * sizeof(Vector3ui);
+        _sizeInBytes += mesh.textureCoordinates.size() * sizeof(Vector2f);
+    }
+    for (const auto& volume : _volumes)
+        _sizeInBytes += volume->getSizeInBytes();
 }
 
 void Model::createMissingMaterials(const bool castSimulationData)

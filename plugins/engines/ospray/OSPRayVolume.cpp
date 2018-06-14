@@ -105,18 +105,18 @@ OSPRaySharedDataVolume::OSPRaySharedDataVolume(
 void OSPRayVolume::setDataRange(const Vector2f &range)
 {
     ospSet2f(_volume, "voxelRange", range.x(), range.y());
+    markModified();
 }
 
-size_t OSPRayBrickedVolume::setBrick(void *data, const Vector3ui &position,
-                                     const Vector3ui &size_)
+void OSPRayBrickedVolume::setBrick(void *data, const Vector3ui &position,
+                                   const Vector3ui &size_)
 {
     const ospcommon::vec3i pos{int(position.x()), int(position.y()),
                                int(position.z())};
     const ospcommon::vec3i size{int(size_.x()), int(size_.y()), int(size_.z())};
     ospSetRegion(_volume, data, (osp::vec3i &)pos, (osp::vec3i &)size);
-    const size_t sizeInBytes = size_.product() * _dataSize;
-    BrickedVolume::_sizeInBytes += sizeInBytes;
-    return sizeInBytes;
+    BrickedVolume::_sizeInBytes += size_.product() * _dataSize;
+    markModified();
 }
 
 void OSPRaySharedDataVolume::setVoxels(void *voxels)
@@ -126,6 +126,7 @@ void OSPRaySharedDataVolume::setVoxels(void *voxels)
     SharedDataVolume::_sizeInBytes +=
         SharedDataVolume::_dimension.product() * _dataSize;
     ospSetData(_volume, "voxelData", data);
+    markModified();
 }
 
 void OSPRayVolume::commit()
@@ -149,5 +150,6 @@ void OSPRayVolume::commit()
     }
     if (isModified() || _parameters.isModified())
         ospCommit(_volume);
+    resetModified();
 }
 }

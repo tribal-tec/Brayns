@@ -376,7 +376,6 @@ void OSPRayModel::_commitSDFGeometries()
 void OSPRayModel::addVolume(VolumePtr volume)
 {
     _volumes.push_back(volume);
-    _sizeInBytes += volume->getSizeInBytes();
     _bounds.merge(volume->getBounds());
 
     _markSceneModified();
@@ -389,7 +388,6 @@ void OSPRayModel::removeVolume(VolumePtr volume)
         return;
 
     _volumes.erase(i);
-    _sizeInBytes -= volume->getSizeInBytes();
 
     _markSceneModified();
 }

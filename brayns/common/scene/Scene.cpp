@@ -106,8 +106,7 @@ size_t Scene::getSizeInBytes() const
 size_t Scene::getNumModels() const
 {
     std::shared_lock<std::shared_timed_mutex> lock(_modelMutex);
-    const auto size = _modelDescriptors.size();
-    return size;
+    return _modelDescriptors.size();
 }
 
 void Scene::addLight(LightPtr light)

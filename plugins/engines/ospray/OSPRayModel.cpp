@@ -29,6 +29,12 @@
 
 namespace brayns
 {
+OSPRayModel::OSPRayModel(const std::function<void()>& markSceneModified)
+    : Model()
+    , _markSceneModified(markSceneModified)
+{
+}
+
 OSPRayModel::~OSPRayModel()
 {
     if (_useSimulationModel)
@@ -372,7 +378,8 @@ void OSPRayModel::addVolume(VolumePtr volume)
     _volumes.push_back(volume);
     _sizeInBytes += volume->getSizeInBytes();
     _bounds.merge(volume->getBounds());
-    _volumesDirty = true;
+
+    _markSceneModified();
 }
 
 void OSPRayModel::removeVolume(VolumePtr volume)
@@ -383,11 +390,18 @@ void OSPRayModel::removeVolume(VolumePtr volume)
 
     _volumes.erase(i);
     _sizeInBytes -= volume->getSizeInBytes();
-    _volumesDirty = true;
+
+    _markSceneModified();
 }
 
 void OSPRayModel::commit()
 {
+    for (auto volume : _volumes)
+    {
+        auto ospVolume = std::dynamic_pointer_cast<OSPRayVolume>(volume);
+        ospVolume->commit();
+    }
+
     if (!dirty())
         return;
 
@@ -439,22 +453,11 @@ void OSPRayModel::commit()
     // handled by the scene
     _instancesDirty = false;
 
-    _volumesDirty = false;
-
     // Commit models
     ospCommit(_model);
     if (_boundingBoxModel)
         ospCommit(_boundingBoxModel);
     ospCommit(_simulationModel);
-}
-
-void OSPRayModel::commitVolumes()
-{
-    for (auto volume : _volumes)
-    {
-        auto ospVolume = std::dynamic_pointer_cast<OSPRayVolume>(volume);
-        ospVolume->commit();
-    }
 }
 
 MaterialPtr OSPRayModel::createMaterial(const size_t materialId,

@@ -165,7 +165,6 @@ public:
     virtual void removeVolume(VolumePtr) = 0;
 
     virtual void commit() = 0;
-    virtual void commitVolumes() = 0;
 
     /**
      * @return true if the geometry Model does not contain any geometry, false
@@ -303,7 +302,6 @@ public:
     size_t getSizeInBytes() const { return _sizeInBytes; }
     void markInstancesDirty() { _instancesDirty = true; }
     void updateSizeInBytes(const size_t bytes) { _sizeInBytes += bytes; }
-    void markVolumeDirty() { _volumesDirty = true; }
     const Volumes& getVolumes() const { return _volumes; }
 protected:
     MaterialMap _materials;
@@ -332,7 +330,6 @@ protected:
     bool _instancesDirty{true};
 
     Volumes _volumes;
-    bool _volumesDirty{true};
 
     size_t _sizeInBytes{0};
 

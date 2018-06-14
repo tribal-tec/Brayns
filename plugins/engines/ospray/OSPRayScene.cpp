@@ -125,10 +125,14 @@ void OSPRayScene::commit()
 
         // add volumes to root model, because scivis renderer does not consider
         // volumes from instances
-        for (auto volume : modelDescriptor->getModel().getVolumes())
+        if (modelDescriptor->getVisible())
         {
-            auto ospVolume = std::dynamic_pointer_cast<OSPRayVolume>(volume);
-            ospAddVolume(_rootModel, ospVolume->impl());
+            for (auto volume : modelDescriptor->getModel().getVolumes())
+            {
+                auto ospVolume =
+                    std::dynamic_pointer_cast<OSPRayVolume>(volume);
+                ospAddVolume(_rootModel, ospVolume->impl());
+            }
         }
 
         Boxf instancesBounds;
@@ -144,10 +148,6 @@ void OSPRayScene::commit()
 
             if (modelDescriptor->getVisible() && instance.getVisible())
                 addInstance(_rootModel, impl.getModel(), instanceTransform);
-
-            const auto& vp = _parametersManager.getVolumeParameters();
-            if (vp.isModified())
-                impl.commitVolumes();
 
             instancesBounds.merge(transformBox(modelBounds, instanceTransform));
         }
@@ -434,7 +434,8 @@ bool OSPRayScene::isVolumeSupported(const std::string& volumeFile) const
 
 ModelPtr OSPRayScene::createModel() const
 {
-    return std::make_unique<OSPRayModel>();
+    return std::make_unique<OSPRayModel>(
+        [this] { const_cast<OSPRayScene*>(this)->markModified(); });
 }
 
 SharedDataVolumePtr OSPRayScene::createSharedDataVolume(
@@ -445,6 +446,7 @@ SharedDataVolumePtr OSPRayScene::createSharedDataVolume(
         dimension, spacing, type, _parametersManager.getVolumeParameters(),
         _ospTransferFunction);
 }
+
 BrickedVolumePtr OSPRayScene::createBrickedVolume(const Vector3ui& dimension,
                                                   const Vector3f& spacing,
                                                   const DataType type) const

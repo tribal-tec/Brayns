@@ -31,14 +31,13 @@ namespace brayns
 class OSPRayModel : public Model
 {
 public:
-    OSPRayModel() = default;
+    OSPRayModel(const std::function<void()>& markSceneModified);
     ~OSPRayModel() final;
 
     void setMemoryFlags(const size_t memoryManagementFlags);
 
     void addVolume(VolumePtr) final;
     void removeVolume(VolumePtr) final;
-    void commitVolumes() final;
 
     void commit() final;
 
@@ -56,6 +55,8 @@ private:
     void _commitCones(const size_t materialId);
     void _commitMeshes(const size_t materialId);
     void _commitSDFGeometries();
+
+    std::function<void()> _markSceneModified;
 
     OSPModel _model{nullptr};
 

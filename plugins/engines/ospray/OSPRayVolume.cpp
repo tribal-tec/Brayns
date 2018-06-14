@@ -130,19 +130,24 @@ void OSPRaySharedDataVolume::setVoxels(void *voxels)
 
 void OSPRayVolume::commit()
 {
-    ospSet1i(_volume, "gradientShadingEnabled",
-             _parameters.getGradientShading());
-    ospSet1f(_volume, "adaptiveMaxSamplingRate",
-             _parameters.getAdaptiveMaxSamplingRate());
-    ospSet1i(_volume, "adaptiveSampling", _parameters.getAdaptiveSampling());
-    ospSet1i(_volume, "singleShade", true);
-    ospSet1i(_volume, "preIntegration", false);
-    ospSet1f(_volume, "samplingRate", _parameters.getSamplingRate());
-    ospSet3fv(_volume, "specular", &_parameters.getSpecular().x());
-    ospSet3fv(_volume, "volumeClippingBoxLower",
-              &_parameters.getClipBox().getMin().x());
-    ospSet3fv(_volume, "volumeClippingBoxUpper",
-              &_parameters.getClipBox().getMax().x());
-    ospCommit(_volume);
+    if (_parameters.isModified())
+    {
+        ospSet1i(_volume, "gradientShadingEnabled",
+                 _parameters.getGradientShading());
+        ospSet1f(_volume, "adaptiveMaxSamplingRate",
+                 _parameters.getAdaptiveMaxSamplingRate());
+        ospSet1i(_volume, "adaptiveSampling",
+                 _parameters.getAdaptiveSampling());
+        ospSet1i(_volume, "singleShade", true);
+        ospSet1i(_volume, "preIntegration", false);
+        ospSet1f(_volume, "samplingRate", _parameters.getSamplingRate());
+        ospSet3fv(_volume, "specular", &_parameters.getSpecular().x());
+        ospSet3fv(_volume, "volumeClippingBoxLower",
+                  &_parameters.getClipBox().getMin().x());
+        ospSet3fv(_volume, "volumeClippingBoxUpper",
+                  &_parameters.getClipBox().getMax().x());
+    }
+    if (isModified() || _parameters.isModified())
+        ospCommit(_volume);
 }
 }

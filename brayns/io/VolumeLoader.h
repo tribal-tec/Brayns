@@ -24,6 +24,7 @@
 
 namespace brayns
 {
+/** A volume loader for raw (*.raw with params for dimensions or *.mhd) volumes. */
 class VolumeLoader : public Loader
 {
 public:

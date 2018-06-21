@@ -24,6 +24,10 @@
 
 namespace brayns
 {
+/**
+ * A volume type where the voxels are set once and only referenced from the
+ * source location.
+ */
 class SharedDataVolume : public virtual Volume
 {
 public:

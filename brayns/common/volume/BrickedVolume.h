@@ -24,6 +24,7 @@
 
 namespace brayns
 {
+/** A volume type where the voxels are copied for added brick. */
 class BrickedVolume : public virtual Volume
 {
 public:

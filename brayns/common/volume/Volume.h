@@ -25,6 +25,7 @@
 
 namespace brayns
 {
+/** A base class for volumes to share common properties. */
 class Volume : public BaseObject
 {
 public:

@@ -496,6 +496,8 @@ inline void init(brayns::VolumeParameters* v, ObjectHandler* h)
                     Flags::Optional);
 
     h->add_property("gradient_shading", &v->_gradientShading, Flags::Optional);
+    h->add_property("single_shade", &v->_singleShade, Flags::Optional);
+    h->add_property("pre_integration", &v->_preIntegration, Flags::Optional);
     h->add_property("adaptive_max_sampling_rate", &v->_adaptiveMaxSamplingRate,
                     Flags::Optional);
     h->add_property("adaptive_sampling", &v->_adaptiveSampling,

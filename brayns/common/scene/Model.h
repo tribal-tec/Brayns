@@ -161,9 +161,6 @@ public:
 
     BRAYNS_API virtual ~Model() = default;
 
-    virtual void addVolume(VolumePtr) = 0;
-    virtual void removeVolume(VolumePtr) = 0;
-
     virtual void commit() = 0;
 
     /**
@@ -248,6 +245,12 @@ public:
     {
         return _trianglesMeshes;
     }
+
+    /** Add a volume to the model*/
+    virtual void addVolume(VolumePtr) = 0;
+
+    /** Remove a volume from the model */
+    virtual void removeVolume(VolumePtr) = 0;
 
     /**
      * @brief logInformation Logs information about the model, like the number

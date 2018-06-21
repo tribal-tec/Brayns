@@ -108,10 +108,19 @@ public:
     BRAYNS_API void clearLights();
 
     BRAYNS_API virtual ModelPtr createModel() const = 0;
+
+    /**
+     * Create a volume with the given dimension, voxel spacing and data type
+     * where the are voxels are set via setVoxels() from any memory location.
+     */
     BRAYNS_API virtual SharedDataVolumePtr createSharedDataVolume(
         const Vector3ui& dimension, const Vector3f& spacing,
         const DataType type) const = 0;
 
+    /**
+     * Create a volume with the given dimension, voxel spacing and data type
+     * where the voxels are copied via setBrick() into an optimized internal storage.
+     */
     BRAYNS_API virtual BrickedVolumePtr createBrickedVolume(
         const Vector3ui& dimension, const Vector3f& spacing,
         const DataType type) const = 0;

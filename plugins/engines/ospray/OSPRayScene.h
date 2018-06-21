@@ -49,8 +49,8 @@ public:
     /** @copydoc Scene::commitLights */
     bool commitLights() final;
 
-    void commitVolumeData();
     void commitSimulationData();
+    void commitVolumeData();
 
     /** @copydoc Scene::commitTransferFunctionData */
     bool commitTransferFunctionData() final;
@@ -76,6 +76,9 @@ private:
 
     OSPTransferFunction _ospTransferFunction{
         ospNewTransferFunction("piecewise_linear")};
+
+    OSPData _ospTransferFunctionEmissionData{nullptr};
+    OSPData _ospTransferFunctionDiffuseData{nullptr};
 
     size_t _memoryManagementFlags{0};
 

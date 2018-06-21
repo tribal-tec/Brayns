@@ -54,13 +54,6 @@ struct AbstractRenderer
     float timestamp;
     int spp;
 
-    // Volume attributes
-    uniform uint8* uniform volumeData;
-    vec3i volumeDimensions;
-    vec3f volumeElementSpacing;
-    vec3f volumeOffset;
-    float volumeEpsilon;
-    float volumeDiag;
     uint32 volumeSamplesPerRay;
 
     // Transfer function / Color map attributes

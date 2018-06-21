@@ -58,6 +58,12 @@ OSPRayScene::~OSPRayScene()
     if (_ospSimulationData)
         ospRelease(_ospSimulationData);
 
+    if (_ospTransferFunctionDiffuseData)
+        ospRelease(_ospTransferFunctionDiffuseData);
+
+    if (_ospTransferFunctionEmissionData)
+        ospRelease(_ospTransferFunctionEmissionData);
+
     for (auto& light : _ospLights)
         ospRelease(light);
     _ospLights.clear();
@@ -233,6 +239,7 @@ bool OSPRayScene::commitTransferFunctionData()
     if (!_transferFunction.isModified())
         return false;
 
+    // for volumes
     Vector3fs colors;
     colors.reserve(_transferFunction.getDiffuseColors().size());
     floats opacities;
@@ -256,6 +263,51 @@ bool OSPRayScene::commitTransferFunctionData()
     ospRelease(opacityValuesData);
     ospCommit(_ospTransferFunction);
 
+
+    // for simulation
+    if (_ospTransferFunctionDiffuseData)
+        ospRelease(_ospTransferFunctionDiffuseData);
+
+    if (_ospTransferFunctionEmissionData)
+        ospRelease(_ospTransferFunctionEmissionData);
+
+    _ospTransferFunctionDiffuseData =
+        ospNewData(_transferFunction.getDiffuseColors().size(), OSP_FLOAT4,
+                   _transferFunction.getDiffuseColors().data(),
+                   _memoryManagementFlags);
+    ospCommit(_ospTransferFunctionDiffuseData);
+
+    _ospTransferFunctionEmissionData =
+        ospNewData(_transferFunction.getEmissionIntensities().size(),
+                   OSP_FLOAT3,
+                   _transferFunction.getEmissionIntensities().data(),
+                   _memoryManagementFlags);
+    ospCommit(_ospTransferFunctionEmissionData);
+
+    for (const auto& renderer : _renderers)
+    {
+        auto impl = std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
+
+        // Transfer function Diffuse colors
+        ospSetData(impl, "transferFunctionDiffuseData",
+                   _ospTransferFunctionDiffuseData);
+
+        // Transfer function emission data
+        ospSetData(impl, "transferFunctionEmissionData",
+                   _ospTransferFunctionEmissionData);
+
+        // Transfer function size
+        ospSet1i(impl, "transferFunctionSize",
+                 _transferFunction.getDiffuseColors().size());
+
+        // Transfer function range
+        ospSet1f(impl, "transferFunctionMinValue",
+                 _transferFunction.getValuesRange().x());
+        ospSet1f(impl, "transferFunctionRange",
+                 _transferFunction.getValuesRange().y() -
+                     _transferFunction.getValuesRange().x());
+        ospCommit(impl);
+    }
     _transferFunction.resetModified();
     markModified();
     return true;

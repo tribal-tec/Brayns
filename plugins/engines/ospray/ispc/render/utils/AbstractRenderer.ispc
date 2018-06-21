@@ -285,6 +285,7 @@ inline varying float getVolumeShadowContribution(
     const uniform AbstractRenderer* uniform self, const varying Ray& ray,
     varying ScreenSample& sample)
 {
+#if 0
     // Find volume intersections
     float t0, t1;
     vec3f aabbMin = self->volumeOffset;
@@ -321,6 +322,9 @@ inline varying float getVolumeShadowContribution(
         }
     }
     return shadowIntensity;
+#else
+return 0.f;
+#endif
 }
 
 inline varying vec4f getVolumeContribution(

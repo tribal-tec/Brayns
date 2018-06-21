@@ -182,10 +182,29 @@ void Model::updateSDFGeometryNeighbours(
     _sdfGeometriesDirty = true;
 }
 
+void Model::addVolume(VolumePtr volume)
+{
+    _volumes.push_back(volume);
+    _bounds.merge(volume->getBounds());
+    _volumesDirty = true;
+}
+
+void Model::removeVolume(VolumePtr volume)
+{
+    auto i = std::find(_volumes.begin(), _volumes.end(), volume);
+    if (i == _volumes.end())
+        return;
+
+    _volumes.erase(i);
+    _volumesDirty = true;
+}
+
+
 bool Model::dirty() const
 {
     return _spheresDirty || _cylindersDirty || _conesDirty ||
-           _trianglesMeshesDirty || _sdfGeometriesDirty || _instancesDirty;
+           _trianglesMeshesDirty || _sdfGeometriesDirty || 
+           _volumesDirty || _instancesDirty;
 }
 
 void Model::setMaterialsColorMap(const MaterialsColorMap colorMap)

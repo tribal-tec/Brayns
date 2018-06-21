@@ -247,10 +247,10 @@ public:
     }
 
     /** Add a volume to the model*/
-    virtual void addVolume(VolumePtr) = 0;
+    BRAYNS_API void addVolume(VolumePtr);
 
     /** Remove a volume from the model */
-    virtual void removeVolume(VolumePtr) = 0;
+    BRAYNS_API void removeVolume(VolumePtr);
 
     /**
      * @brief logInformation Logs information about the model, like the number
@@ -334,6 +334,7 @@ protected:
     bool _instancesDirty{true};
 
     Volumes _volumes;
+    bool _volumesDirty{true};
 
     size_t _sizeInBytes{0};
 

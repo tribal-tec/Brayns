@@ -317,8 +317,7 @@ void OSPRayScene::commitSimulationData()
 
 ModelPtr OSPRayScene::createModel() const
 {
-    return std::make_unique<OSPRayModel>(
-        [this] { const_cast<OSPRayScene*>(this)->markModified(); });
+    return std::make_unique<OSPRayModel>();
 }
 
 SharedDataVolumePtr OSPRayScene::createSharedDataVolume(

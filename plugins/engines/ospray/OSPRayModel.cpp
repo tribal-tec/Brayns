@@ -29,12 +29,6 @@
 
 namespace brayns
 {
-OSPRayModel::OSPRayModel(const std::function<void()>& markSceneModified)
-    : Model()
-    , _markSceneModified(markSceneModified)
-{
-}
-
 OSPRayModel::~OSPRayModel()
 {
     if (_useSimulationModel)
@@ -371,25 +365,6 @@ void OSPRayModel::_commitSDFGeometries()
         else
             ospAddGeometry(_model, _ospSDFGeometryRefs[materialId]);
     }
-}
-
-void OSPRayModel::addVolume(VolumePtr volume)
-{
-    _volumes.push_back(volume);
-    _bounds.merge(volume->getBounds());
-
-    _markSceneModified();
-}
-
-void OSPRayModel::removeVolume(VolumePtr volume)
-{
-    auto i = std::find(_volumes.begin(), _volumes.end(), volume);
-    if (i == _volumes.end())
-        return;
-
-    _volumes.erase(i);
-
-    _markSceneModified();
 }
 
 void OSPRayModel::commit()

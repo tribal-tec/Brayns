@@ -24,9 +24,39 @@
 #include <brayns/common/volume/SharedDataVolume.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+using boost::property_tree::ptree;
 
 namespace brayns
 {
+namespace
+{
+Vector3f to_Vector3f(const std::string& s)
+{
+  std::vector<float> result;
+  std::stringstream ss(s);
+  std::string item;
+  while(std::getline(ss, item, ' '))
+      result.push_back(std::stof(item));
+  if(result.size() != 3)
+      throw std::runtime_error("Not exactly 3 values for mhd array");
+  return Vector3f(result.data());
+}
+
+DataType dataTypeFromMET(const std::string& type)
+{
+    if (type=="MET_FLOAT") return DataType::FLOAT;
+    else if (type=="MET_UCHAR") return DataType::UINT8;
+    else if (type=="MET_USHORT") return DataType::UINT16;
+    else if (type=="MET_UINT") return DataType::UINT32;
+    else if (type=="MET_CHAR") return DataType::INT8;
+    else if (type=="MET_SHORT") return DataType::INT16;
+    else if (type=="MET_INT") return DataType::INT32;
+    else throw std::runtime_error("Unknown data type " + type);
+}
+}
+
 VolumeLoader::VolumeLoader(Scene& scene,
                            const VolumeParameters& volumeParameters)
     : Loader(scene)
@@ -55,13 +85,26 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
 
     Vector3f dimension, spacing;
     DataType type;
+    std::string volumeFile = filename;
     const bool mhd = boost::filesystem::extension(filename) == ".mhd";
     if (mhd)
     {
-        // TODO
-        dimension = _volumeParameters.getDimensions();
-        spacing = _volumeParameters.getElementSpacing();
-        type = DataType::UINT8;
+        boost::property_tree::ptree pt;
+        boost::property_tree::ini_parser::read_ini(filename, pt);
+
+        if(pt.get<std::string>("ObjectType") != "Image")
+            throw std::runtime_error("Wrong object type for mhd file");
+
+        dimension = to_Vector3f(pt.get<std::string>("DimSize"));
+        spacing = to_Vector3f(pt.get<std::string>("ElementSpacing"));
+        type = dataTypeFromMET(pt.get<std::string>("ElementType"));
+        boost::filesystem::path path = pt.get<std::string>("ElementDataFile");
+        if(!path.is_absolute())
+        {
+            boost::filesystem::path basePath(filename);
+            path = boost::filesystem::canonical(path, basePath.parent_path());
+        }
+        volumeFile = path.string();
     }
     else
     {
@@ -107,7 +150,7 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
 
     auto volume = _scene.createSharedDataVolume(dimension, spacing, type);
     volume->setDataRange(dataRange);
-    volume->setData(filename);
+    volume->setData(volumeFile);
     model->addVolume(volume);
     return std::make_shared<ModelDescriptor>(
         std::move(model), filename,

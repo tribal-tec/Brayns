@@ -45,6 +45,11 @@ OSPRayVolume::OSPRayVolume(const Vector3ui &dimension, const Vector3f &spacing,
         _ospType = OSP_FLOAT;
         _dataSize = 4;
         break;
+    case DataType::DOUBLE:
+        ospSetString(_volume, "voxelType", "double");
+        _ospType = OSP_DOUBLE;
+        _dataSize = 8;
+        break;
     case DataType::UINT8:
         ospSetString(_volume, "voxelType", "uchar");
         _ospType = OSP_UINT;
@@ -126,6 +131,7 @@ void OSPRaySharedDataVolume::setVoxels(void *voxels)
     SharedDataVolume::_sizeInBytes +=
         SharedDataVolume::_dimension.product() * _dataSize;
     ospSetData(_volume, "voxelData", data);
+    ospRelease(data);
     markModified();
 }
 
@@ -139,8 +145,8 @@ void OSPRayVolume::commit()
                  _parameters.getAdaptiveMaxSamplingRate());
         ospSet1i(_volume, "adaptiveSampling",
                  _parameters.getAdaptiveSampling());
-        ospSet1i(_volume, "singleShade", true);
-        ospSet1i(_volume, "preIntegration", false);
+        ospSet1i(_volume, "singleShade", _parameters.getSingleShade());
+        ospSet1i(_volume, "preIntegration", _parameters.getPreIntegration());
         ospSet1f(_volume, "samplingRate", _parameters.getSamplingRate());
         ospSet3fv(_volume, "specular", &_parameters.getSpecular().x());
         ospSet3fv(_volume, "volumeClippingBoxLower",

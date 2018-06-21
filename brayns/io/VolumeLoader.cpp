@@ -47,6 +47,7 @@ Vector3f to_Vector3f(const std::string& s)
 DataType dataTypeFromMET(const std::string& type)
 {
     if (type=="MET_FLOAT") return DataType::FLOAT;
+    else if (type=="MET_DOUBLE") return DataType::DOUBLE;
     else if (type=="MET_UCHAR") return DataType::UINT8;
     else if (type=="MET_USHORT") return DataType::UINT16;
     else if (type=="MET_UINT") return DataType::UINT32;
@@ -73,16 +74,13 @@ ModelDescriptorPtr VolumeLoader::importFromBlob(
     Blob&& blob BRAYNS_UNUSED, const size_t index BRAYNS_UNUSED,
     const size_t defaultMaterialId BRAYNS_UNUSED)
 {
-    auto model = _scene.createModel();
-    return std::make_shared<ModelDescriptor>(std::move(model), blob.name);
+    throw std::runtime_error("Volume loading from blob is not supported");
 }
 
 ModelDescriptorPtr VolumeLoader::importFromFile(
     const std::string& filename, const size_t index BRAYNS_UNUSED,
     const size_t defaultMaterialId BRAYNS_UNUSED)
 {
-    auto model = _scene.createModel();
-
     Vector3f dimension, spacing;
     DataType type;
     std::string volumeFile = filename;
@@ -120,6 +118,7 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
     switch (type)
     {
     case DataType::FLOAT:
+    case DataType::DOUBLE:
         dataRange = {0, 1};
         break;
     case DataType::UINT8:
@@ -151,6 +150,8 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
     auto volume = _scene.createSharedDataVolume(dimension, spacing, type);
     volume->setDataRange(dataRange);
     volume->setData(volumeFile);
+
+    auto model = _scene.createModel();
     model->addVolume(volume);
     return std::make_shared<ModelDescriptor>(
         std::move(model), filename,

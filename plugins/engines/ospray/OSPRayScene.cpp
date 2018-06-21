@@ -73,22 +73,7 @@ void OSPRayScene::commit()
 {
     const bool rebuildScene = isModified();
 
-    {
-        std::shared_lock<std::shared_timed_mutex> lock(_modelMutex);
-        for (auto modelDescriptor : _modelDescriptors)
-        {
-            for (auto volume : modelDescriptor->getModel().getVolumes())
-            {
-                if (volume->isModified())
-                {
-                    volume->commit();
-                    markModified();
-                }
-            }
-            modelDescriptor->getModel().updateSizeInBytes();
-        }
-    }
-
+    commitVolumeData();
     commitSimulationData();
     commitTransferFunctionData();
 
@@ -261,17 +246,36 @@ bool OSPRayScene::commitTransferFunctionData()
 
     OSPData colorsData = ospNewData(colors.size(), OSP_FLOAT3, colors.data());
     ospSetData(_ospTransferFunction, "colors", colorsData);
+    ospRelease(colorsData);
     ospSet2f(_ospTransferFunction, "valueRange",
              _transferFunction.getValuesRange().x(),
              _transferFunction.getValuesRange().y());
     OSPData opacityValuesData =
         ospNewData(opacities.size(), OSP_FLOAT, opacities.data());
     ospSetData(_ospTransferFunction, "opacities", opacityValuesData);
+    ospRelease(opacityValuesData);
     ospCommit(_ospTransferFunction);
 
     _transferFunction.resetModified();
     markModified();
     return true;
+}
+
+void OSPRayScene::commitVolumeData()
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_modelMutex);
+    for (auto modelDescriptor : _modelDescriptors)
+    {
+        for (auto volume : modelDescriptor->getModel().getVolumes())
+        {
+            if (volume->isModified())
+            {
+                volume->commit();
+                markModified();
+            }
+        }
+        modelDescriptor->getModel().updateSizeInBytes();
+    }
 }
 
 void OSPRayScene::commitSimulationData()

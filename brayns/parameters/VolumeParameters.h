@@ -46,6 +46,16 @@ public:
         _updateValue(_gradientShading, enabled);
     }
     bool getGradientShading() const { return _gradientShading; }
+    void setSingleShade(const bool enabled)
+    {
+        _updateValue(_singleShade, enabled);
+    }
+    bool getSingleShade() const { return _singleShade; }
+    void setPreIntegration(const bool enabled)
+    {
+        _updateValue(_preIntegration, enabled);
+    }
+    bool getPreIntegration() const { return _preIntegration; }
     void setAdaptiveSampling(const bool enabled)
     {
         _updateValue(_adaptiveSampling, enabled);
@@ -77,6 +87,8 @@ protected:
     Vector3f _offset;
 
     bool _gradientShading{false};
+    bool _singleShade{true};
+    bool _preIntegration{false};
     float _adaptiveMaxSamplingRate{2.f};
     bool _adaptiveSampling{true};
     float _samplingRate{0.125f};

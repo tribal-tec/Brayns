@@ -402,6 +402,7 @@ using LoaderPtr = std::unique_ptr<Loader>;
 enum class DataType
 {
     FLOAT,
+    DOUBLE,
     UINT8,
     UINT16,
     UINT32,

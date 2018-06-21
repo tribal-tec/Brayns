@@ -40,7 +40,7 @@ SharedDataVolume::~SharedDataVolume()
     if (_memoryMapPtr)
     {
         ::munmap((void *)_memoryMapPtr, _size);
-        _memoryMapPtr = 0;
+        _memoryMapPtr = nullptr;
     }
     if (_cacheFileDescriptor != NO_DESCRIPTOR)
     {
@@ -53,16 +53,14 @@ void SharedDataVolume::setData(const std::string &filename)
 {
     _cacheFileDescriptor = open(filename.c_str(), O_RDONLY);
     if (_cacheFileDescriptor == NO_DESCRIPTOR)
-    {
-        BRAYNS_ERROR << "Failed to attach " << filename << std::endl;
-        return;
-    }
+        throw std::runtime_error("Failed to open volume file " + filename);
 
     struct stat sb;
     if (::fstat(_cacheFileDescriptor, &sb) == NO_DESCRIPTOR)
     {
-        BRAYNS_ERROR << "Failed to attach " << filename << std::endl;
-        return;
+        ::close(_cacheFileDescriptor);
+        _cacheFileDescriptor = NO_DESCRIPTOR;
+        throw std::runtime_error("Failed to open volume file " + filename);
     }
 
     _size = sb.st_size;
@@ -70,11 +68,10 @@ void SharedDataVolume::setData(const std::string &filename)
         ::mmap(0, _size, PROT_READ, MAP_PRIVATE, _cacheFileDescriptor, 0);
     if (_memoryMapPtr == MAP_FAILED)
     {
-        _memoryMapPtr = 0;
+        _memoryMapPtr = nullptr;
         ::close(_cacheFileDescriptor);
         _cacheFileDescriptor = NO_DESCRIPTOR;
-        BRAYNS_ERROR << "Failed to attach " << filename << std::endl;
-        return;
+        throw std::runtime_error("Failed to open volume file " + filename);
     }
 
     setVoxels(_memoryMapPtr);

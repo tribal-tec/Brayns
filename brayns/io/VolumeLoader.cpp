@@ -81,6 +81,8 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
     const std::string& filename, const size_t index BRAYNS_UNUSED,
     const size_t defaultMaterialId BRAYNS_UNUSED)
 {
+    updateProgress("Parsing volume file ..." , 0, 2);
+
     Vector3f dimension, spacing;
     DataType type;
     std::string volumeFile = filename;
@@ -149,8 +151,11 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
 
     auto volume = _scene.createSharedDataVolume(dimension, spacing, type);
     volume->setDataRange(dataRange);
+
+    updateProgress("Loading voxels ..." , 1, 2);
     volume->setData(volumeFile);
 
+    updateProgress("Creating model ..." , 2, 2);
     auto model = _scene.createModel();
     model->addVolume(volume);
     return std::make_shared<ModelDescriptor>(

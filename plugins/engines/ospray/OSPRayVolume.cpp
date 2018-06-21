@@ -60,26 +60,15 @@ OSPRayVolume::OSPRayVolume(const Vector3ui &dimension, const Vector3f &spacing,
         _ospType = OSP_UINT2;
         _dataSize = 2;
         break;
-    case DataType::UINT32:
-        ospSetString(_volume, "voxelType", "uint");
-        _ospType = OSP_UINT3;
-        _dataSize = 4;
-        break;
-    case DataType::INT8:
-        ospSetString(_volume, "voxelType", "char");
-        _ospType = OSP_INT;
-        _dataSize = 1;
-        break;
     case DataType::INT16:
         ospSetString(_volume, "voxelType", "short");
         _ospType = OSP_INT2;
         _dataSize = 2;
         break;
+    case DataType::UINT32:
+    case DataType::INT8:
     case DataType::INT32:
-        ospSetString(_volume, "voxelType", "int");
-        _ospType = OSP_INT3;
-        _dataSize = 4;
-        break;
+        throw std::runtime_error("Unsupported voxel type " + std::to_string(int(type)));
     }
 
     ospSetObject(_volume, "transferFunction", transferFunction);

@@ -35,14 +35,6 @@ public:
     /** @copydoc AbstractParameters::print */
     void print() final;
 
-    /** Folder containing volume files */
-    const std::string& getFolder() const { return _folder; }
-    /** File containing volume data */
-    const std::string& getFilename() const { return _filename; }
-    void setFilename(const std::string& filename)
-    {
-        _updateValue(_filename, filename);
-    }
     /** Volume dimension  */
     const Vector3ui& getDimensions() const { return _dimensions; }
     /** Volume scale  */
@@ -80,8 +72,6 @@ public:
 protected:
     void parse(const po::variables_map& vm) final;
 
-    std::string _folder;
-    std::string _filename;
     Vector3ui _dimensions;
     Vector3f _elementSpacing;
     Vector3f _offset;

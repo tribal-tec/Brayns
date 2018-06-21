@@ -166,9 +166,6 @@ class CADiffusionSimulationHandler;
 typedef std::shared_ptr<CADiffusionSimulationHandler>
     CADiffusionSimulationHandlerPtr;
 
-class VolumeHandler;
-typedef std::shared_ptr<VolumeHandler> VolumeHandlerPtr;
-
 class AbstractParameters;
 class AnimationParameters;
 class ApplicationParameters;

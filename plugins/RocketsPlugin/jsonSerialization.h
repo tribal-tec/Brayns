@@ -488,8 +488,6 @@ inline void init(brayns::SceneParameters* s, ObjectHandler* h)
 
 inline void init(brayns::VolumeParameters* v, ObjectHandler* h)
 {
-    h->add_property("volume_folder", &v->_folder, Flags::Optional);
-    h->add_property("volume_file", &v->_filename, Flags::Optional);
     h->add_property("volume_dimensions", Vector3uiArray(v->_dimensions),
                     Flags::Optional);
     h->add_property("volume_element_spacing", Vector3fArray(v->_elementSpacing),

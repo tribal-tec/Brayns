@@ -34,7 +34,6 @@
 #include <brayns/common/scene/Model.h>
 #include <brayns/common/scene/Scene.h>
 #include <brayns/common/utils/Utils.h>
-#include <brayns/common/volume/VolumeHandler.h>
 
 #include <brayns/parameters/ParametersManager.h>
 
@@ -509,7 +508,6 @@ private:
         };
 
         auto& geometryParameters = _parametersManager.getGeometryParameters();
-        auto& volumeParameters = _parametersManager.getVolumeParameters();
         auto& sceneParameters = _parametersManager.getSceneParameters();
         auto& scene = _engine->getScene();
 
@@ -542,21 +540,6 @@ private:
         if (!geometryParameters.getMolecularSystemConfig().empty())
             _loadMolecularSystem(updateProgress);
 
-        if (scene.getVolumeHandler())
-        {
-            scene.commitTransferFunctionData();
-            scene.getVolumeHandler()->setCurrentIndex(0);
-            const Vector3ui& volumeDimensions =
-                scene.getVolumeHandler()->getDimensions();
-            const Vector3f& volumeOffset =
-                scene.getVolumeHandler()->getOffset();
-            const Vector3f& volumeElementSpacing =
-                volumeParameters.getElementSpacing();
-            auto bounds = scene.getBounds();
-            bounds.merge(Vector3f(0.f, 0.f, 0.f));
-            bounds.merge(volumeOffset +
-                         Vector3f(volumeDimensions) * volumeElementSpacing);
-        }
         scene.saveToCacheFile();
         scene.buildEnvironmentMap();
     }

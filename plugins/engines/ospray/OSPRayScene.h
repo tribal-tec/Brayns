@@ -50,13 +50,9 @@ public:
     bool commitLights() final;
 
     void commitSimulationData();
-    void commitVolumeData();
 
     /** @copydoc Scene::commitTransferFunctionData */
     bool commitTransferFunctionData() final;
-
-    /** @copydoc Scene::isVolumeSupported */
-    bool isVolumeSupported(const std::string& volumeFile) const final;
 
     SharedDataVolumePtr createSharedDataVolume(const Vector3ui& dimension,
                                                const Vector3f& spacing,
@@ -75,21 +71,14 @@ private:
     std::vector<OSPLight> _ospLights;
     OSPData _ospLightData{nullptr};
 
-    OSPData _ospVolumeData{nullptr};
-    uint64_t _ospVolumeDataSize{0};
-
     OSPData _ospSimulationData{nullptr};
 
-    OSPData _ospTransferFunctionEmissionData{nullptr};
-    OSPData _ospTransferFunctionDiffuseData{nullptr};
     OSPTransferFunction _ospTransferFunction{
         ospNewTransferFunction("piecewise_linear")};
 
     size_t _memoryManagementFlags{0};
 
     ModelDescriptors _activeModels;
-
-    SharedDataVolumePtr _volume;
 };
 }
 #endif // OSPRAYSCENE_H

@@ -8,7 +8,6 @@ set(BRAYNSCOMMON_SOURCES
   engine/Engine.cpp
   simulation/AbstractSimulationHandler.cpp
   input/KeyboardHandler.cpp
-  volume/VolumeHandler.cpp
   transferFunction/TransferFunction.cpp
   camera/AbstractManipulator.cpp
   camera/Camera.cpp
@@ -74,7 +73,6 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   volume/BrickedVolume.h
   volume/SharedDataVolume.h
   volume/Volume.h
-  volume/VolumeHandler.h
 )
 
 set(BRAYNSCOMMON_HEADERS

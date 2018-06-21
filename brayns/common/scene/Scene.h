@@ -157,11 +157,6 @@ public:
     BRAYNS_API void setSimulationHandler(AbstractSimulationHandlerPtr handler);
 
     /**
-        Returns volume data
-    */
-    BRAYNS_API VolumeHandlerPtr getVolumeHandler();
-
-    /**
         Sets the Calcium diffusion simulation handler
     */
     void setCADiffusionSimulationHandler(
@@ -211,13 +206,6 @@ public:
        command line parameter. See loadFromCacheFile for file structure
     */
     BRAYNS_API void saveToCacheFile();
-
-    /**
-     * @return true if the given volume file is supported by the engines' scene.
-     *         If false, a default scene will be constructed.
-     */
-    BRAYNS_API virtual bool isVolumeSupported(
-        const std::string& volumeFile) const = 0;
 
     /**
      * @internal needed to ensure deletion wrt cyclic dependency
@@ -288,9 +276,6 @@ protected:
     mutable std::shared_timed_mutex _modelMutex;
 
     Lights _lights;
-
-    // Volume
-    VolumeHandlerPtr _volumeHandler{nullptr};
 
     // Simulation
     AbstractSimulationHandlerPtr _simulationHandler{nullptr};

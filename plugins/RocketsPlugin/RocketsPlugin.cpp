@@ -28,7 +28,6 @@
 
 #include <brayns/common/Timer.h>
 #include <brayns/common/tasks/Task.h>
-#include <brayns/common/volume/VolumeHandler.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
 #include <brayns/tasks/AddModelFromBlobTask.h>
@@ -63,7 +62,6 @@ const std::string ENDPOINT_STATISTICS = "statistics";
 const std::string ENDPOINT_STREAM = "stream";
 const std::string ENDPOINT_STREAM_TO = "stream-to";
 const std::string ENDPOINT_VERSION = "version";
-const std::string ENDPOINT_VOLUME_HISTOGRAM = "volume-histogram";
 const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
 const std::string METHOD_ADD_MODEL = "add-model";
@@ -538,7 +536,6 @@ public:
         _handleImageJPEG();
         _handleStreaming();
         _handleVersion();
-        _handleVolumeParams();
 
         _handle(ENDPOINT_APP_PARAMS,
                 _parametersManager.getApplicationParameters());
@@ -547,6 +544,7 @@ public:
         _handle(ENDPOINT_RENDERING_PARAMS,
                 _parametersManager.getRenderingParameters());
         _handle(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
+        _handle(ENDPOINT_VOLUME_PARAMS, _parametersManager.getVolumeParameters());
 
         // following endpoints need a valid engine
         _handle(ENDPOINT_CAMERA, _engine->getCamera());
@@ -708,35 +706,6 @@ public:
             return rockets::jsonrpc::makeNotification(ENDPOINT_VERSION,
                                                       version);
         };
-    }
-
-    void _handleVolumeHistogram()
-    {
-        _handleObjectSchema<Histogram>(ENDPOINT_VOLUME_HISTOGRAM);
-
-        using namespace rockets::http;
-
-        auto func = [this](const Request&) {
-            auto volumeHandler = _engine->getScene().getVolumeHandler();
-            if (!volumeHandler)
-                return make_ready_response(Code::NOT_SUPPORTED);
-            const auto& histo = volumeHandler->getHistogram();
-            return make_ready_response(Code::OK, to_json(histo), JSON_TYPE);
-        };
-
-        _rocketsServer->handle(Method::GET,
-                               ENDPOINT_API_VERSION + ENDPOINT_VOLUME_HISTOGRAM,
-                               func);
-    }
-
-    void _handleVolumeParams()
-    {
-        auto& params = _parametersManager.getVolumeParameters();
-        auto postUpdate = [this](VolumeParameters&) {
-            //_engine->markRebuildScene();
-        };
-        _handleGET(ENDPOINT_VOLUME_PARAMS, params);
-        _handlePUT(ENDPOINT_VOLUME_PARAMS, params, postUpdate);
     }
 
     void _handleInspect()

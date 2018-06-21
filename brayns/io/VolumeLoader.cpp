@@ -32,16 +32,17 @@ namespace brayns
 {
 namespace
 {
-Vector3f to_Vector3f(const std::string& s)
+template<typename T>
+vmml::vector<3,T> to_Vector3(const std::string& s)
 {
-  std::vector<float> result;
+  std::vector<T> result;
   std::stringstream ss(s);
   std::string item;
   while(std::getline(ss, item, ' '))
-      result.push_back(std::stof(item));
+      result.push_back(boost::lexical_cast<T>(item));
   if(result.size() != 3)
       throw std::runtime_error("Not exactly 3 values for mhd array");
-  return Vector3f(result.data());
+  return vmml::vector<3,T>(result.data());
 }
 
 DataType dataTypeFromMET(const std::string& type)
@@ -83,7 +84,8 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
 {
     updateProgress("Parsing volume file ..." , 0, 2);
 
-    Vector3f dimension, spacing;
+    Vector3ui dimension;
+    Vector3f spacing;
     DataType type;
     std::string volumeFile = filename;
     const bool mhd = boost::filesystem::extension(filename) == ".mhd";
@@ -95,8 +97,8 @@ ModelDescriptorPtr VolumeLoader::importFromFile(
         if(pt.get<std::string>("ObjectType") != "Image")
             throw std::runtime_error("Wrong object type for mhd file");
 
-        dimension = to_Vector3f(pt.get<std::string>("DimSize"));
-        spacing = to_Vector3f(pt.get<std::string>("ElementSpacing"));
+        dimension = to_Vector3<unsigned>(pt.get<std::string>("DimSize"));
+        spacing = to_Vector3<float>(pt.get<std::string>("ElementSpacing"));
         type = dataTypeFromMET(pt.get<std::string>("ElementType"));
         boost::filesystem::path path = pt.get<std::string>("ElementDataFile");
         if(!path.is_absolute())

@@ -76,7 +76,8 @@ BOOST_AUTO_TEST_CASE(defaults)
     BOOST_CHECK(renderParams.getOsprayModules().empty());
     BOOST_CHECK(renderParams.getCameraType() == brayns::CameraType::default_);
     BOOST_CHECK(renderParams.getStereoMode() == brayns::StereoMode::none);
-    BOOST_CHECK(renderParams.getRenderer() == brayns::RendererType::default_);
+    BOOST_CHECK(renderParams.getCurrentRenderer() ==
+                brayns::RendererType::default_);
     BOOST_CHECK_EQUAL(renderParams.getRenderers().size(), 8);
     BOOST_CHECK(!renderParams.getShadowIntensity());
     BOOST_CHECK(!renderParams.getSoftShadows());

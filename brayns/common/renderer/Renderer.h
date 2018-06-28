@@ -30,9 +30,12 @@ namespace brayns
 class Renderer
 {
 public:
-    BRAYNS_API Renderer(const AnimationParameters& animationParameters,
+    BRAYNS_API Renderer(const std::string& name,
+                        const AnimationParameters& animationParameters,
                         const RenderingParameters& renderingParameters);
     virtual ~Renderer() = default;
+
+    const std::string& getName() const { return _name; }
     virtual void render(FrameBufferPtr frameBuffer) = 0;
 
     /** @return the variance from the previous render(). */
@@ -52,6 +55,7 @@ public:
     }
 
 protected:
+    const std::string _name;
     const AnimationParameters& _animationParameters;
     const RenderingParameters& _renderingParameters;
     ScenePtr _scene;

@@ -110,16 +110,6 @@ STATICJSON_DECLARE_ENUM(brayns::MemoryMode,
                         {"shared", brayns::MemoryMode::shared},
                         {"replicated", brayns::MemoryMode::replicated});
 
-STATICJSON_DECLARE_ENUM(
-    brayns::RendererType, {"default", brayns::RendererType::default_},
-    {"proximity", brayns::RendererType::proximity},
-    {"simulation", brayns::RendererType::simulation},
-    {"particle", brayns::RendererType::particle},
-    {"geometry_normals", brayns::RendererType::geometryNormals},
-    {"shading_normals", brayns::RendererType::shadingNormals},
-    {"scientific_visualization", brayns::RendererType::scientificvisualization},
-    {"path_tracing", brayns::RendererType::path_tracing});
-
 STATICJSON_DECLARE_ENUM(brayns::ShadingType,
                         {"none", brayns::ShadingType::none},
                         {"diffuse", brayns::ShadingType::diffuse},
@@ -456,6 +446,8 @@ inline void init(brayns::GeometryParameters* g, ObjectHandler* h)
 
 inline void init(brayns::RenderingParameters* r, ObjectHandler* h)
 {
+    h->add_property("types", &r->_renderers,
+                    Flags::IgnoreRead | Flags::Optional);
     h->add_property("samples_per_pixel", &r->_spp, Flags::Optional);
     h->add_property("shader", &r->_renderer, Flags::Optional);
     h->add_property("shading", &r->_shading, Flags::Optional);

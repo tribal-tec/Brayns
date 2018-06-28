@@ -24,9 +24,11 @@
 
 namespace brayns
 {
-Renderer::Renderer(const AnimationParameters& animationParameters,
+Renderer::Renderer(const std::string& name,
+                   const AnimationParameters& animationParameters,
                    const RenderingParameters& renderingParameters)
-    : _animationParameters(animationParameters)
+    : _name(name)
+    , _animationParameters(animationParameters)
     , _renderingParameters(renderingParameters)
 {
 }

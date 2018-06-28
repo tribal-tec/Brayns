@@ -49,11 +49,7 @@ const std::string PARAM_SPR = "samples-per-ray";
 const std::string PARAM_STEREO_MODE = "stereo-mode";
 const std::string PARAM_VARIANCE_THRESHOLD = "variance-threshold";
 
-const std::array<std::string, 8> RENDERERS = {
-    {"default", "proximity", "simulation", "particle", "geometrynormals",
-     "shadingnormals", "scientificvisualization", "pathtracing"}};
-
-const std::array<std::string, 8> RENDERER_INTERNAL_NAMES = {
+const std::array<std::string, 8> RENDERER_NAMES = {
     {"basic", "proximityrenderer", "simulationrenderer", "particlerenderer",
      "raycast_Ng", "raycast_Ns", "scivis", "pathtracingrenderer"}};
 
@@ -120,17 +116,7 @@ RenderingParameters::RenderingParameters()
 
 void RenderingParameters::initializeDefaultRenderers()
 {
-    _rendererNames = {RENDERER_INTERNAL_NAMES.begin(),
-                      RENDERER_INTERNAL_NAMES.end()};
-    _renderers.clear();
-    _renderers.push_back(RendererType::default_);
-    _renderers.push_back(RendererType::simulation);
-    _renderers.push_back(RendererType::particle);
-    _renderers.push_back(RendererType::proximity);
-    _renderers.push_back(RendererType::geometryNormals);
-    _renderers.push_back(RendererType::shadingNormals);
-    _renderers.push_back(RendererType::scientificvisualization);
-    _renderers.push_back(RendererType::path_tracing);
+    _renderers = {RENDERER_NAMES.begin(), RENDERER_NAMES.end()};
 }
 
 void RenderingParameters::initializeDefaultCameras()
@@ -142,19 +128,8 @@ void RenderingParameters::parse(const po::variables_map& vm)
 {
     if (vm.count(PARAM_RENDERER))
     {
-        _renderer = RendererType::default_;
         const std::string& rendererName = vm[PARAM_RENDERER].as<std::string>();
-        auto it = std::find(_rendererNames.begin(), _rendererNames.end(),
-                            rendererName);
-        if (it == _rendererNames.end())
-        {
-            BRAYNS_INFO << "'" << rendererName << "' replaces default renderer"
-                        << std::endl;
-            _rendererNames[0] = rendererName;
-        }
-        else
-            _renderer = static_cast<RendererType>(
-                std::distance(_rendererNames.begin(), it));
+        _renderers.push_front(rendererName);
     }
     if (vm.count(PARAM_SPP))
         _spp = vm[PARAM_SPP].as<size_t>();
@@ -241,9 +216,9 @@ void RenderingParameters::print()
     AbstractParameters::print();
     BRAYNS_INFO << "Supported renderers               :" << std::endl;
     for (const auto& renderer : _renderers)
-        BRAYNS_INFO << "- " << getRendererAsString(renderer) << std::endl;
-    BRAYNS_INFO << "Renderer                          :"
-                << getRendererAsString(_renderer) << std::endl;
+        BRAYNS_INFO << "- " << renderer << std::endl;
+    BRAYNS_INFO << "Renderer                          :" << _renderer
+                << std::endl;
     BRAYNS_INFO << "Samples per pixel                 :" << _spp << std::endl;
     BRAYNS_INFO << "Ambient occlusion                 :" << std::endl;
     BRAYNS_INFO << "- Strength                        :"
@@ -276,12 +251,6 @@ void RenderingParameters::print()
     BRAYNS_INFO << "Samples per ray                   : " << _spr << std::endl;
     BRAYNS_INFO << "Max. accumulation frames          : " << _maxAccumFrames
                 << std::endl;
-}
-
-const std::string& RenderingParameters::getRendererAsString(
-    const RendererType value) const
-{
-    return _rendererNames[static_cast<size_t>(value)];
 }
 
 const std::string& RenderingParameters::getCameraTypeAsString(

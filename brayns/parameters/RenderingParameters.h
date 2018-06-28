@@ -43,9 +43,8 @@ public:
 
     /** OSPRay renderer */
     void initializeDefaultRenderers();
-    RendererType getRenderer() const { return _renderer; }
-    const std::string& getRendererAsString(const RendererType value) const;
-    void setRenderer(const RendererType renderer)
+    const std::string& getCurrentRenderer() const { return _renderer; }
+    void setCurrentRenderer(const std::string renderer)
     {
         _updateValue(_renderer, renderer);
     }
@@ -195,9 +194,8 @@ public:
 protected:
     void parse(const po::variables_map& vm) final;
 
-    RendererType _renderer{RendererType::default_};
+    std::string _renderer{"basic"};
     RendererTypes _renderers;
-    strings _rendererNames;
     CameraType _cameraType{CameraType::default_};
     StereoMode _stereoMode{StereoMode::none};
     strings _cameraTypeNames;

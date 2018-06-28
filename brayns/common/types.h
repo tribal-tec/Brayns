@@ -191,20 +191,8 @@ class MeshLoader;
 
 class Statistics;
 
-/** Types of renderers */
-enum class RendererType
-{
-    default_,
-    proximity,
-    simulation,
-    particle,
-    geometryNormals,
-    shadingNormals,
-    scientificvisualization,
-    path_tracing
-};
-typedef std::vector<RendererType> RendererTypes;
-typedef std::map<RendererType, RendererPtr> RendererMap;
+using RendererTypes = std::deque<std::string>;
+using RendererMap = std::map<std::string, RendererPtr>;
 
 enum class EngineType
 {

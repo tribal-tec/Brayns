@@ -202,7 +202,7 @@ struct Brayns::Impl : public PluginAPI
         _updateAnimation();
 
         _engine->setActiveRenderer(
-            _parametersManager.getRenderingParameters().getRenderer());
+            _parametersManager.getRenderingParameters().getCurrentRenderer());
 
         const auto windowSize =
             _parametersManager.getApplicationParameters().getWindowSize();
@@ -817,35 +817,35 @@ private:
     {
         RenderingParameters& renderParams =
             _parametersManager.getRenderingParameters();
-        renderParams.setRenderer(RendererType::scientificvisualization);
+        renderParams.setCurrentRenderer("scivis");
     }
 
     void _defaultRenderer()
     {
         RenderingParameters& renderParams =
             _parametersManager.getRenderingParameters();
-        renderParams.setRenderer(RendererType::default_);
+        renderParams.setCurrentRenderer("basic");
     }
 
     void _particleRenderer()
     {
         RenderingParameters& renderParams =
             _parametersManager.getRenderingParameters();
-        renderParams.setRenderer(RendererType::particle);
+        renderParams.setCurrentRenderer("particlerenderer");
     }
 
     void _proximityRenderer()
     {
         RenderingParameters& renderParams =
             _parametersManager.getRenderingParameters();
-        renderParams.setRenderer(RendererType::proximity);
+        renderParams.setCurrentRenderer("proximityrenderer");
     }
 
     void _simulationRenderer()
     {
         RenderingParameters& renderParams =
             _parametersManager.getRenderingParameters();
-        renderParams.setRenderer(RendererType::simulation);
+        renderParams.setCurrentRenderer("simulationrenderer");
     }
 
     void _increaseAnimationFrame()

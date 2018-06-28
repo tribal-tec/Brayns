@@ -31,8 +31,7 @@ namespace brayns
 OSPRayRenderer::OSPRayRenderer(const std::string& name,
                                const AnimationParameters& animationParameters,
                                const RenderingParameters& renderingParameters)
-    : Renderer(animationParameters, renderingParameters)
-    , _name(name)
+    : Renderer(name, animationParameters, renderingParameters)
     , _renderer{ospNewRenderer(name.c_str())}
 {
     if (!_renderer)

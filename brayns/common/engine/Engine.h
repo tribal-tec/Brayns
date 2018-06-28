@@ -68,10 +68,10 @@ public:
     const Camera& getCamera() const { return *_camera; }
     Camera& getCamera() { return *_camera; }
     /** Gets the renderer */
-    Renderer& getRenderer();
+    Renderer& getCurrentRenderer();
     /** Active renderer */
-    void setActiveRenderer(const RendererType renderer);
-    RendererType getActiveRenderer() { return _activeRenderer; }
+    void setActiveRenderer(const std::string& renderer);
+    const std::string& getActiveRenderer() const;
     /**
        Reshapes the current frame buffers
        @param frameSize New size for the buffers
@@ -155,7 +155,7 @@ public:
     virtual CameraPtr createCamera(const CameraType type) const = 0;
 
     virtual RendererPtr createRenderer(
-        const RendererType type, const AnimationParameters& animationParameters,
+        const std::string& type, const AnimationParameters& animationParameters,
         const RenderingParameters& renderingParameters) const = 0;
 
     auto& getParametersManager() { return _parametersManager; }
@@ -168,7 +168,7 @@ protected:
     ParametersManager& _parametersManager;
     ScenePtr _scene;
     CameraPtr _camera;
-    RendererType _activeRenderer;
+    RendererPtr _activeRenderer;
     RendererMap _renderers;
     Vector2i _frameSize;
     FrameBufferPtr _frameBuffer;

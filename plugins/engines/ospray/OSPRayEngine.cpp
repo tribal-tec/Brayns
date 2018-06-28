@@ -104,7 +104,6 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
 
     RenderingParameters& rp = _parametersManager.getRenderingParameters();
     BRAYNS_INFO << "Initializing renderers" << std::endl;
-    _activeRenderer = rp.getRenderer();
 
     Renderers renderersForScene = _createRenderers();
 
@@ -140,8 +139,8 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
 
     for (const auto& renderer : _renderers)
     {
-        _renderers[renderer.first]->setScene(_scene);
-        _renderers[renderer.first]->setCamera(_camera);
+        renderer.second->setScene(_scene);
+        renderer.second->setCamera(_camera);
     }
 
     BRAYNS_INFO << "Engine initialization complete" << std::endl;
@@ -250,23 +249,22 @@ Renderers OSPRayEngine::_createRenderers()
     auto& rp = _parametersManager.getRenderingParameters();
     for (const auto& renderer : rp.getRenderers())
     {
-        auto name = rp.getRendererAsString(renderer);
         try
         {
             _renderers[renderer] = std::make_shared<OSPRayRenderer>(
-                name, _parametersManager.getAnimationParameters(), rp);
+                renderer, _parametersManager.getAnimationParameters(), rp);
         }
         catch (const std::runtime_error& e)
         {
             BRAYNS_WARN << e.what() << ". Using default renderer instead"
                         << std::endl;
             rp.initializeDefaultRenderers();
-            name = rp.getRendererAsString(RendererType::default_);
             _renderers[renderer] = std::make_shared<OSPRayRenderer>(
-                name, _parametersManager.getAnimationParameters(), rp);
+                "basic", _parametersManager.getAnimationParameters(), rp);
         }
         renderersForScene.push_back(_renderers[renderer]);
     }
+    _activeRenderer = _renderers[rp.getCurrentRenderer()];
     return renderersForScene;
 }
 
@@ -304,14 +302,10 @@ CameraPtr OSPRayEngine::createCamera(const CameraType type) const
 }
 
 RendererPtr OSPRayEngine::createRenderer(
-    const RendererType type, const AnimationParameters& animationParameters,
+    const std::string& type, const AnimationParameters& animationParameters,
     const RenderingParameters& renderingParameters) const
 {
-    // take the renderer string from the internal params as it might have been
-    // patched to account for plugin renderers
-    const auto& rp = _parametersManager.getRenderingParameters();
-    return std::make_shared<OSPRayRenderer>(rp.getRendererAsString(type),
-                                            animationParameters,
+    return std::make_shared<OSPRayRenderer>(type, animationParameters,
                                             renderingParameters);
 }
 

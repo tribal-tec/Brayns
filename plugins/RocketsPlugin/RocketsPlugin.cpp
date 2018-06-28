@@ -779,7 +779,8 @@ public:
                              "x-y position in normalized coordinates"};
         _handleRPC<Position, Renderer::PickResult>(
             METHOD_INSPECT, doc, [engine = _engine](const auto& position) {
-                return engine->getRenderer().pick({position[0], position[1]});
+                return engine->getCurrentRenderer().pick(
+                    {position[0], position[1]});
             });
     }
 
@@ -796,7 +797,8 @@ public:
         _handleRPC(METHOD_RESET_CAMERA,
                    "Resets the camera to its initial values", [this] {
                        _engine->setDefaultCamera();
-                       _jsonrpcServer->notify(getNotificationEndpointName(ENDPOINT_CAMERA),
+                       _jsonrpcServer->notify(getNotificationEndpointName(
+                                                  ENDPOINT_CAMERA),
                                               _engine->getCamera());
                        _engine->triggerRender();
                    });

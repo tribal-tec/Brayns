@@ -71,29 +71,30 @@ void OSPRayRenderer::commit()
 
     ShadingType mt = rp.getShading();
 
-    Vector3f color = rp.getBackgroundColor();
-    ospSet3f(_renderer, "bgColor", color.x(), color.y(), color.z());
     ospSet1i(_renderer, "shadowsEnabled", rp.getShadowIntensity() > 0.f);
     ospSet1f(_renderer, "shadows", rp.getShadowIntensity());
     ospSet1f(_renderer, "softShadows", rp.getSoftShadows());
     ospSet1f(_renderer, "aoWeight", rp.getAmbientOcclusionStrength());
     ospSet1i(_renderer, "aoSamples", 1);
     ospSet1f(_renderer, "aoDistance", rp.getAmbientOcclusionDistance());
-    ospSet1f(_renderer, "varianceThreshold", rp.getVarianceThreshold());
 
     ospSet1i(_renderer, "shadingEnabled", (mt == ShadingType::diffuse));
     ospSet1f(_renderer, "timestamp", ap.getFrame());
     ospSet1i(_renderer, "randomNumber", rand() % 10000);
-    ospSet1i(_renderer, "spp", rp.getSamplesPerPixel());
     ospSet1i(_renderer, "electronShading", (mt == ShadingType::electron));
     ospSet1f(_renderer, "detectionDistance", rp.getDetectionDistance());
     ospSet1i(_renderer, "detectionOnDifferentMaterial",
              rp.getDetectionOnDifferentMaterial());
-    color = rp.getDetectionNearColor();
+    Vector3f color = rp.getDetectionNearColor();
     ospSet3f(_renderer, "detectionNearColor", color.x(), color.y(), color.z());
     color = rp.getDetectionFarColor();
     ospSet3f(_renderer, "detectionFarColor", color.x(), color.y(), color.z());
     ospSet1i(_renderer, "volumeSamplesPerRay", rp.getSamplesPerRay());
+
+    color = rp.getBackgroundColor();
+    ospSet3f(_renderer, "bgColor", color.x(), color.y(), color.z());
+    ospSet1f(_renderer, "varianceThreshold", rp.getVarianceThreshold());
+    ospSet1i(_renderer, "spp", rp.getSamplesPerPixel());
 
     auto scene = std::static_pointer_cast<OSPRayScene>(_scene);
     auto bgMaterial = std::static_pointer_cast<OSPRayMaterial>(

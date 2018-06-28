@@ -279,12 +279,12 @@ struct Brayns::Impl : public PluginAPI
         _engine.reset(); // Free resources before creating a new engine
 
         const auto& engineName =
-            _parametersManager.getRenderingParameters().getEngine();
+            _parametersManager.getApplicationParameters().getEngine();
         _engine = _engineFactory.create(engineName);
         if (!_engine)
             throw std::runtime_error(
                 "Unsupported engine: " +
-                _parametersManager.getRenderingParameters().getEngineAsString(
+                _parametersManager.getApplicationParameters().getEngineAsString(
                     engineName));
 
         _setupCameraManipulator(CameraMode::inspect);
@@ -965,10 +965,8 @@ private:
 
     void _toggleLoadBalancer()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setDynamicLoadBalancer(
-            !renderParams.getDynamicLoadBalancer());
+        auto& appParams = _parametersManager.getApplicationParameters();
+        appParams.setDynamicLoadBalancer(!appParams.getDynamicLoadBalancer());
     }
 
     void _decreaseFieldOfView()

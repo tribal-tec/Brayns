@@ -413,6 +413,7 @@ inline void init(brayns::StreamParameters* s, ObjectHandler* h)
 
 inline void init(brayns::ApplicationParameters* a, ObjectHandler* h)
 {
+    h->add_property("engine", &a->_engine, Flags::IgnoreRead | Flags::Optional);
     h->add_property("jpeg_compression", &a->_jpegCompression, Flags::Optional);
     h->add_property("frame_export_folder", &a->_frameExportFolder,
                     Flags::Optional);
@@ -455,7 +456,6 @@ inline void init(brayns::GeometryParameters* g, ObjectHandler* h)
 
 inline void init(brayns::RenderingParameters* r, ObjectHandler* h)
 {
-    h->add_property("engine", &r->_engine, Flags::IgnoreRead | Flags::Optional);
     h->add_property("samples_per_pixel", &r->_spp, Flags::Optional);
     h->add_property("shader", &r->_renderer, Flags::Optional);
     h->add_property("shading", &r->_shading, Flags::Optional);

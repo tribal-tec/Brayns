@@ -41,15 +41,6 @@ public:
     /** @copydoc AbstractParameters::print */
     void print() final;
 
-    /** Engine*/
-    EngineType getEngine() const { return _engine; }
-    void setEngine(const EngineType name) { _updateValue(_engine, name); }
-    const std::string& getEngineAsString(const EngineType value) const;
-    /** OSPRay modules */
-    const std::vector<std::string>& getOsprayModules() const
-    {
-        return _modules;
-    }
     /** OSPRay renderer */
     void initializeDefaultRenderers();
     RendererType getRenderer() const { return _renderer; }
@@ -104,12 +95,6 @@ public:
     void setLightEmittingMaterials(const bool value)
     {
         _updateValue(_lightEmittingMaterials, value);
-    }
-
-    bool getDynamicLoadBalancer() const { return _dynamicLoadBalancer; }
-    void setDynamicLoadBalancer(const bool value)
-    {
-        _updateValue(_dynamicLoadBalancer, value);
     }
 
     const Vector3f& getBackgroundColor() const { return _backgroundColor; }
@@ -210,8 +195,6 @@ public:
 protected:
     void parse(const po::variables_map& vm) final;
 
-    EngineType _engine{EngineType::ospray};
-    std::vector<std::string> _modules;
     RendererType _renderer{RendererType::default_};
     RendererTypes _renderers;
     strings _rendererNames;
@@ -232,7 +215,6 @@ protected:
     Vector3f _detectionNearColor{1.f, 0.f, 0.f};
     Vector3f _detectionFarColor{0.f, 1.f, 0.f};
     bool _headLight{false};
-    bool _dynamicLoadBalancer{false};
     float _varianceThreshold{-1.f};
     size_t _maxAccumFrames{100};
     size_t _spr{128};

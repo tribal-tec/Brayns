@@ -39,6 +39,7 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
     : Engine(parametersManager)
 {
     BRAYNS_INFO << "Initializing OSPRay" << std::endl;
+    auto& ap = _parametersManager.getApplicationParameters();
     try
     {
         int argc = 1;
@@ -47,8 +48,7 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
         // Ospray expects but ignores the application name as the first argument
         argv.push_back("Brayns");
 
-        if (_parametersManager.getRenderingParameters().getEngine() ==
-            EngineType::optix)
+        if (ap.getEngine() == EngineType::optix)
         {
             _type = EngineType::optix;
             argc += 2;
@@ -72,8 +72,7 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
         BRAYNS_ERROR << "Error during ospInit(): " << e.what() << std::endl;
     }
 
-    RenderingParameters& rp = _parametersManager.getRenderingParameters();
-    for (const auto& module : rp.getOsprayModules())
+    for (const auto& module : ap.getOsprayModules())
     {
         try
         {
@@ -103,6 +102,7 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
         }
     }
 
+    RenderingParameters& rp = _parametersManager.getRenderingParameters();
     BRAYNS_INFO << "Initializing renderers" << std::endl;
     _activeRenderer = rp.getRenderer();
 
@@ -176,7 +176,7 @@ void OSPRayEngine::commit()
     if (device && _parametersManager.getRenderingParameters().isModified())
     {
         const auto useDynamicLoadBalancer =
-            _parametersManager.getRenderingParameters()
+            _parametersManager.getApplicationParameters()
                 .getDynamicLoadBalancer();
         if (_useDynamicLoadBalancer != useDynamicLoadBalancer)
         {

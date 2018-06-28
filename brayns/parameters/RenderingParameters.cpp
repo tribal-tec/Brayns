@@ -37,10 +37,8 @@ const std::string PARAM_DETECTION_FAR_COLOR = "detection-far-color";
 const std::string PARAM_DETECTION_NEAR_COLOR = "detection-near-color";
 const std::string PARAM_DETECTION_ON_DIFFERENT_MATERIAL =
     "detection-on-different-material";
-const std::string PARAM_ENGINE = "engine";
 const std::string PARAM_HEAD_LIGHT = "head-light";
 const std::string PARAM_MAX_ACCUMULATION_FRAMES = "max-accumulation-frames";
-const std::string PARAM_MODULE = "module";
 const std::string PARAM_RADIANCE = "radiance";
 const std::string PARAM_RENDERER = "renderer";
 const std::string PARAM_SHADING = "shading";
@@ -51,7 +49,6 @@ const std::string PARAM_SPR = "samples-per-ray";
 const std::string PARAM_STEREO_MODE = "stereo-mode";
 const std::string PARAM_VARIANCE_THRESHOLD = "variance-threshold";
 
-const std::array<std::string, 2> ENGINES = {{"ospray", "optix"}};
 const std::array<std::string, 8> RENDERERS = {
     {"default", "proximity", "simulation", "particle", "geometrynormals",
      "shadingnormals", "scientificvisualization", "pathtracing"}};
@@ -75,10 +72,7 @@ namespace brayns
 RenderingParameters::RenderingParameters()
     : AbstractParameters("Rendering")
 {
-    _parameters.add_options()(PARAM_ENGINE.c_str(), po::value<std::string>(),
-                              "Engine name [ospray|optix]")(
-        PARAM_MODULE.c_str(), po::value<strings>(&_modules)->composing(),
-        "OSPRay module name [string]")(
+    _parameters.add_options()(
         PARAM_RENDERER.c_str(), po::value<std::string>(),
         "OSPRay active renderer [default|simulation|proximity|particle]")(
         PARAM_SPP.c_str(), po::value<size_t>(),
@@ -146,14 +140,6 @@ void RenderingParameters::initializeDefaultCameras()
 
 void RenderingParameters::parse(const po::variables_map& vm)
 {
-    if (vm.count(PARAM_ENGINE))
-    {
-        _engine = EngineType::ospray;
-        const std::string& engine = vm[PARAM_ENGINE].as<std::string>();
-        for (size_t i = 0; i < sizeof(ENGINES) / sizeof(ENGINES[0]); ++i)
-            if (engine == ENGINES[i])
-                _engine = static_cast<EngineType>(i);
-    }
     if (vm.count(PARAM_RENDERER))
     {
         _renderer = RendererType::default_;
@@ -253,11 +239,6 @@ void RenderingParameters::parse(const po::variables_map& vm)
 void RenderingParameters::print()
 {
     AbstractParameters::print();
-    BRAYNS_INFO << "Engine                            :"
-                << getEngineAsString(_engine) << std::endl;
-    BRAYNS_INFO << "Ospray modules                    :" << std::endl;
-    for (const auto& module : _modules)
-        BRAYNS_INFO << "- " << module << std::endl;
     BRAYNS_INFO << "Supported renderers               :" << std::endl;
     for (const auto& renderer : _renderers)
         BRAYNS_INFO << "- " << getRendererAsString(renderer) << std::endl;
@@ -295,12 +276,6 @@ void RenderingParameters::print()
     BRAYNS_INFO << "Samples per ray                   : " << _spr << std::endl;
     BRAYNS_INFO << "Max. accumulation frames          : " << _maxAccumFrames
                 << std::endl;
-}
-
-const std::string& RenderingParameters::getEngineAsString(
-    const EngineType value) const
-{
-    return ENGINES[static_cast<size_t>(value)];
 }
 
 const std::string& RenderingParameters::getRendererAsString(

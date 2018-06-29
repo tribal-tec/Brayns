@@ -337,10 +337,12 @@ void OSPRayScene::commitVolumeData()
                     _parametersManager.getVolumeParameters().getOffset();
                 ospSet3f(impl, "volumeOffset", offset.x(), offset.y(),
                          offset.z());
-                const auto epsilon = _volumeHandler->getEpsilon(
-                    elementSpacing, _parametersManager.getRenderingParameters()
-                                        .getSamplesPerRay());
-                ospSet1f(impl, "volumeEpsilon", epsilon);
+                //                const auto epsilon =
+                //                _volumeHandler->getEpsilon(
+                //                    elementSpacing,
+                //                    _parametersManager.getRenderingParameters()
+                //                                        .getSamplesPerRay());
+                //                ospSet1f(impl, "volumeEpsilon", epsilon);
             }
             BRAYNS_INFO << "Commited volume data. Dimensions: " << dimensions
                         << std::endl;

@@ -877,45 +877,45 @@ private:
 
     void _diffuseShading()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setShading(ShadingType::diffuse);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setShading(ShadingType::diffuse);
     }
 
     void _electronShading()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setShading(ShadingType::electron);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setShading(ShadingType::electron);
     }
 
     void _disableShading()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setShading(ShadingType::none);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setShading(ShadingType::none);
     }
 
     void _increaseAmbientOcclusionStrength()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        float aaStrength = renderParams.getAmbientOcclusionStrength();
-        aaStrength += 0.1f;
-        if (aaStrength > 1.f)
-            aaStrength = 1.f;
-        renderParams.setAmbientOcclusionStrength(aaStrength);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        float aaStrength = renderParams.getAmbientOcclusionStrength();
+        //        aaStrength += 0.1f;
+        //        if (aaStrength > 1.f)
+        //            aaStrength = 1.f;
+        //        renderParams.setAmbientOcclusionStrength(aaStrength);
     }
 
     void _decreaseAmbientOcclusionStrength()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        float aaStrength = renderParams.getAmbientOcclusionStrength();
-        aaStrength -= 0.1f;
-        if (aaStrength < 0.f)
-            aaStrength = 0.f;
-        renderParams.setAmbientOcclusionStrength(aaStrength);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        float aaStrength = renderParams.getAmbientOcclusionStrength();
+        //        aaStrength -= 0.1f;
+        //        if (aaStrength < 0.f)
+        //            aaStrength = 0.f;
+        //        renderParams.setAmbientOcclusionStrength(aaStrength);
     }
 
     void _resetAnimationFrame()
@@ -926,41 +926,44 @@ private:
 
     void _toggleShadows()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setShadowIntensity(
-            renderParams.getShadowIntensity() == 0.f ? 1.f : 0.f);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setShadowIntensity(
+        //            renderParams.getShadowIntensity() == 0.f ? 1.f : 0.f);
     }
 
     void _toggleSoftShadows()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setSoftShadows(renderParams.getSoftShadows() == 0.f ? 0.1f
-                                                                         : 0.f);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setSoftShadows(renderParams.getSoftShadows() ==
+        //        0.f ? 0.1f
+        //                                                                         : 0.f);
     }
 
     void _increaseSamplesPerRay()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setSamplesPerRay(renderParams.getSamplesPerRay() * 2);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setSamplesPerRay(renderParams.getSamplesPerRay()
+        //        * 2);
     }
 
     void _decreaseSamplesPerRay()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        if (renderParams.getSamplesPerRay() >= 4)
-            renderParams.setSamplesPerRay(renderParams.getSamplesPerRay() / 2);
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        if (renderParams.getSamplesPerRay() >= 4)
+        //            renderParams.setSamplesPerRay(renderParams.getSamplesPerRay()
+        //            / 2);
     }
 
     void _toggleLightEmittingMaterials()
     {
-        RenderingParameters& renderParams =
-            _parametersManager.getRenderingParameters();
-        renderParams.setLightEmittingMaterials(
-            !renderParams.getLightEmittingMaterials());
+        //        RenderingParameters& renderParams =
+        //            _parametersManager.getRenderingParameters();
+        //        renderParams.setLightEmittingMaterials(
+        //            !renderParams.getLightEmittingMaterials());
     }
 
     void _toggleLoadBalancer()

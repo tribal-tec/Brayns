@@ -26,6 +26,11 @@
 #include "OSPRayRenderer.h"
 #include "OSPRayScene.h"
 
+#include "ispc/render/utils/AbstractRenderer.h"
+
+#include "../../../plugins/RocketsPlugin/rapidjson/document.h"
+#include "../../../plugins/RocketsPlugin/rapidjson/prettywriter.h"
+
 namespace brayns
 {
 OSPRayRenderer::OSPRayRenderer(const std::string& name,
@@ -147,5 +152,27 @@ Renderer::PickResult OSPRayRenderer::pick(const Vector2f& pickPos)
         result.pos = {ospResult.position.x, ospResult.position.y,
                       ospResult.position.z};
     return result;
+}
+
+std::string OSPRayRenderer::getParamsJSON() const
+{
+    auto abstractRenderer = dynamic_cast<AbstractRenderer*>(_renderer);
+    if (!abstractRenderer)
+        return "Null";
+    return abstractRenderer->getParamsJSON();
+}
+
+void OSPRayRenderer::setParamsJSON(const std::string& params) const
+{
+    using namespace rapidjson;
+    Document document;
+    document.Parse(params.c_str());
+
+    static const char* kTypeNames[] = {"Null",  "False",  "True",  "Object",
+                                       "Array", "String", "Number"};
+
+    for (auto& m : document.GetObject())
+        printf("Type of member %s is %s\n", m.name.GetString(),
+               kTypeNames[m.value.GetType()]);
 }
 }

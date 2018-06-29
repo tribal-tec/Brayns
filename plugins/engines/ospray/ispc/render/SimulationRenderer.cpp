@@ -29,6 +29,27 @@
 // ispc exports
 #include "SimulationRenderer_ispc.h"
 
+//#include "../../../plugins/RocketsPlugin/rapidjson/document.h"
+//#include "../../../plugins/RocketsPlugin/rapidjson/prettywriter.h"
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+#include "../../../plugins/RocketsPlugin/staticjson/staticjson.hpp"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+namespace staticjson
+{
+inline void init(brayns::SimulationRenderer* g, ObjectHandler* h)
+{
+    h->add_property("shadows", &g->_shadows);
+    h->set_flags(Flags::DisallowUnknownKey);
+}
+}
+
 using namespace ospray;
 
 namespace brayns
@@ -82,6 +103,11 @@ void SimulationRenderer::commit()
             : NULL,
         _transferFunctionSize, _transferFunctionMinValue,
         _transferFunctionRange, _threshold, _detectionDistance);
+}
+
+std::string SimulationRenderer::getParamsJSON() const
+{
+    return staticjson::to_pretty_json_string(*this);
 }
 
 SimulationRenderer::SimulationRenderer()

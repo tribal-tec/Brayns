@@ -104,3 +104,4 @@ set(BRAYNSOSPRAYENGINEPLUGIN_OMIT_LIBRARY_HEADER ON)
 set(BRAYNSOSPRAYENGINEPLUGIN_OMIT_VERSION_HEADERS ON)
 
 common_library(braynsOSPRayEnginePlugin)
+target_include_directories(braynsOSPRayEnginePlugin SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/plugins/RocketsPlugin)

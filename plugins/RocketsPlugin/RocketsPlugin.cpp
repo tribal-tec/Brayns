@@ -47,6 +47,8 @@
 
 namespace
 {
+const std::string METHOD_GET_RENDERER_PARAMS = "get-renderer-params";
+
 // REST PUT & GET, JSONRPC set-* notification, JSONRPC get-* request
 const std::string ENDPOINT_ANIMATION_PARAMS = "animation-parameters";
 const std::string ENDPOINT_APP_PARAMS = "application-parameters";
@@ -606,6 +608,8 @@ public:
 
         _handleGetInstances();
         _handleUpdateInstance();
+
+        handleGetRendererParams();
     }
 
     void _handleFrameBuffer()
@@ -987,6 +991,28 @@ public:
         _handleSchema(METHOD_UPDATE_INSTANCE,
                       buildJsonRpcSchema<ModelInstance, bool>(
                           METHOD_UPDATE_INSTANCE, doc));
+    }
+
+    void handleGetRendererParams()
+    {
+        RpcDocumentation doc{"Get the schema of the given endpoint", "endpoint",
+                             "name of the endpoint to get its schema"};
+
+        _jsonrpcServer->bind(
+            METHOD_GET_RENDERER_PARAMS,
+            [& engine = _engine](const auto& request) {
+                SchemaParam rendererType;
+                if (::from_json(rendererType, request.message))
+                {
+                    auto params = engine->getCurrentRenderer().getParamsJSON();
+                    return Response{std::move(params)};
+                }
+                return rockets::jsonrpc::Response::invalidParams();
+            });
+
+        _handleSchema(METHOD_GET_RENDERER_PARAMS,
+                      buildJsonRpcSchema<SchemaParam, std::string>(
+                          METHOD_GET_RENDERER_PARAMS, doc));
     }
 
     EnginePtr _engine;

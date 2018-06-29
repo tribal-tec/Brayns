@@ -54,6 +54,9 @@ public:
         return PickResult();
     }
 
+    virtual std::string getParamsJSON() const = 0;
+    virtual void setParamsJSON(const std::string& params) const = 0;
+
 protected:
     const std::string _name;
     const AnimationParameters& _animationParameters;

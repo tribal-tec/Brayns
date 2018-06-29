@@ -121,7 +121,7 @@ inline vec3f PathTracingRenderer_shadeRay(
 
     // some stuff about RNG like Halton
     const uniform int accumID =
-        reduce_max(sample.sampleID.z) * self->abstract.spp;
+        reduce_max(sample.sampleID.z) * self->abstract.super.spp;
     const uniform float rot_x = 1.f - precomputedHalton3(accumID);
     const uniform float rot_y = 1.f - precomputedHalton5(accumID);
 
@@ -257,7 +257,7 @@ export void PathTracingRenderer_set(
     self->abstract.bgMaterial =
         (uniform ExtendedOBJMaterial * uniform)bgMaterial;
     self->abstract.timestamp = timestamp;
-    self->abstract.spp = spp;
+    self->abstract.super.spp = spp;
 
     self->abstract.lights = (const uniform Light* uniform* uniform)lights;
     self->abstract.numLights = numLights;

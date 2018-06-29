@@ -55,21 +55,10 @@ protected:
     std::vector<void*> _lightArray;
     void** _lightPtr;
 
-    Model* _world;
-    Camera* _camera;
     ospray::Data* _lightData;
 
     brayns::obj::ExtendedOBJMaterial* _bgMaterial;
-    float _shadows;
-    float _softShadows;
-    float _ambientOcclusionStrength;
-    float _ambientOcclusionDistance;
-    bool _shadingEnabled;
-    bool _electronShadingEnabled;
-    bool _gradientBackgroundEnabled;
-    int _randomNumber;
     float _timestamp;
-    int _spp;
 };
 }
 

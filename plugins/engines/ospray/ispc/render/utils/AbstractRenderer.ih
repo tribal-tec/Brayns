@@ -52,7 +52,6 @@ struct AbstractRenderer
     bool electronShadingEnabled;
     int randomNumber;
     float timestamp;
-    int spp;
 
     // Volume attributes
     uniform uint8* uniform volumeData;

@@ -37,6 +37,14 @@ void SimulationRenderer::commit()
 {
     AbstractRenderer::commit();
 
+    _shadows = getParam1f("shadows", 0.f);
+    _softShadows = getParam1f("softShadows", 0.f);
+    _ambientOcclusionStrength = getParam1f("aoWeight", 0.f);
+    _ambientOcclusionDistance = getParam1f("aoDistance", 1e20f);
+    _randomNumber = getParam1i("randomNumber", 0);
+    _shadingEnabled = bool(getParam1i("shadingEnabled", 1));
+    _electronShadingEnabled = bool(getParam1i("electronShading", 0));
+
     _simulationModel = (ospray::Model*)getParamObject("simulationModel", 0);
     _volumeData = getParamData("volumeData");
     _volumeDimensions = getParam3i("volumeDimensions", ospray::vec3i(0));
@@ -60,7 +68,7 @@ void SimulationRenderer::commit()
         getIE(), (_simulationModel ? _simulationModel->getIE() : nullptr),
         (_bgMaterial ? _bgMaterial->getIE() : nullptr), _shadows, _softShadows,
         _ambientOcclusionStrength, _ambientOcclusionDistance, _shadingEnabled,
-        _randomNumber, _timestamp, _spp, _electronShadingEnabled, _lightPtr,
+        _randomNumber, _timestamp, spp, _electronShadingEnabled, _lightPtr,
         _lightArray.size(), _volumeData ? (uint8*)_volumeData->data : NULL,
         (ispc::vec3i&)_volumeDimensions, (ispc::vec3f&)_volumeElementSpacing,
         (ispc::vec3f&)_volumeOffset, _volumeEpsilon, _volumeSamplesPerRay,

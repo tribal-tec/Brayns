@@ -644,7 +644,7 @@ export void SimulationRenderer_set(
     self->abstract.shadingEnabled = shadingEnabled;
     self->abstract.randomNumber = randomNumber;
     self->abstract.timestamp = timestamp;
-    self->abstract.spp = spp;
+    self->abstract.super.spp = spp;
     self->abstract.electronShadingEnabled = electronShadingEnabled;
 
     self->abstract.lights = (const uniform Light* uniform* uniform)lights;

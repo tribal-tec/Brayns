@@ -235,7 +235,7 @@ export void ProximityRenderer_set(
 
     self->abstract.randomNumber = randomNumber;
     self->abstract.timestamp = timestamp;
-    self->abstract.spp = spp;
+    self->abstract.super.spp = spp;
     self->abstract.electronShadingEnabled = electronShadingEnabled;
     self->abstract.lights = (const uniform Light* uniform* uniform)lights;
     self->abstract.numLights = numLights;

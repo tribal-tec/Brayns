@@ -52,6 +52,6 @@ void ExtendedCones::finalize(ospray::Model* model)
                                     numExtendedCones);
 }
 
-OSP_REGISTER_GEOMETRY(ExtendedCones, extendedcones);
+// OSP_REGISTER_GEOMETRY(ExtendedCones, extendedcones);
 
 } // ::brayns

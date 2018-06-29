@@ -46,12 +46,14 @@ OSPRayScene::OSPRayScene(ParametersManager& parametersManager,
     , _memoryManagementFlags(memoryManagementFlags)
 {
     _backgroundMaterial = std::make_shared<OSPRayMaterial>();
-    ospCommit(_ospTransferFunction);
+    if (_ospTransferFunction)
+        ospCommit(_ospTransferFunction);
 }
 
 OSPRayScene::~OSPRayScene()
 {
-    ospRelease(_ospTransferFunction);
+    if (_ospTransferFunction)
+        ospRelease(_ospTransferFunction);
 
     if (_ospSimulationData)
         ospRelease(_ospSimulationData);
@@ -111,9 +113,9 @@ void OSPRayScene::commit()
 
     _activeModels.clear();
 
-    if (_rootModel)
-        ospRelease(_rootModel);
-    _rootModel = ospNewModel();
+    // if (_rootModel)
+    //        ospRelease(_rootModel);
+    //    _rootModel = ospNewModel();
 
     if (_rootSimulationModel)
         ospRelease(_rootSimulationModel);
@@ -177,7 +179,8 @@ void OSPRayScene::commit()
             }
 
             if (modelDescriptor->getVisible() && instance.getVisible())
-                addInstance(_rootModel, impl.getModel(), instanceTransform);
+                // addInstance(_rootModel, impl.getModel(), instanceTransform);
+                _rootModel = impl.getModel();
         }
 
         impl.markInstancesClean();
@@ -253,7 +256,7 @@ bool OSPRayScene::commitLights()
 
 bool OSPRayScene::commitTransferFunctionData()
 {
-    if (!_transferFunction.isModified())
+    if (!_transferFunction.isModified() || !_ospTransferFunction)
         return false;
 
     // for volumes

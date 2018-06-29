@@ -46,6 +46,6 @@ BasicRenderer::BasicRenderer()
     ispcEquivalent = ispc::BasicRenderer_create(this);
 }
 
-OSP_REGISTER_EXRENDERER(BasicRenderer, BASIC);
-OSP_REGISTER_EXRENDERER(BasicRenderer, basic);
+// OSP_REGISTER_EXRENDERER(BasicRenderer, BASIC);
+// OSP_REGISTER_EXRENDERER(BasicRenderer, basic);
 } // ::brayns

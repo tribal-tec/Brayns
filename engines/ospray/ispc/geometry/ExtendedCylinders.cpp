@@ -51,6 +51,6 @@ void ExtendedCylinders::finalize(ospray::Model* model)
                                         numExtendedCylinders);
 }
 
-OSP_REGISTER_GEOMETRY(ExtendedCylinders, extendedcylinders);
+// OSP_REGISTER_GEOMETRY(ExtendedCylinders, extendedcylinders);
 
 } // ::brayns

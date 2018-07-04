@@ -63,7 +63,6 @@ public:
                                           ? _params.camera->getType()
                                           : engine.getCamera().getType()))
         , _renderer(engine.createRenderer(
-              engine.getActiveRenderer(),
               _params.animParams
                   ? *_params.animParams
                   : engine.getParametersManager().getAnimationParameters(),
@@ -73,6 +72,7 @@ public:
         , _scene(engine.createScene({_renderer}, engine.getParametersManager()))
         , _imageGenerator(imageGenerator)
     {
+        _renderer->setCurrentType(engine.getRenderer().getCurrentType());
         if (_params.camera)
             *_camera = *_params.camera;
         else

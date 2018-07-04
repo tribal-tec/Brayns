@@ -28,14 +28,10 @@
 
 namespace brayns
 {
-OSPRayRenderer::OSPRayRenderer(const std::string& name,
-                               const AnimationParameters& animationParameters,
+OSPRayRenderer::OSPRayRenderer(const AnimationParameters& animationParameters,
                                const RenderingParameters& renderingParameters)
-    : Renderer(name, animationParameters, renderingParameters)
-    , _renderer{ospNewRenderer(name.c_str())}
+    : Renderer(animationParameters, renderingParameters)
 {
-    if (!_renderer)
-        throw std::runtime_error(name + " is not a registered renderer");
 }
 
 OSPRayRenderer::~OSPRayRenderer()
@@ -57,15 +53,59 @@ void OSPRayRenderer::render(FrameBufferPtr frameBuffer)
     osprayFrameBuffer->unlock();
 }
 
+#define SET_SCALAR(OSP, TYPE) \
+    ospSet1##OSP(_renderer, prop->name.c_str(), prop->get<TYPE>());
+#define SET_STRING()                            \
+    ospSetString(_renderer, prop->name.c_str(), \
+                 prop->get<std::string>().c_str());
+#define SET_ARRAY(OSP, TYPE, NUM)              \
+    ospSet##OSP(_renderer, prop->name.c_str(), \
+                prop->get<std::array<TYPE, NUM>>().data());
+
 void OSPRayRenderer::commit()
 {
     const AnimationParameters& ap = _animationParameters;
     const RenderingParameters& rp = _renderingParameters;
 
     if (!ap.isModified() && !rp.isModified() && !_scene->isModified() &&
-        !_dirty)
+        !isModified())
     {
         return;
+    }
+
+    if (_currentOSPRenderer != getCurrentType())
+        createOSPRenderer();
+
+    for (const auto& prop : getProperties(getCurrentType()))
+    {
+        switch (prop->type)
+        {
+        case PropertyMap::Property::Type::Float:
+            SET_SCALAR(f, float);
+            break;
+        case PropertyMap::Property::Type::Int:
+        case PropertyMap::Property::Type::Bool:
+            SET_SCALAR(i, int32_t);
+            break;
+        case PropertyMap::Property::Type::String:
+            SET_STRING();
+            break;
+        case PropertyMap::Property::Type::Vec2f:
+            SET_ARRAY(2fv, float, 2);
+            break;
+        case PropertyMap::Property::Type::Vec2i:
+            SET_ARRAY(2iv, int32_t, 2);
+            break;
+        case PropertyMap::Property::Type::Vec3f:
+            SET_ARRAY(3fv, float, 3);
+            break;
+        case PropertyMap::Property::Type::Vec3i:
+            SET_ARRAY(3iv, int32_t, 3);
+            break;
+        case PropertyMap::Property::Type::Vec4f:
+            SET_ARRAY(4fv, float, 4);
+            break;
+        }
     }
 
     //    ShadingType mt = rp.getShading();
@@ -75,7 +115,8 @@ void OSPRayRenderer::commit()
     //    ospSet1f(_renderer, "softShadows", rp.getSoftShadows());
     //    ospSet1f(_renderer, "aoWeight", rp.getAmbientOcclusionStrength());
     //    ospSet1i(_renderer, "aoSamples", 1);
-    //    ospSet1f(_renderer, "aoDistance", rp.getAmbientOcclusionDistance());
+    //    ospSet1f(_renderer,softShadows "aoDistance",
+    //    rp.getAmbientOcclusionDistance());
 
     //    ospSet1i(_renderer, "shadingEnabled", (mt == ShadingType::diffuse));
     ospSet1f(_renderer, "timestamp", ap.getFrame());
@@ -111,7 +152,7 @@ void OSPRayRenderer::commit()
     ospSetObject(_renderer, "world", scene->getModel());
     ospSetObject(_renderer, "simulationModel", scene->simulationModelImpl());
     ospCommit(_renderer);
-    _dirty = false;
+    resetModified();
 }
 
 void OSPRayRenderer::setCamera(CameraPtr camera)
@@ -119,7 +160,7 @@ void OSPRayRenderer::setCamera(CameraPtr camera)
     _camera = static_cast<OSPRayCamera*>(camera.get());
     assert(_camera);
     ospSetObject(_renderer, "camera", _camera->impl());
-    _dirty = true;
+    markModified();
 }
 
 Renderer::PickResult OSPRayRenderer::pick(const Vector2f& pickPos)
@@ -147,5 +188,16 @@ Renderer::PickResult OSPRayRenderer::pick(const Vector2f& pickPos)
         result.pos = {ospResult.position.x, ospResult.position.y,
                       ospResult.position.z};
     return result;
+}
+
+void OSPRayRenderer::createOSPRenderer()
+{
+    if (_renderer)
+        ospRelease(_renderer);
+    _renderer = ospNewRenderer(getCurrentType().c_str());
+    if (!_renderer)
+        throw std::runtime_error(getCurrentType() +
+                                 " is not a registered renderer");
+    _currentOSPRenderer = getCurrentType();
 }
 }

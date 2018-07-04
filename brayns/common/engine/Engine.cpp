@@ -43,25 +43,6 @@ Engine::~Engine()
         _scene->reset();
 }
 
-void Engine::setActiveRenderer(const std::string& renderer)
-{
-    if (_activeRenderer->getName() == renderer)
-        return;
-    auto i = _renderers.find(renderer);
-    if (i != _renderers.end())
-        _activeRenderer = i->second;
-    else
-        BRAYNS_ERROR << "Ignoring new active renderer of unknown name "
-                     << renderer << std::endl;
-}
-
-const std::string& Engine::getActiveRenderer() const
-{
-    if (!_activeRenderer)
-        throw std::logic_error("No active renderer in engine");
-    return _activeRenderer->getName();
-}
-
 void Engine::reshape(const Vector2ui& frameSize)
 {
     const auto size = getSupportedFrameSize(frameSize);
@@ -77,12 +58,12 @@ void Engine::reshape(const Vector2ui& frameSize)
 
 void Engine::commit()
 {
-    _activeRenderer->commit();
+    _renderer->commit();
 }
 
 void Engine::render()
 {
-    _activeRenderer->render(_frameBuffer);
+    _renderer->render(_frameBuffer);
 }
 
 void Engine::postRender()
@@ -90,25 +71,9 @@ void Engine::postRender()
     _writeFrameToFile();
 }
 
-Renderer& Engine::getCurrentRenderer()
+Renderer& Engine::getRenderer()
 {
-    return *_activeRenderer;
-}
-
-Renderer& Engine::getRenderer(const std::string& name)
-{
-    auto i = _renderers.find(name);
-    if (i == _renderers.end())
-        throw std::runtime_error("Renderer no found: " + name);
-    return *i->second;
-}
-
-strings Engine::getRendererTypes() const
-{
-    strings types;
-    for (const auto& i : _renderers)
-        types.push_back(i.first);
-    return types;
+    return *_renderer;
 }
 
 Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
@@ -126,8 +91,7 @@ Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
 bool Engine::continueRendering() const
 {
     return _parametersManager.getAnimationParameters().getDelta() != 0 ||
-           (_activeRenderer->getVariance() > 1 &&
-            _frameBuffer->getAccumulation() &&
+           (_renderer->getVariance() > 1 && _frameBuffer->getAccumulation() &&
             (_frameBuffer->numAccumFrames() <
              _parametersManager.getRenderingParameters().getMaxAccumFrames()));
 }

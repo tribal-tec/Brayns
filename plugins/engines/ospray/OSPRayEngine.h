@@ -63,7 +63,7 @@ public:
                          ParametersManager& parametersManager) const final;
     CameraPtr createCamera(const CameraType type) const final;
     RendererPtr createRenderer(
-        const std::string& type, const AnimationParameters& animationParameters,
+        const AnimationParameters& animationParameters,
         const RenderingParameters& renderingParameters) const final;
 
 private:

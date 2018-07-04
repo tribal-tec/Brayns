@@ -137,11 +137,8 @@ OSPRayEngine::OSPRayEngine(ParametersManager& parametersManager)
         std::static_pointer_cast<OSPRayFrameBuffer>(_frameBuffer)
             ->enableDeflectPixelOp();
 
-    for (const auto& renderer : _renderers)
-    {
-        renderer.second->setScene(_scene);
-        renderer.second->setCamera(_camera);
-    }
+    _renderer->setScene(_scene);
+    _renderer->setCamera(_camera);
 
     BRAYNS_INFO << "Engine initialization complete" << std::endl;
 }
@@ -152,7 +149,7 @@ OSPRayEngine::~OSPRayEngine()
         _scene->reset();
     _scene.reset();
     _frameBuffer.reset();
-    _renderers.clear();
+    _renderer.reset();
     _camera.reset();
 
     // HACK: need ospFinish() here; currently used by optix module to properly
@@ -245,29 +242,48 @@ Vector2ui OSPRayEngine::getMinimumFrameSize() const
 
 Renderers OSPRayEngine::_createRenderers()
 {
-    Renderers renderersForScene;
     auto& rp = _parametersManager.getRenderingParameters();
+    auto ospRenderer = std::make_shared<OSPRayRenderer>(
+        _parametersManager.getAnimationParameters(), rp);
+
     for (const auto& renderer : rp.getRenderers())
     {
-        try
+        PropertyMap properties;
+        if (renderer == "pathtracingrenderer")
         {
-            _renderers[renderer] = std::make_shared<OSPRayRenderer>(
-                renderer, _parametersManager.getAnimationParameters(), rp);
+            properties.setProperty("shadows", 0.f);
+            properties.setProperty("softShadows", 0.f);
+            properties.setProperty("aoWeight", 0.f);
+            properties.setProperty("aoDistance", 1e20f);
         }
-        catch (const std::runtime_error& e)
+        if (renderer == "proximityrenderer")
         {
-            BRAYNS_WARN << e.what() << ". Using default renderer instead"
-                        << std::endl;
-            rp.initializeDefaultRenderers();
-            _renderers[renderer] = std::make_shared<OSPRayRenderer>(
-                "basic", _parametersManager.getAnimationParameters(), rp);
+            properties.setProperty("detectionNearColor",
+                                   std::array<float, 3>{{0.f, 1.f, 0.f}});
+            properties.setProperty("detectionFarColor",
+                                   std::array<float, 3>{{1.f, 0.f, 0.f}});
+            properties.setProperty("detectionDistance", 1.f);
+            properties.setProperty("detectionOnDifferentMaterial", 0);
+            properties.setProperty("electronShading", 0);
         }
-        renderersForScene.push_back(_renderers[renderer]);
+        if (renderer == "simulationrenderer")
+        {
+            properties.setProperty("shadows", 0.f);
+            properties.setProperty("softShadows", 0.f);
+            properties.setProperty("aoWeight", 0.f);
+            properties.setProperty("aoDistance", 1e20f);
+            properties.setProperty("shadingEnabled", false);
+            properties.setProperty("electronShading", false);
+            properties.setProperty("detectionDistance", 15.f);
+        }
+        ospRenderer->setProperties(renderer, properties);
     }
-    _activeRenderer = _renderers[rp.getCurrentRenderer()];
-    PropertyMap properties;
-    properties.setProperty("foo", 42.f);
-    _activeRenderer->setProperties(properties);
+    ospRenderer->setCurrentType(rp.getCurrentRenderer());
+    ospRenderer->createOSPRenderer();
+    _renderer = ospRenderer;
+
+    Renderers renderersForScene;
+    renderersForScene.push_back(_renderer);
     return renderersForScene;
 }
 
@@ -305,10 +321,10 @@ CameraPtr OSPRayEngine::createCamera(const CameraType type) const
 }
 
 RendererPtr OSPRayEngine::createRenderer(
-    const std::string& type, const AnimationParameters& animationParameters,
+    const AnimationParameters& animationParameters,
     const RenderingParameters& renderingParameters) const
 {
-    return std::make_shared<OSPRayRenderer>(type, animationParameters,
+    return std::make_shared<OSPRayRenderer>(animationParameters,
                                             renderingParameters);
 }
 

@@ -201,7 +201,7 @@ struct Brayns::Impl : public PluginAPI
 
         _updateAnimation();
 
-        _engine->setActiveRenderer(
+        _engine->getRenderer().setCurrentType(
             _parametersManager.getRenderingParameters().getCurrentRenderer());
 
         const auto windowSize =

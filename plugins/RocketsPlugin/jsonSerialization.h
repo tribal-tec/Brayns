@@ -575,6 +575,10 @@ inline std::string to_json(const brayns::PropertyMap& obj)
                            StringRef(prop->get<std::string>().c_str()),
                            json.GetAllocator());
             break;
+        case PropertyMap::Property::Type::Bool:
+            json.AddMember(StringRef(prop->name.c_str()), prop->get<bool>(),
+                           json.GetAllocator());
+            break;
         case PropertyMap::Property::Type::Vec2f:
             addProperty<std::array<float, 2>>(json, *prop);
             break;

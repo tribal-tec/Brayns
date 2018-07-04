@@ -43,6 +43,7 @@ public:
             Int,
             Float,
             String,
+            Bool,
             Vec2i,
             Vec2f,
             Vec3i,
@@ -164,6 +165,11 @@ template <>
 inline PropertyMap::Property::Type PropertyMap::getType<std::string>()
 {
     return PropertyMap::Property::Type::String;
+}
+template <>
+inline PropertyMap::Property::Type PropertyMap::getType<bool>()
+{
+    return PropertyMap::Property::Type::Bool;
 }
 template <>
 inline PropertyMap::Property::Type PropertyMap::getType<std::array<float, 2>>()

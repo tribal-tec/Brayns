@@ -22,6 +22,9 @@
 
 #include <brayns/common/BaseObject.h>
 #include <brayns/common/PropertyMap.h>
+#include <brayns/common/types.h>
+
+#include <map>
 
 namespace brayns
 {
@@ -38,6 +41,12 @@ public:
         markModified();
     }
 
+    void setProperties(const std::string& type, const PropertyMap& properties)
+    {
+        _mappedProperties[type] = properties;
+        markModified();
+    }
+
     /** Update or add the given properties to the existing ones. */
     void updateProperties(const PropertyMap& properties)
     {
@@ -48,7 +57,24 @@ public:
 
     const auto& getProperties() const { return _properties.getProperties(); }
     const auto& getPropertyMap() const { return _properties; }
+    const auto& getProperties(const std::string& type) const
+    {
+        return _mappedProperties.at(type).getProperties();
+    }
+    const auto& getPropertyMap(const std::string& type) const
+    {
+        return _mappedProperties.at(type);
+    }
+    strings getTypes() const
+    {
+        strings types;
+        for (const auto& i : _mappedProperties)
+            types.push_back(i.first);
+        return types;
+    }
+
 private:
     PropertyMap _properties;
+    std::map<std::string, PropertyMap> _mappedProperties;
 };
 }

@@ -47,6 +47,7 @@
 
 namespace
 {
+const std::string METHOD_GET_RENDERER = "get-renderer";
 const std::string METHOD_GET_RENDERER_PARAMS = "get-renderer-params";
 
 // REST PUT & GET, JSONRPC set-* notification, JSONRPC get-* request
@@ -609,6 +610,7 @@ public:
         _handleGetInstances();
         _handleUpdateInstance();
 
+        handleGetRenderer();
         handleGetRendererParams();
     }
 
@@ -783,8 +785,7 @@ public:
                              "x-y position in normalized coordinates"};
         _handleRPC<Position, Renderer::PickResult>(
             METHOD_INSPECT, doc, [engine = _engine](const auto& position) {
-                return engine->getCurrentRenderer().pick(
-                    {position[0], position[1]});
+                return engine->getRenderer().pick({position[0], position[1]});
             });
     }
 
@@ -993,29 +994,30 @@ public:
                           METHOD_UPDATE_INSTANCE, doc));
     }
 
+    void handleGetRenderer() {}
     void handleGetRendererParams()
     {
         RpcDocumentation doc{"Get the params of the given renderer", "type",
                              "render type"};
 
-        _jsonrpcServer->bind(METHOD_GET_RENDERER_PARAMS, [& engine = _engine](
-                                                             const auto&
-                                                                 request) {
-            SchemaParam rendererType;
-            if (::from_json(rendererType, request.message))
-            {
-                const auto& props =
-                    engine->getRenderer(rendererType.endpoint).getPropertyMap();
-                return Response{to_json(props)};
-            }
-            return rockets::jsonrpc::Response::invalidParams();
-        });
+        _jsonrpcServer->bind(
+            METHOD_GET_RENDERER_PARAMS,
+            [& engine = _engine](const auto& request) {
+                SchemaParam rendererType;
+                if (::from_json(rendererType, request.message))
+                {
+                    const auto& props = engine->getRenderer().getPropertyMap(
+                        rendererType.endpoint);
+                    return Response{to_json(props)};
+                }
+                return rockets::jsonrpc::Response::invalidParams();
+            });
 
         std::vector<std::pair<std::string, PropertyMap>> props;
-        for (const auto& type : _engine->getRendererTypes())
+        for (const auto& type : _engine->getRenderer().getTypes())
             props.push_back(
                 std::make_pair(type,
-                               _engine->getRenderer(type).getPropertyMap()));
+                               _engine->getRenderer().getPropertyMap(type)));
 
         _handleSchema(METHOD_GET_RENDERER_PARAMS,
                       buildJsonRpcSchemaReturnProperties<SchemaParam>(

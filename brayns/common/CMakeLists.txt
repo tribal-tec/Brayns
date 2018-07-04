@@ -34,6 +34,7 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   BaseObject.h
   ImageManager.h
   PropertyMap.h
+  PropertyObject.h
   Transformation.h
   camera/AbstractManipulator.h
   camera/Camera.h

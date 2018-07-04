@@ -387,6 +387,7 @@ class Loader;
 using LoaderPtr = std::unique_ptr<Loader>;
 
 class PropertyMap;
+class PropertyObject;
 }
 
 #endif // TYPES_H

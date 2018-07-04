@@ -32,6 +32,8 @@
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 
+#include <brayns/common/PropertyMap.h>
+
 namespace brayns
 {
 /** @return JSON schema from JSON-serializable type */
@@ -57,6 +59,69 @@ std::string getSchema(T& obj, const std::string& title)
     return buffer.GetString();
 }
 
+template <typename T>
+void addProperty(rapidjson::Document& document, PropertyMap::Property& prop)
+{
+    auto value = prop.get<T>();
+    auto propSchema = staticjson::export_json_schema(&value);
+    document.AddMember(rapidjson::StringRef(prop.name.c_str()), propSchema,
+                       document.GetAllocator());
+}
+
+template <>
+std::string getSchema(PropertyMap& obj, const std::string& title)
+{
+    using namespace rapidjson;
+    Document schema(kObjectType);
+    schema.AddMember(StringRef("title"), StringRef(title.c_str()),
+                     schema.GetAllocator());
+    //    schema.AddMember(StringRef("description"),
+    //                     StringRef(doc.functionDescription.c_str()),
+    //                     schema.GetAllocator());
+    schema.AddMember(StringRef("type"), StringRef("object"),
+                     schema.GetAllocator());
+
+    Document properties(kObjectType);
+    for (auto prop : obj.getProperties())
+    {
+        switch (prop->type)
+        {
+        case PropertyMap::Property::Type::Float:
+            addProperty<float>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::Int:
+            addProperty<int32_t>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::String:
+            addProperty<std::string>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec2f:
+            addProperty<std::array<float, 2>>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec2i:
+            addProperty<std::array<int32_t, 2>>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec3f:
+            addProperty<std::array<float, 3>>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec3i:
+            addProperty<std::array<int32_t, 3>>(properties, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec4f:
+            addProperty<std::array<float, 4>>(properties, *prop);
+            break;
+        }
+    }
+
+    schema.AddMember(StringRef("properties"), properties,
+                     schema.GetAllocator());
+
+    StringBuffer buffer;
+    PrettyWriter<StringBuffer> writer(buffer);
+    schema.Accept(writer);
+    return buffer.GetString();
+}
+
 /** @return JSON schema for JSON RPC parameter */
 template <class T>
 rapidjson::Document getRPCParameterSchema(const std::string& paramName,
@@ -74,6 +139,23 @@ rapidjson::Document getRPCParameterSchema(const std::string& paramName,
                      schema.GetAllocator());
     return schema;
 };
+
+// template <>
+// rapidjson::Document getRPCParameterSchema(const std::string& paramName,
+//                                          const std::string& paramDescription,
+//                                          PropertyMap& obj)
+//{
+//    rapidjson::Document schema = staticjson::export_json_schema(&obj);
+
+//    using namespace rapidjson;
+//    schema.AddMember(StringRef("name"),
+//                     Value(paramName.c_str(), schema.GetAllocator()),
+//                     schema.GetAllocator());
+//    schema.AddMember(StringRef("description"),
+//                     Value(paramDescription.c_str(), schema.GetAllocator()),
+//                     schema.GetAllocator());
+//    return schema;
+//};
 
 /** Documentation for RPC call with one parameter. */
 struct RpcDocumentation

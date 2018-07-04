@@ -995,8 +995,8 @@ public:
 
     void handleGetRendererParams()
     {
-        RpcDocumentation doc{"Get the schema of the given endpoint", "endpoint",
-                             "name of the endpoint to get its schema"};
+        RpcDocumentation doc{"Get the params of the given renderer", "type",
+                             "render type"};
 
         _jsonrpcServer->bind(
             METHOD_GET_RENDERER_PARAMS,
@@ -1004,8 +1004,9 @@ public:
                 SchemaParam rendererType;
                 if (::from_json(rendererType, request.message))
                 {
-                    auto params = engine->getCurrentRenderer().getParamsJSON();
-                    return Response{std::move(params)};
+                    const auto& props =
+                        engine->getCurrentRenderer().getPropertyMap();
+                    return Response{to_json(props)};
                 }
                 return rockets::jsonrpc::Response::invalidParams();
             });

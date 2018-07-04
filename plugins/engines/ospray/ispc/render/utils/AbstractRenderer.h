@@ -51,7 +51,6 @@ public:
 
     ospray::Material* createMaterial(const char* type) final;
 
-    virtual std::string getParamsJSON() const { return "Null"; } // = 0;
 protected:
     std::vector<void*> _lightArray;
     void** _lightPtr;

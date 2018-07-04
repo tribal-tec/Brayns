@@ -38,9 +38,7 @@ public:
     std::string toString() const final { return "brayns::SimulationRenderer"; }
     void commit() final;
 
-    std::string getParamsJSON() const final;
-
-    // private:
+private:
     ospray::Model *_simulationModel;
 
     float _shadows;

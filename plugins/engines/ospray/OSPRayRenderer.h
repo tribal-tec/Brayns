@@ -45,9 +45,6 @@ public:
 
     PickResult pick(const Vector2f& pickPos) final;
 
-    std::string getParamsJSON() const final;
-    void setParamsJSON(const std::string& params) const final;
-
     OSPRenderer impl() const { return _renderer; }
 private:
     OSPRayCamera* _camera{nullptr};

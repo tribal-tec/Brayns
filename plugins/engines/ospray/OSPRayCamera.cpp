@@ -69,7 +69,7 @@ void OSPRayCamera::commit()
     ospSet1f(_camera, "fovy", getFieldOfView());
     ospSet1f(_camera, "architectural", true);
 
-    for (const auto& prop : _properties.getProperties())
+    for (const auto& prop : getProperties())
     {
         switch (prop->type)
         {

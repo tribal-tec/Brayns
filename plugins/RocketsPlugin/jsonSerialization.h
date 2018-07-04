@@ -54,6 +54,8 @@
 #pragma GCC diagnostic pop
 #endif
 
+#include "rapidjson/prettywriter.h"
+
 namespace brayns
 {
 struct GetInstances
@@ -535,6 +537,66 @@ template <>
 inline std::string to_json(const brayns::Version& obj)
 {
     return obj.toJSON();
+}
+
+template <typename T>
+void addProperty(rapidjson::Document& document,
+                 brayns::PropertyMap::Property& prop)
+{
+    rapidjson::Value array(rapidjson::kArrayType);
+    for (const auto& val : prop.get<T>())
+        array.PushBack(val, document.GetAllocator());
+
+    document.AddMember(rapidjson::StringRef(prop.name.c_str()), array,
+                       document.GetAllocator());
+}
+
+template <>
+inline std::string to_json(const brayns::PropertyMap& obj)
+{
+    using namespace rapidjson;
+    using brayns::PropertyMap;
+    Document json(kObjectType);
+
+    for (auto prop : obj.getProperties())
+    {
+        switch (prop->type)
+        {
+        case PropertyMap::Property::Type::Float:
+            json.AddMember(StringRef(prop->name.c_str()), prop->get<float>(),
+                           json.GetAllocator());
+            break;
+        case PropertyMap::Property::Type::Int:
+            json.AddMember(StringRef(prop->name.c_str()), prop->get<int32_t>(),
+                           json.GetAllocator());
+            break;
+        case PropertyMap::Property::Type::String:
+            json.AddMember(StringRef(prop->name.c_str()),
+                           StringRef(prop->get<std::string>().c_str()),
+                           json.GetAllocator());
+            break;
+        case PropertyMap::Property::Type::Vec2f:
+            addProperty<std::array<float, 2>>(json, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec2i:
+            addProperty<std::array<int32_t, 2>>(json, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec3f:
+            addProperty<std::array<float, 3>>(json, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec3i:
+            addProperty<std::array<int32_t, 3>>(json, *prop);
+            break;
+        case PropertyMap::Property::Type::Vec4f:
+            addProperty<std::array<float, 4>>(json, *prop);
+            break;
+        }
+    }
+
+    StringBuffer buffer;
+    PrettyWriter<StringBuffer> writer(buffer);
+    json.Accept(writer);
+    return buffer.GetString();
 }
 
 template <class T>

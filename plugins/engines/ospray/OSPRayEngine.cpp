@@ -265,6 +265,9 @@ Renderers OSPRayEngine::_createRenderers()
         renderersForScene.push_back(_renderers[renderer]);
     }
     _activeRenderer = _renderers[rp.getCurrentRenderer()];
+    PropertyMap properties;
+    properties.setProperty("foo", 42.f);
+    _activeRenderer->setProperties(properties);
     return renderersForScene;
 }
 

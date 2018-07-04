@@ -95,6 +95,22 @@ Renderer& Engine::getCurrentRenderer()
     return *_activeRenderer;
 }
 
+Renderer& Engine::getRenderer(const std::string& name)
+{
+    auto i = _renderers.find(name);
+    if (i == _renderers.end())
+        throw std::runtime_error("Renderer no found: " + name);
+    return *i->second;
+}
+
+strings Engine::getRendererTypes() const
+{
+    strings types;
+    for (const auto& i : _renderers)
+        types.push_back(i.first);
+    return types;
+}
+
 Vector2ui Engine::getSupportedFrameSize(const Vector2ui& size)
 {
     Vector2f result = size;

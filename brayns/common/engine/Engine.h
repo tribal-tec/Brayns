@@ -69,6 +69,8 @@ public:
     Camera& getCamera() { return *_camera; }
     /** Gets the renderer */
     Renderer& getCurrentRenderer();
+    Renderer& getRenderer(const std::string& name);
+    strings getRendererTypes() const;
     /** Active renderer */
     void setActiveRenderer(const std::string& renderer);
     const std::string& getActiveRenderer() const;

@@ -998,17 +998,10 @@ public:
         RpcDocumentation doc{"Get the params of the given renderer", "type",
                              "render type"};
 
-        _jsonrpcServer->bind(
-            METHOD_GET_RENDERER_PARAMS,
-            [& engine = _engine](const auto& request) {
-                SchemaParam rendererType;
-                if (::from_json(rendererType, request.message))
-                {
-                    const auto& props = engine->getRenderer().getPropertyMap(
-                        rendererType.endpoint);
-                    return Response{to_json(props)};
-                }
-                return rockets::jsonrpc::Response::invalidParams();
+        _jsonrpcServer->bind<PropertyMap>(
+            METHOD_GET_RENDERER_PARAMS, [& engine = _engine] {
+                return engine->getRenderer().getPropertyMap(
+                    engine->getRenderer().getCurrentType());
             });
 
         std::vector<std::pair<std::string, PropertyMap>> props;
@@ -1018,7 +1011,7 @@ public:
                                _engine->getRenderer().getPropertyMap(type)));
 
         _handleSchema(METHOD_GET_RENDERER_PARAMS,
-                      buildJsonRpcSchemaReturnProperties<SchemaParam>(
+                      buildJsonRpcSchemaReturnProperties(
                           METHOD_GET_RENDERER_PARAMS, doc, props));
     }
 

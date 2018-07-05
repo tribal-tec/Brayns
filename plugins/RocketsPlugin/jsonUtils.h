@@ -209,7 +209,6 @@ std::string buildJsonRpcSchema(const std::string& title,
         break;                                                               \
     }
 
-template <class P>
 std::string buildJsonRpcSchemaReturnProperties(
     const std::string& title, const RpcDocumentation& doc,
     const std::vector<std::pair<std::string, PropertyMap>>& objs)
@@ -270,10 +269,6 @@ std::string buildJsonRpcSchemaReturnProperties(
     schema.AddMember(StringRef("returns"), returns, schema.GetAllocator());
 
     Value params(kArrayType);
-    P param;
-    auto paramSchema =
-        getRPCParameterSchema<P>(doc.paramName, doc.paramDescription, param);
-    params.PushBack(paramSchema, schema.GetAllocator());
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
     StringBuffer buffer;

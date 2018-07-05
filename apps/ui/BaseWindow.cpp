@@ -155,7 +155,7 @@ void BaseWindow::mouseButton(const int button, const bool released,
 
     if (_currModifiers & GLUT_ACTIVE_SHIFT && released)
     {
-        const auto& result = _brayns.getEngine().getCurrentRenderer().pick(
+        const auto& result = _brayns.getEngine().getRenderer().pick(
             {pos.x() / float(_windowSize.x()),
              1.f - pos.y() / float(_windowSize.y())});
         _brayns.getEngine().getFrameBuffer().clear();
@@ -338,7 +338,8 @@ void BaseWindow::display()
     float* buffer = renderOutput.depthBuffer.data();
     _gid = -1;
     if (buffer &&
-        _brayns.getEngine().getActiveRenderer() == RendererType::particle)
+        _brayns.getEngine().getRenderer().getCurrentType() ==
+            "particlerenderer")
     {
         size_t index =
             (_windowSize.y() - _mouse.y()) * _windowSize.x() + _mouse.x();

@@ -55,6 +55,14 @@ public:
         markModified();
     }
 
+    void updateProperties(const std::string& type,
+                          const PropertyMap& properties)
+    {
+        for (auto prop : properties.getProperties())
+            _mappedProperties.at(type).setProperty(*prop);
+        markModified();
+    }
+
     const auto& getProperties() const { return _properties.getProperties(); }
     const auto& getPropertyMap() const { return _properties; }
     const auto& getProperties(const std::string& type) const

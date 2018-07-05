@@ -77,8 +77,10 @@ void OSPRayCamera::commit()
             SET_SCALAR(f, float);
             break;
         case PropertyMap::Property::Type::Int:
-        case PropertyMap::Property::Type::Bool:
             SET_SCALAR(i, int32_t);
+            break;
+        case PropertyMap::Property::Type::Bool:
+            SET_SCALAR(i, bool);
             break;
         case PropertyMap::Property::Type::String:
             SET_STRING();

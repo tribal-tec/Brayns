@@ -56,7 +56,7 @@ const std::string ENDPOINT_APP_PARAMS = "application-parameters";
 const std::string ENDPOINT_CAMERA = "camera";
 const std::string ENDPOINT_GEOMETRY_PARAMS = "geometry-parameters";
 const std::string ENDPOINT_TRANSFER_FUNCTION = "transfer-function";
-const std::string ENDPOINT_RENDERING_PARAMS = "rendering-parameters";
+const std::string ENDPOINT_RENDERER = "renderer";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_SCENE_PARAMS = "scene-parameters";
 const std::string ENDPOINT_STREAM = "stream";
@@ -577,8 +577,7 @@ public:
                 _parametersManager.getApplicationParameters());
         _handle(ENDPOINT_ANIMATION_PARAMS,
                 _parametersManager.getAnimationParameters());
-        _handle(ENDPOINT_RENDERING_PARAMS,
-                _parametersManager.getRenderingParameters());
+        _handle(ENDPOINT_RENDERER, _parametersManager.getRenderingParameters());
         _handle(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
 
         // following endpoints need a valid engine
@@ -610,8 +609,7 @@ public:
         _handleGetInstances();
         _handleUpdateInstance();
 
-        handleGetRenderer();
-        handleGetRendererParams();
+        _handleGetRendererParams();
     }
 
     void _handleFrameBuffer()
@@ -994,8 +992,7 @@ public:
                           METHOD_UPDATE_INSTANCE, doc));
     }
 
-    void handleGetRenderer() {}
-    void handleGetRendererParams()
+    void _handleGetRendererParams()
     {
         RpcDocumentation doc{"Get the params of the given renderer", "type",
                              "render type"};

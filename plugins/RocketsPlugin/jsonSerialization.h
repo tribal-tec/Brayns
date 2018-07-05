@@ -448,41 +448,18 @@ inline void init(brayns::GeometryParameters* g, ObjectHandler* h)
 
 inline void init(brayns::RenderingParameters* r, ObjectHandler* h)
 {
-    h->add_property("types", &r->_renderers,
-                    Flags::IgnoreRead | Flags::Optional);
-    h->add_property("samples_per_pixel", &r->_spp, Flags::Optional);
-    h->add_property("shader", &r->_renderer, Flags::Optional);
-    // h->add_property("shading", &r->_shading, Flags::Optional);
-    // h->add_property("shadow_intensity", &r->_shadowIntensity,
-    // Flags::Optional);
-    // h->add_property("soft_shadows", &r->_softShadows, Flags::Optional);
-    // h->add_property("ambient_occlusion", &r->_ambientOcclusionStrength,
-    //                    Flags::Optional);
-    //    h->add_property("ambient_occlusion_distance",
-    //    &r->_ambientOcclusionDistance,
-    //                    Flags::Optional);
     h->add_property("accumulation", &r->_accumulation, Flags::Optional);
-    //    h->add_property("radiance", &r->_lightEmittingMaterials,
-    //    Flags::Optional);
-    h->add_property("head_light", &r->_headLight, Flags::Optional);
-    h->add_property("variance_threshold", &r->_varianceThreshold,
-                    Flags::Optional);
-    h->add_property("max_accum_frames", &r->_maxAccumFrames, Flags::Optional);
     h->add_property("background_color", Vector3fArray(r->_backgroundColor),
                     Flags::Optional);
-    //    h->add_property("detection_distance", &r->_detectionDistance,
-    //                    Flags::Optional);
-    //    h->add_property("detection_on_different_material",
-    //                    &r->_detectionOnDifferentMaterial, Flags::Optional);
-    //    h->add_property("detection_near_color",
-    //                    Vector3fArray(r->_detectionNearColor),
-    //                    Flags::Optional);
-    //    h->add_property("detection_far_color",
-    //    Vector3fArray(r->_detectionFarColor),
-    //                    Flags::Optional);
+    h->add_property("current", &r->_renderer, Flags::Optional);
+    h->add_property("head_light", &r->_headLight, Flags::Optional);
+    h->add_property("max_accum_frames", &r->_maxAccumFrames, Flags::Optional);
+    h->add_property("samples_per_pixel", &r->_spp, Flags::Optional);
+    h->add_property("types", &r->_renderers,
+                    Flags::IgnoreRead | Flags::Optional);
+    h->add_property("variance_threshold", &r->_varianceThreshold,
+                    Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
-    //    h->add_property("samples_per_ray", &r->_spr, Flags::Optional);
-    h->add_property("stereo_mode", &r->_stereoMode, Flags::Optional);
 }
 
 inline void init(brayns::SceneParameters* s, ObjectHandler* h)

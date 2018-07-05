@@ -276,6 +276,15 @@ Renderers OSPRayEngine::_createRenderers()
             properties.setProperty("electronShading", false);
             properties.setProperty("detectionDistance", 15.f);
         }
+        if (renderer == "scivis")
+        {
+            properties.setProperty("shadowsEnabled", false);
+            properties.setProperty("aoSamples", 0);
+            properties.setProperty("aoDistance", 1e20f);
+            properties.setProperty("aoWeight", 0.f);
+            properties.setProperty("aoTransparencyEnabled", false);
+            properties.setProperty("oneSidedLighting", true);
+        }
         ospRenderer->setProperties(renderer, properties);
     }
     ospRenderer->setCurrentType(rp.getCurrentRenderer());

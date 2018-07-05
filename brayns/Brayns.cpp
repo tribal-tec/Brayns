@@ -192,6 +192,7 @@ struct Brayns::Impl : public PluginAPI
 
         auto& scene = _engine->getScene();
         auto& camera = _engine->getCamera();
+        auto& renderer = _engine->getRenderer();
 
         scene.commit();
 
@@ -201,7 +202,7 @@ struct Brayns::Impl : public PluginAPI
 
         _updateAnimation();
 
-        _engine->getRenderer().setCurrentType(
+        renderer.setCurrentType(
             _parametersManager.getRenderingParameters().getCurrentRenderer());
 
         const auto windowSize =
@@ -228,14 +229,15 @@ struct Brayns::Impl : public PluginAPI
         }
 
         if (_parametersManager.isAnyModified() || camera.isModified() ||
-            scene.isModified())
+            scene.isModified() || renderer.isModified())
         {
             _engine->getFrameBuffer().clear();
         }
 
         _parametersManager.resetModified();
-        _engine->getCamera().resetModified();
-        _engine->getScene().resetModified();
+        camera.resetModified();
+        scene.resetModified();
+        renderer.resetModified();
 
         return true;
     }

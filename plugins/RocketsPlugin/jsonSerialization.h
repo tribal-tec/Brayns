@@ -591,3 +591,55 @@ inline bool from_json(brayns::Vector2f& obj, const std::string& json)
     return staticjson::from_json_string(json.c_str(), Vector2fArray(obj),
                                         nullptr);
 }
+
+#define SET_ARRAY(T, P, S)                        \
+    {                                             \
+        std::array<T, S> val;                     \
+        int j = 0;                                \
+        for (const auto& i : m.value.GetArray())  \
+            val[j++] = i.Get##P();                \
+        obj.setProperty(m.name.GetString(), val); \
+        break;                                    \
+    }
+
+template <>
+inline bool from_json(brayns::PropertyMap& obj, const std::string& json)
+{
+    using namespace rapidjson;
+    using brayns::PropertyMap;
+    Document document;
+    document.Parse(json.c_str());
+
+    for (const auto& m : document.GetObject())
+    {
+        if (!obj.hasProperty(m.name.GetString()))
+            return false;
+        switch (obj.getPropertyType(m.name.GetString()))
+        {
+        case PropertyMap::Property::Type::Float:
+            obj.setProperty(m.name.GetString(), m.value.GetFloat());
+            break;
+        case PropertyMap::Property::Type::Int:
+            obj.setProperty(m.name.GetString(), m.value.GetInt());
+            break;
+        case PropertyMap::Property::Type::String:
+            obj.setProperty(m.name.GetString(),
+                            std::string(m.value.GetString()));
+            break;
+        case PropertyMap::Property::Type::Bool:
+            obj.setProperty(m.name.GetString(), m.value.GetBool());
+            break;
+        case PropertyMap::Property::Type::Vec2f:
+            SET_ARRAY(float, Float, 2)
+        case PropertyMap::Property::Type::Vec2i:
+            SET_ARRAY(int32_t, Int, 2)
+        case PropertyMap::Property::Type::Vec3f:
+            SET_ARRAY(float, Float, 3)
+        case PropertyMap::Property::Type::Vec3i:
+            SET_ARRAY(int32_t, Int, 3)
+        case PropertyMap::Property::Type::Vec4f:
+            SET_ARRAY(float, Float, 4)
+        }
+    }
+    return true;
+}

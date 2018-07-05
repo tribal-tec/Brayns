@@ -111,7 +111,7 @@ public:
      * @return the property value of the given name or valIfNotFound otherwise.
      */
     template <typename T>
-    inline T getProperty(const std::string &name, T valIfNotFound)
+    inline T getProperty(const std::string &name, T valIfNotFound) const
     {
         auto property = findProperty(name);
         if (property)
@@ -124,11 +124,24 @@ public:
      * @throw std::runtime_error if value property value was not found.
      */
     template <typename T>
-    inline T getProperty(const std::string &name)
+    inline T getProperty(const std::string &name) const
     {
         auto property = findProperty(name);
         if (property)
             return property->get<T>();
+        throw std::runtime_error("No property found with name " + name);
+    }
+
+    bool hasProperty(const std::string &name) const
+    {
+        return findProperty(name) != nullptr;
+    }
+
+    Property::Type getPropertyType(const std::string &name)
+    {
+        auto property = findProperty(name);
+        if (property)
+            return property->type;
         throw std::runtime_error("No property found with name " + name);
     }
 
@@ -138,7 +151,7 @@ private:
     template <typename T>
     PropertyMap::Property::Type getType();
 
-    Property *findProperty(const std::string &name)
+    Property *findProperty(const std::string &name) const
     {
         auto foundProperty =
             std::find_if(_properties.begin(), _properties.end(),

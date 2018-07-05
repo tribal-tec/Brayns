@@ -230,9 +230,6 @@ std::string buildJsonRpcSchemaReturnProperties(
         Value propSchema(kObjectType);
         propSchema.AddMember(StringRef("title"), StringRef(obj.first.c_str()),
                              schema.GetAllocator());
-        //    schema.AddMember(StringRef("description"),
-        //                     StringRef(doc.functionDescription.c_str()),
-        //                     parent.GetAllocator());
         propSchema.AddMember(StringRef("type"), StringRef("object"),
                              schema.GetAllocator());
 

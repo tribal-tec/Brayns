@@ -47,19 +47,17 @@
 
 namespace
 {
-const std::string METHOD_GET_RENDERER_PARAMS = "get-renderer-params";
-const std::string METHOD_SET_RENDERER_PARAMS = "set-renderer-params";
-
 // REST PUT & GET, JSONRPC set-* notification, JSONRPC get-* request
 const std::string ENDPOINT_ANIMATION_PARAMS = "animation-parameters";
 const std::string ENDPOINT_APP_PARAMS = "application-parameters";
 const std::string ENDPOINT_CAMERA = "camera";
 const std::string ENDPOINT_GEOMETRY_PARAMS = "geometry-parameters";
-const std::string ENDPOINT_TRANSFER_FUNCTION = "transfer-function";
 const std::string ENDPOINT_RENDERER = "renderer";
+const std::string ENDPOINT_RENDERER_PARAMS = "renderer-params";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_SCENE_PARAMS = "scene-parameters";
 const std::string ENDPOINT_STREAM = "stream";
+const std::string ENDPOINT_TRANSFER_FUNCTION = "transfer-function";
 const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
 // REST GET, JSONRPC get-* request
@@ -609,8 +607,7 @@ public:
         _handleGetInstances();
         _handleUpdateInstance();
 
-        _handleGetRendererParams();
-        _handleSetRendererParams();
+        _handleRendererParams();
     }
 
     void _handleFrameBuffer()
@@ -993,35 +990,18 @@ public:
                           METHOD_UPDATE_INSTANCE, doc));
     }
 
-    void _handleGetRendererParams()
+    void _handleRendererParams()
     {
-        RpcDocumentation doc{"Get the params of the given renderer", "type",
-                             "render type"};
+        auto& renderer = _engine->getRenderer();
 
         _jsonrpcServer->bind<PropertyMap>(
-            METHOD_GET_RENDERER_PARAMS, [& engine = _engine] {
-                return engine->getRenderer().getPropertyMap(
-                    engine->getRenderer().getCurrentType());
+            getRequestEndpointName(ENDPOINT_RENDERER_PARAMS),
+            [& renderer = renderer] {
+                return renderer.getPropertyMap(renderer.getCurrentType());
             });
 
-        std::vector<std::pair<std::string, PropertyMap>> props;
-        for (const auto& type : _engine->getRenderer().getTypes())
-            props.push_back(
-                std::make_pair(type,
-                               _engine->getRenderer().getPropertyMap(type)));
-
-        _handleSchema(METHOD_GET_RENDERER_PARAMS,
-                      buildJsonRpcSchemaReturnProperties(
-                          METHOD_GET_RENDERER_PARAMS, doc, props));
-    }
-
-    void _handleSetRendererParams()
-    {
-        RpcDocumentation doc{"Set the params the renderer", "type",
-                             "render type"};
-
         _jsonrpcServer->bind(
-            METHOD_SET_RENDERER_PARAMS,
+            getNotificationEndpointName(ENDPOINT_RENDERER_PARAMS),
             [& engine = _engine](const auto& request) {
                 PropertyMap props = engine->getRenderer().getPropertyMap(
                     engine->getRenderer().getCurrentType());
@@ -1029,10 +1009,34 @@ public:
                 {
                     engine->getRenderer().updateProperties(props);
                     engine->triggerRender();
-                    return Response{"\"OK\""};
+                    return Response{to_json(true)};
                 }
                 return rockets::jsonrpc::Response::invalidParams();
             });
+
+        std::vector<std::pair<std::string, PropertyMap>> props;
+        for (const auto& type : renderer.getTypes())
+            props.push_back(
+                std::make_pair(type, renderer.getPropertyMap(type)));
+
+        // get-renderer-params RPC schema
+        _handleSchema(getRequestEndpointName(ENDPOINT_RENDERER_PARAMS),
+                      buildJsonRpcSchemaGetProperties(
+                          getRequestEndpointName(ENDPOINT_RENDERER_PARAMS),
+                          "Get the params of the current renderer", props));
+
+        // set-renderer-params RPC schema
+        RpcDocumentation doc{"Set the params on the current renderer", "params",
+                             "new renderer params"};
+        _handleSchema(getNotificationEndpointName(ENDPOINT_RENDERER_PARAMS),
+                      buildJsonRpcSchemaSetProperties(
+                          getNotificationEndpointName(ENDPOINT_RENDERER_PARAMS),
+                          doc, props));
+
+        // renderer-params object schema
+        _handleSchema(ENDPOINT_RENDERER_PARAMS,
+                      getSchema(props, hyphenatedToCamelCase(
+                                           ENDPOINT_RENDERER_PARAMS)));
     }
 
     EnginePtr _engine;

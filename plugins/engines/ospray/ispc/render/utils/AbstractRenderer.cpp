@@ -26,15 +26,8 @@
 #include <ospray/SDK/common/Data.h>
 #include <ospray/SDK/lights/Light.h>
 
-// sys
-#include <vector>
-
 namespace brayns
 {
-AbstractRenderer::AbstractRenderer()
-{
-}
-
 void AbstractRenderer::commit()
 {
     Renderer::commit();
@@ -58,7 +51,6 @@ void AbstractRenderer::commit()
 /*! \brief create a material of given type */
 ospray::Material* AbstractRenderer::createMaterial(const char*)
 {
-    ospray::Material* mat = new brayns::obj::ExtendedOBJMaterial;
-    return mat;
+    return new brayns::obj::ExtendedOBJMaterial;
 }
 }

@@ -45,9 +45,7 @@ struct Model;
 class AbstractRenderer : public ospray::Renderer
 {
 public:
-    AbstractRenderer();
-
-    virtual void commit();
+    void commit() override;
 
     ospray::Material* createMaterial(const char* type) final;
 

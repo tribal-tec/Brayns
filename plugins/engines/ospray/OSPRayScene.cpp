@@ -211,12 +211,11 @@ bool OSPRayScene::commitLights()
         _ospLightData = ospNewData(_ospLights.size(), OSP_OBJECT,
                                    &_ospLights[0], _memoryManagementFlags);
         ospCommit(_ospLightData);
-        for (auto renderer : _renderers)
-        {
-            auto impl =
-                std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
-            ospSetData(impl, "lights", _ospLightData);
-        }
+    }
+    for (auto renderer : _renderers)
+    {
+        auto impl = std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
+        ospSetData(impl, "lights", _ospLightData);
     }
     return true;
 }

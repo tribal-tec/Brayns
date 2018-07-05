@@ -209,20 +209,11 @@ std::string buildJsonRpcSchema(const std::string& title,
         break;                                                               \
     }
 
-std::string buildJsonRpcSchemaReturnProperties(
-    const std::string& title, const RpcDocumentation& doc,
-    const std::vector<std::pair<std::string, PropertyMap>>& objs)
+void getPropsSchema(
+    const std::vector<std::pair<std::string, PropertyMap>>& objs,
+    rapidjson::Document& schema, rapidjson::Value& returns)
 {
     using namespace rapidjson;
-    Document schema(kObjectType);
-    schema.AddMember(StringRef("title"), StringRef(title.c_str()),
-                     schema.GetAllocator());
-    schema.AddMember(StringRef("description"),
-                     StringRef(doc.functionDescription.c_str()),
-                     schema.GetAllocator());
-    schema.AddMember(StringRef("type"), StringRef("method"),
-                     schema.GetAllocator());
-
     Value oneOf(kArrayType);
     for (const auto& obj : objs)
     {
@@ -264,12 +255,79 @@ std::string buildJsonRpcSchemaReturnProperties(
         oneOf.PushBack(propSchema, schema.GetAllocator());
     }
 
-    Value returns(kObjectType);
     returns.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
+}
+
+std::string buildJsonRpcSchemaGetProperties(
+    const std::string& title, const std::string& description,
+    const std::vector<std::pair<std::string, PropertyMap>>& objs)
+{
+    using namespace rapidjson;
+    Document schema(kObjectType);
+    schema.AddMember(StringRef("title"), StringRef(title.c_str()),
+                     schema.GetAllocator());
+    schema.AddMember(StringRef("description"), StringRef(description.c_str()),
+                     schema.GetAllocator());
+    schema.AddMember(StringRef("type"), StringRef("method"),
+                     schema.GetAllocator());
+
+    Value returns(kObjectType);
+    getPropsSchema(objs, schema, returns);
     schema.AddMember(StringRef("returns"), returns, schema.GetAllocator());
 
     Value params(kArrayType);
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
+
+    StringBuffer buffer;
+    PrettyWriter<StringBuffer> writer(buffer);
+    schema.Accept(writer);
+    return buffer.GetString();
+}
+
+std::string buildJsonRpcSchemaSetProperties(
+    const std::string& title, const RpcDocumentation& doc,
+    const std::vector<std::pair<std::string, PropertyMap>>& objs)
+{
+    using namespace rapidjson;
+    Document schema(kObjectType);
+    schema.AddMember(StringRef("title"), StringRef(title.c_str()),
+                     schema.GetAllocator());
+    schema.AddMember(StringRef("description"),
+                     StringRef(doc.functionDescription.c_str()),
+                     schema.GetAllocator());
+    schema.AddMember(StringRef("type"), StringRef("method"),
+                     schema.GetAllocator());
+
+    bool retVal;
+    auto retSchema = staticjson::export_json_schema(&retVal);
+    schema.AddMember(StringRef("returns"), retSchema, schema.GetAllocator());
+
+    Value params(kArrayType);
+    Value returns(kObjectType);
+    getPropsSchema(objs, schema, returns);
+    params.PushBack(returns, schema.GetAllocator());
+    schema.AddMember(StringRef("params"), params, schema.GetAllocator());
+
+    StringBuffer buffer;
+    PrettyWriter<StringBuffer> writer(buffer);
+    schema.Accept(writer);
+    return buffer.GetString();
+}
+
+template <>
+std::string getSchema(std::vector<std::pair<std::string, PropertyMap>>& objs,
+                      const std::string& title)
+{
+    using namespace rapidjson;
+
+    Document schema(kObjectType);
+    schema.AddMember(StringRef("type"), StringRef("object"),
+                     schema.GetAllocator());
+    schema.AddMember(StringRef("title"), StringRef(title.c_str()),
+                     schema.GetAllocator());
+    Value returns(kObjectType);
+    getPropsSchema(objs, schema, returns);
+    schema.AddMember(StringRef("properties"), returns, schema.GetAllocator());
 
     StringBuffer buffer;
     PrettyWriter<StringBuffer> writer(buffer);

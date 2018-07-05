@@ -12,7 +12,6 @@
 
 set(BRAYNSOSPRAYPLUGIN_ISPC_SOURCES
   ispc/camera/ClippedPerspectiveCamera.ispc
-  ispc/render/utils/AbstractRenderer.ispc
   ispc/render/utils/RandomGenerator.ispc
   ispc/render/utils/SkyBox.ispc
   ispc/geometry/ExtendedCylinders.ispc

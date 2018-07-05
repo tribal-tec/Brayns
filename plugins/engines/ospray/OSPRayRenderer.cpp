@@ -162,7 +162,6 @@ void OSPRayRenderer::commit()
     ospSetObject(_renderer, "world", scene->getModel());
     ospSetObject(_renderer, "simulationModel", scene->simulationModelImpl());
     ospCommit(_renderer);
-    resetModified();
 }
 
 void OSPRayRenderer::setCamera(CameraPtr camera)

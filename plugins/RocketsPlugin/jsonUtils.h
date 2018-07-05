@@ -59,24 +59,6 @@ std::string getSchema(T& obj, const std::string& title)
     return buffer.GetString();
 }
 
-template <typename T>
-inline void addProperty(rapidjson::Document& document,
-                        PropertyMap::Property& prop)
-{
-    auto value = prop.get<T>();
-    auto propSchema = staticjson::export_json_schema(&value);
-
-    rapidjson::Document fuck;
-    fuck.CopyFrom(propSchema, fuck.GetAllocator());
-    document.AddMember(rapidjson::StringRef(prop.name.c_str()), fuck,
-                       document.GetAllocator());
-    //    using namespace rapidjson;
-    //    StringBuffer buffer;
-    //    PrettyWriter<StringBuffer> writer(buffer);
-    //    document.Accept(writer);
-    //    std::cout << buffer.GetString() << std::endl;
-}
-
 /** @return JSON schema for JSON RPC parameter */
 template <class T>
 rapidjson::Document getRPCParameterSchema(const std::string& paramName,
@@ -210,58 +192,22 @@ std::string buildJsonRpcSchema(const std::string& title,
     return buffer.GetString();
 }
 
-rapidjson::Document getPropertySchema(const PropertyMap& obj,
-                                      const std::string& title)
-{
-    using namespace rapidjson;
-    Document schema(kObjectType);
-    schema.AddMember(StringRef("title"), StringRef(title.c_str()),
-                     schema.GetAllocator());
-    //    schema.AddMember(StringRef("description"),
-    //                     StringRef(doc.functionDescription.c_str()),
-    //                     schema.GetAllocator());
-    schema.AddMember(StringRef("type"), StringRef("object"),
-                     schema.GetAllocator());
-
-    Document properties(kObjectType);
-    for (auto prop : obj.getProperties())
-    {
-        switch (prop->type)
-        {
-        case PropertyMap::Property::Type::Float:
-            addProperty<float>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Int:
-            addProperty<int32_t>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::String:
-            addProperty<std::string>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Bool:
-            addProperty<bool>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Vec2f:
-            addProperty<std::array<float, 2>>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Vec2i:
-            addProperty<std::array<int32_t, 2>>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Vec3f:
-            addProperty<std::array<float, 3>>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Vec3i:
-            addProperty<std::array<int32_t, 3>>(properties, *prop);
-            break;
-        case PropertyMap::Property::Type::Vec4f:
-            addProperty<std::array<float, 4>>(properties, *prop);
-            break;
-        }
+#define ADD_PROP(T)                                                          \
+    {                                                                        \
+        auto value = prop->get<T>();                                         \
+        properties.AddMember(rapidjson::StringRef(prop->name.c_str()),       \
+                             staticjson::export_json_schema(&value, schema), \
+                             schema.GetAllocator());                         \
+        break;                                                               \
     }
-
-    schema.AddMember(StringRef("properties"), properties,
-                     schema.GetAllocator());
-    return schema;
-}
+#define ADD_PROP_ARRAY(T, S)                                                 \
+    {                                                                        \
+        auto value = prop->get<std::array<T, S>>();                          \
+        properties.AddMember(rapidjson::StringRef(prop->name.c_str()),       \
+                             staticjson::export_json_schema(&value, schema), \
+                             schema.GetAllocator());                         \
+        break;                                                               \
+    }
 
 template <class P>
 std::string buildJsonRpcSchemaReturnProperties(
@@ -278,15 +224,51 @@ std::string buildJsonRpcSchemaReturnProperties(
     schema.AddMember(StringRef("type"), StringRef("method"),
                      schema.GetAllocator());
 
-    Document returns(kObjectType);
     Value oneOf(kArrayType);
     for (const auto& obj : objs)
     {
-        Document propSchema(kObjectType);
-        propSchema.CopyFrom(getPropertySchema(obj.second, obj.first),
-                            schema.GetAllocator());
+        Value propSchema(kObjectType);
+        propSchema.AddMember(StringRef("title"), StringRef(obj.first.c_str()),
+                             schema.GetAllocator());
+        //    schema.AddMember(StringRef("description"),
+        //                     StringRef(doc.functionDescription.c_str()),
+        //                     parent.GetAllocator());
+        propSchema.AddMember(StringRef("type"), StringRef("object"),
+                             schema.GetAllocator());
+
+        Value properties(kObjectType);
+        for (auto prop : obj.second.getProperties())
+        {
+            switch (prop->type)
+            {
+            case PropertyMap::Property::Type::Float:
+                ADD_PROP(float);
+            case PropertyMap::Property::Type::Int:
+                ADD_PROP(int32_t);
+            case PropertyMap::Property::Type::String:
+                ADD_PROP(std::string);
+            case PropertyMap::Property::Type::Bool:
+                ADD_PROP(bool);
+            case PropertyMap::Property::Type::Vec2f:
+                ADD_PROP_ARRAY(float, 2);
+            case PropertyMap::Property::Type::Vec2i:
+                ADD_PROP_ARRAY(int32_t, 2);
+            case PropertyMap::Property::Type::Vec3f:
+                ADD_PROP_ARRAY(float, 3);
+            case PropertyMap::Property::Type::Vec3i:
+                ADD_PROP_ARRAY(int32_t, 3);
+            case PropertyMap::Property::Type::Vec4f:
+                ADD_PROP_ARRAY(float, 4);
+            }
+        }
+
+        propSchema.AddMember(StringRef("properties"), properties,
+                             schema.GetAllocator());
+
         oneOf.PushBack(propSchema, schema.GetAllocator());
     }
+
+    Value returns(kObjectType);
     returns.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
     schema.AddMember(StringRef("returns"), returns, schema.GetAllocator());
 

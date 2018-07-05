@@ -123,4 +123,13 @@ inline Document export_json_schema(T* value)
     h.generate_schema(d, d.GetAllocator());
     return d;
 }
+
+template <class T>
+inline Document export_json_schema(T* value, Document& parent)
+{
+    Handler<T> h(value);
+    Document d;
+    h.generate_schema(d, parent.GetAllocator());
+    return d;
+}
 }

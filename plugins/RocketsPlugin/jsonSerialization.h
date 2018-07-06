@@ -524,7 +524,7 @@ void addProperty(rapidjson::Document& document,
     for (const auto& val : prop.get<T>())
         array.PushBack(val, document.GetAllocator());
 
-    document.AddMember(rapidjson::StringRef(prop.name.c_str()), array,
+    document.AddMember(rapidjson::StringRef(prop.apiName.c_str()), array,
                        document.GetAllocator());
 }
 
@@ -540,20 +540,20 @@ inline std::string to_json(const brayns::PropertyMap& obj)
         switch (prop->type)
         {
         case PropertyMap::Property::Type::Float:
-            json.AddMember(StringRef(prop->name.c_str()), prop->get<float>(),
+            json.AddMember(StringRef(prop->apiName.c_str()), prop->get<float>(),
                            json.GetAllocator());
             break;
         case PropertyMap::Property::Type::Int:
-            json.AddMember(StringRef(prop->name.c_str()), prop->get<int32_t>(),
-                           json.GetAllocator());
+            json.AddMember(StringRef(prop->apiName.c_str()),
+                           prop->get<int32_t>(), json.GetAllocator());
             break;
         case PropertyMap::Property::Type::String:
-            json.AddMember(StringRef(prop->name.c_str()),
+            json.AddMember(StringRef(prop->apiName.c_str()),
                            StringRef(prop->get<std::string>().c_str()),
                            json.GetAllocator());
             break;
         case PropertyMap::Property::Type::Bool:
-            json.AddMember(StringRef(prop->name.c_str()), prop->get<bool>(),
+            json.AddMember(StringRef(prop->apiName.c_str()), prop->get<bool>(),
                            json.GetAllocator());
             break;
         case PropertyMap::Property::Type::Vec2f:

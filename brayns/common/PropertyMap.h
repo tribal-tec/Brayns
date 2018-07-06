@@ -51,9 +51,22 @@ public:
             Vec4f
         };
 
-        Property(const std::string &name_, Type type_)
+        template <typename T>
+        Property(const std::string &name_, const T &value)
             : name(name_)
-            , type(type_)
+            , apiName(name_)
+            , type(getType<T>())
+            , _data(value)
+        {
+        }
+
+        template <typename T>
+        Property(const std::string &name_, const std::string &apiName_,
+                 const T &value)
+            : name(name_)
+            , apiName(apiName_)
+            , type(getType<T>())
+            , _data(value)
         {
         }
 
@@ -72,7 +85,11 @@ public:
         void setData(const boost::any &data) { _data = data; }
         const boost::any &getData() const { return _data; }
         const std::string name;
+        const std::string apiName;
         const Type type;
+
+        template <typename T>
+        Type getType();
 
     private:
         boost::any _data;
@@ -88,11 +105,10 @@ public:
         auto property = findProperty(name);
         if (!property)
         {
-            _properties.push_back(
-                std::make_shared<Property>(name, getType<T>()));
-            property = _properties[_properties.size() - 1].get();
+            _properties.push_back(std::make_shared<Property>(name, t));
         }
-        property->set(t);
+        else
+            property->set(t);
     }
 
     /** Update or add the given property. */
@@ -146,14 +162,13 @@ public:
     /** @return all the registered properties. */
     const auto &getProperties() const { return _properties; }
 private:
-    template <typename T>
-    PropertyMap::Property::Type getType();
-
     Property *findProperty(const std::string &name) const
     {
         auto foundProperty =
             std::find_if(_properties.begin(), _properties.end(),
-                         [&](const auto &p) { return p->name == name; });
+                         [&](const auto &p) {
+                             return p->name == name || p->apiName == name;
+                         });
 
         return foundProperty != _properties.end() ? foundProperty->get()
                                                   : nullptr;
@@ -163,49 +178,52 @@ private:
 };
 
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<float>()
+inline PropertyMap::Property::Type PropertyMap::Property::getType<float>()
 {
     return PropertyMap::Property::Type::Float;
 }
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<int32_t>()
+inline PropertyMap::Property::Type PropertyMap::Property::getType<int32_t>()
 {
     return PropertyMap::Property::Type::Int;
 }
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<std::string>()
+inline PropertyMap::Property::Type PropertyMap::Property::getType<std::string>()
 {
     return PropertyMap::Property::Type::String;
 }
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<bool>()
+inline PropertyMap::Property::Type PropertyMap::Property::getType<bool>()
 {
     return PropertyMap::Property::Type::Bool;
 }
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<std::array<float, 2>>()
+inline PropertyMap::Property::Type
+    PropertyMap::Property::getType<std::array<float, 2>>()
 {
     return PropertyMap::Property::Type::Vec2f;
 }
 template <>
 inline PropertyMap::Property::Type
-    PropertyMap::getType<std::array<int32_t, 2>>()
+    PropertyMap::Property::getType<std::array<int32_t, 2>>()
 {
     return PropertyMap::Property::Type::Vec2i;
 }
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<std::array<float, 3>>()
+inline PropertyMap::Property::Type
+    PropertyMap::Property::getType<std::array<float, 3>>()
 {
     return PropertyMap::Property::Type::Vec3f;
 }
 template <>
 inline PropertyMap::Property::Type
-    PropertyMap::getType<std::array<int32_t, 3>>()
+    PropertyMap::Property::getType<std::array<int32_t, 3>>()
 {
     return PropertyMap::Property::Type::Vec3i;
 }
 template <>
-inline PropertyMap::Property::Type PropertyMap::getType<std::array<float, 4>>()
+inline PropertyMap::Property::Type
+    PropertyMap::Property::getType<std::array<float, 4>>()
 {
     return PropertyMap::Property::Type::Vec4f;
 }

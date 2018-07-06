@@ -278,12 +278,14 @@ Renderers OSPRayEngine::_createRenderers()
         }
         if (renderer == "scivis")
         {
-            properties.setProperty("ao_distance", 1e20f);
-            properties.setProperty("ao_samples", 0);
-            properties.setProperty("ao_transparency_enabled", false);
-            properties.setProperty("ao_weight", 0.f);
-            properties.setProperty("one_sided_lighting", true);
-            properties.setProperty("shadows_enabled", false);
+            properties.setProperty({"aoDistance", "ao_distance", 1e20f});
+            properties.setProperty({"aoSamples", "ao_samples", 0});
+            properties.setProperty(
+                {"aoTransparencyEnabled", "ao_transparency", false});
+            properties.setProperty({"aoWeight", "ao_weight", 0.f});
+            properties.setProperty(
+                {"oneSidedLighting", "one_sided_lighting", true});
+            properties.setProperty({"shadowsEnabled", "shadows", false});
         }
         ospRenderer->setProperties(renderer, properties);
     }

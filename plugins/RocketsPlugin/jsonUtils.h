@@ -195,7 +195,7 @@ std::string buildJsonRpcSchema(const std::string& title,
 #define ADD_PROP(T)                                                          \
     {                                                                        \
         auto value = prop->get<T>();                                         \
-        properties.AddMember(rapidjson::StringRef(prop->name.c_str()),       \
+        properties.AddMember(rapidjson::StringRef(prop->apiName.c_str()),    \
                              staticjson::export_json_schema(&value, schema), \
                              schema.GetAllocator());                         \
         break;                                                               \
@@ -203,7 +203,7 @@ std::string buildJsonRpcSchema(const std::string& title,
 #define ADD_PROP_ARRAY(T, S)                                                 \
     {                                                                        \
         auto value = prop->get<std::array<T, S>>();                          \
-        properties.AddMember(rapidjson::StringRef(prop->name.c_str()),       \
+        properties.AddMember(rapidjson::StringRef(prop->apiName.c_str()),    \
                              staticjson::export_json_schema(&value, schema), \
                              schema.GetAllocator());                         \
         break;                                                               \

@@ -357,7 +357,7 @@ public:
                 const auto& msg =
                     rockets::jsonrpc::makeNotification(rpcEndpoint, obj);
                 server->broadcastText(msg, {request.clientID});
-                return rockets::jsonrpc::Response{"null"};
+                return rockets::jsonrpc::Response{to_json(true)};
             }
             return rockets::jsonrpc::Response::invalidParams();
         });
@@ -766,7 +766,7 @@ public:
                 auto schema = schemas[param.endpoint];
                 return Response{std::move(schema)};
             }
-            return rockets::jsonrpc::Response::invalidParams();
+            return Response::invalidParams();
         });
 
         _handleSchema(
@@ -840,9 +840,9 @@ public:
                     rockets::jsonrpc::makeNotification(METHOD_STREAM_TO,
                                                        streamParams);
                 server->broadcastText(msg, {request.clientID});
-                return rockets::jsonrpc::Response{"null"};
+                return Response{to_json(true)};
             }
-            return rockets::jsonrpc::Response::invalidParams();
+            return Response::invalidParams();
         });
 
         _handleSchema(METHOD_STREAM_TO,
@@ -1002,16 +1002,23 @@ public:
 
         _jsonrpcServer->bind(
             getNotificationEndpointName(ENDPOINT_RENDERER_PARAMS),
-            [& engine = _engine](const auto& request) {
+            [& engine = _engine,
+             &server = _rocketsServer ](const auto& request) {
                 PropertyMap props = engine->getRenderer().getPropertyMap(
                     engine->getRenderer().getCurrentType());
                 if (::from_json(props, request.message))
                 {
                     engine->getRenderer().updateProperties(props);
                     engine->triggerRender();
+
+                    const auto& msg = rockets::jsonrpc::makeNotification(
+                        getNotificationEndpointName(ENDPOINT_RENDERER_PARAMS),
+                        props);
+                    server->broadcastText(msg, {request.clientID});
+
                     return Response{to_json(true)};
                 }
-                return rockets::jsonrpc::Response::invalidParams();
+                return Response::invalidParams();
             });
 
         std::vector<std::pair<std::string, PropertyMap>> props;

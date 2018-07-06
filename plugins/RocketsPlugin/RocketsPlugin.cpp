@@ -1008,7 +1008,8 @@ public:
                     engine->getRenderer().getCurrentType());
                 if (::from_json(props, request.message))
                 {
-                    engine->getRenderer().updateProperties(props);
+                    engine->getRenderer().updateProperties(
+                        engine->getRenderer().getCurrentType(), props);
                     engine->triggerRender();
 
                     const auto& msg = rockets::jsonrpc::makeNotification(

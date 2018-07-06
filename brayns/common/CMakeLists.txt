@@ -33,6 +33,7 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   ActionInterface.h
   BaseObject.h
   ImageManager.h
+  MappedPropertyObject.h
   PropertyMap.h
   PropertyObject.h
   Transformation.h

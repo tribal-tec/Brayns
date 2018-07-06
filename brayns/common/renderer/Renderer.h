@@ -22,21 +22,19 @@
 #define RENDERER_H
 
 #include <brayns/api.h>
-#include <brayns/common/PropertyObject.h>
+#include <brayns/common/MappedPropertyObject.h>
 #include <brayns/parameters/AnimationParameters.h>
 #include <brayns/parameters/RenderingParameters.h>
 
 namespace brayns
 {
-class Renderer : public PropertyObject
+class Renderer : public MappedPropertyObject
 {
 public:
     BRAYNS_API Renderer(const AnimationParameters& animationParameters,
                         const RenderingParameters& renderingParameters);
     virtual ~Renderer() = default;
 
-    void setCurrentType(const std::string& type) { _updateValue(_type, type); }
-    const std::string& getCurrentType() const { return _type; }
     virtual void render(FrameBufferPtr frameBuffer) = 0;
 
     /** @return the variance from the previous render(). */
@@ -56,7 +54,6 @@ public:
     }
 
 protected:
-    std::string _type;
     const AnimationParameters& _animationParameters;
     const RenderingParameters& _renderingParameters;
     ScenePtr _scene;

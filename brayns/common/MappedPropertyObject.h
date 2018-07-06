@@ -28,30 +28,43 @@
 
 namespace brayns
 {
-class PropertyObject : public BaseObject
+class MappedPropertyObject : public BaseObject
 {
 public:
-    /**
-     * Set custom/plugin-specific properties to this camera. They are
-     * automatically applied in commit() on the implementation-specific object.
-     */
-    void setProperties(const PropertyMap& properties)
+    void setCurrentType(const std::string& type) { _updateValue(_type, type); }
+    const std::string& getCurrentType() const { return _type; }
+    void setProperties(const std::string& type, const PropertyMap& properties)
     {
-        _properties = properties;
+        _mappedProperties[type] = properties;
         markModified();
     }
 
-    /** Update or add the given properties to the existing ones. */
-    void updateProperties(const PropertyMap& properties)
+    void updateProperties(const std::string& type,
+                          const PropertyMap& properties)
     {
         for (auto prop : properties.getProperties())
-            _properties.setProperty(*prop);
+            _mappedProperties.at(type).setProperty(*prop);
         markModified();
     }
 
-    const auto& getProperties() const { return _properties.getProperties(); }
-    const auto& getPropertyMap() const { return _properties; }
+    const auto& getProperties(const std::string& type) const
+    {
+        return _mappedProperties.at(type).getProperties();
+    }
+    const auto& getPropertyMap(const std::string& type) const
+    {
+        return _mappedProperties.at(type);
+    }
+    strings getTypes() const
+    {
+        strings types;
+        for (const auto& i : _mappedProperties)
+            types.push_back(i.first);
+        return types;
+    }
+
 private:
-    PropertyMap _properties;
+    std::string _type;
+    std::map<std::string, PropertyMap> _mappedProperties;
 };
 }

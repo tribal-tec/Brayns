@@ -30,7 +30,7 @@
 #endif
 
 #include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
+#include "rapidjson/writer.h"
 
 #include <brayns/common/PropertyMap.h>
 
@@ -54,7 +54,7 @@ std::string getSchema(T& obj, const std::string& title)
                      schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }
@@ -115,7 +115,7 @@ std::string buildJsonRpcSchema(const std::string& title,
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }
@@ -154,7 +154,7 @@ std::string buildJsonRpcSchema(const std::string& title,
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }
@@ -187,7 +187,7 @@ std::string buildJsonRpcSchema(const std::string& title,
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }
@@ -278,7 +278,7 @@ std::string buildJsonRpcSchemaGetProperties(
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }
@@ -310,7 +310,7 @@ std::string buildJsonRpcSchemaSetProperties(
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }
@@ -331,7 +331,7 @@ std::string getSchema(std::vector<std::pair<std::string, PropertyMap>>& objs,
     schema.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     schema.Accept(writer);
     return buffer.GetString();
 }

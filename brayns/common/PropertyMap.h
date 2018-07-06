@@ -100,9 +100,7 @@ public:
     {
         auto property = findProperty(newProperty.name);
         if (!property)
-        {
             _properties.push_back(std::make_shared<Property>(newProperty));
-        }
         else
             property->setData(newProperty.getData());
     }

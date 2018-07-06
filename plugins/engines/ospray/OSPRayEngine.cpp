@@ -251,39 +251,39 @@ Renderers OSPRayEngine::_createRenderers()
         PropertyMap properties;
         if (renderer == "pathtracingrenderer")
         {
+            properties.setProperty("ao_distance", 1e20f);
+            properties.setProperty("ao_weight", 0.f);
             properties.setProperty("shadows", 0.f);
-            properties.setProperty("softShadows", 0.f);
-            properties.setProperty("aoWeight", 0.f);
-            properties.setProperty("aoDistance", 1e20f);
+            properties.setProperty("soft_shadows", 0.f);
         }
         if (renderer == "proximityrenderer")
         {
-            properties.setProperty("detectionNearColor",
-                                   std::array<float, 3>{{0.f, 1.f, 0.f}});
-            properties.setProperty("detectionFarColor",
+            properties.setProperty("detection_distance", 1.f);
+            properties.setProperty("detection_far_color",
                                    std::array<float, 3>{{1.f, 0.f, 0.f}});
-            properties.setProperty("detectionDistance", 1.f);
-            properties.setProperty("detectionOnDifferentMaterial", 0);
-            properties.setProperty("electronShading", 0);
+            properties.setProperty("detection_near_color",
+                                   std::array<float, 3>{{0.f, 1.f, 0.f}});
+            properties.setProperty("detection_on_different_material", false);
+            properties.setProperty("electron_shading", false);
         }
         if (renderer == "simulationrenderer")
         {
+            properties.setProperty("ao_distance", 1e20f);
+            properties.setProperty("ao_weight", 0.f);
+            properties.setProperty("detection_distance", 15.f);
+            properties.setProperty("electron_shading", false);
+            properties.setProperty("shading_enabled", false);
             properties.setProperty("shadows", 0.f);
-            properties.setProperty("softShadows", 0.f);
-            properties.setProperty("aoWeight", 0.f);
-            properties.setProperty("aoDistance", 1e20f);
-            properties.setProperty("shadingEnabled", false);
-            properties.setProperty("electronShading", false);
-            properties.setProperty("detectionDistance", 15.f);
+            properties.setProperty("soft_shadows", 0.f);
         }
         if (renderer == "scivis")
         {
-            properties.setProperty("shadowsEnabled", false);
-            properties.setProperty("aoSamples", 0);
-            properties.setProperty("aoDistance", 1e20f);
-            properties.setProperty("aoWeight", 0.f);
-            properties.setProperty("aoTransparencyEnabled", false);
-            properties.setProperty("oneSidedLighting", true);
+            properties.setProperty("ao_distance", 1e20f);
+            properties.setProperty("ao_samples", 0);
+            properties.setProperty("ao_transparency_enabled", false);
+            properties.setProperty("ao_weight", 0.f);
+            properties.setProperty("one_sided_lighting", true);
+            properties.setProperty("shadows_enabled", false);
         }
         ospRenderer->setProperties(renderer, properties);
     }

@@ -575,7 +575,7 @@ inline std::string to_json(const brayns::PropertyMap& obj)
     }
 
     StringBuffer buffer;
-    PrettyWriter<StringBuffer> writer(buffer);
+    Writer<StringBuffer> writer(buffer);
     json.Accept(writer);
     return buffer.GetString();
 }

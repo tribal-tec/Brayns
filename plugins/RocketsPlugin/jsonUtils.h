@@ -211,10 +211,9 @@ std::string buildJsonRpcSchema(const std::string& title,
 
 void getPropsSchema(
     const std::vector<std::pair<std::string, PropertyMap>>& objs,
-    rapidjson::Document& schema, rapidjson::Value& returns)
+    rapidjson::Document& schema, rapidjson::Value& oneOf)
 {
     using namespace rapidjson;
-    Value oneOf(kArrayType);
     for (const auto& obj : objs)
     {
         Value propSchema(kObjectType);
@@ -254,8 +253,6 @@ void getPropsSchema(
 
         oneOf.PushBack(propSchema, schema.GetAllocator());
     }
-
-    returns.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
 }
 
 std::string buildJsonRpcSchemaGetProperties(
@@ -272,7 +269,9 @@ std::string buildJsonRpcSchemaGetProperties(
                      schema.GetAllocator());
 
     Value returns(kObjectType);
-    getPropsSchema(objs, schema, returns);
+    Value oneOf(kArrayType);
+    getPropsSchema(objs, schema, oneOf);
+    returns.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
     schema.AddMember(StringRef("returns"), returns, schema.GetAllocator());
 
     Value params(kArrayType);
@@ -303,8 +302,10 @@ std::string buildJsonRpcSchemaSetProperties(
     schema.AddMember(StringRef("returns"), retSchema, schema.GetAllocator());
 
     Value params(kArrayType);
+    Value oneOf(kArrayType);
     Value returns(kObjectType);
-    getPropsSchema(objs, schema, returns);
+    getPropsSchema(objs, schema, oneOf);
+    returns.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
     params.PushBack(returns, schema.GetAllocator());
     schema.AddMember(StringRef("params"), params, schema.GetAllocator());
 
@@ -325,9 +326,9 @@ std::string getSchema(std::vector<std::pair<std::string, PropertyMap>>& objs,
                      schema.GetAllocator());
     schema.AddMember(StringRef("title"), StringRef(title.c_str()),
                      schema.GetAllocator());
-    Value returns(kObjectType);
-    getPropsSchema(objs, schema, returns);
-    schema.AddMember(StringRef("properties"), returns, schema.GetAllocator());
+    Value oneOf(kArrayType);
+    getPropsSchema(objs, schema, oneOf);
+    schema.AddMember(StringRef("oneOf"), oneOf, schema.GetAllocator());
 
     StringBuffer buffer;
     PrettyWriter<StringBuffer> writer(buffer);

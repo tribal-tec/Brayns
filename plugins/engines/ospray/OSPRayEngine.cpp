@@ -251,39 +251,59 @@ Renderers OSPRayEngine::_createRenderers()
         PropertyMap properties;
         if (renderer == "pathtracingrenderer")
         {
-            properties.setProperty("aoDistance", 1e20f);
-            properties.setProperty("aoWeight", 0.f);
-            properties.setProperty("shadows", 0.f);
-            properties.setProperty("softShadows", 0.f);
+            properties.setProperty({"aoDistance", "Ambient occlusion distance",
+                                    10000.f, 1e-20f, 1e20f});
+            properties.setProperty(
+                {"aoWeight", "Ambient occlusion weight", 0.f, 0.f, 1.f});
+            properties.setProperty(
+                {"shadows", "Shadow intensity", 0.f, 0.f, 1.f});
+            properties.setProperty(
+                {"softShadows", "Shadow softness", 0.f, 0.f, 1.f});
         }
         if (renderer == "proximityrenderer")
         {
-            properties.setProperty("detectionDistance", 1.f);
-            properties.setProperty("detectionFarColor",
-                                   std::array<float, 3>{{1.f, 0.f, 0.f}});
-            properties.setProperty("detectionNearColor",
-                                   std::array<float, 3>{{0.f, 1.f, 0.f}});
-            properties.setProperty("detectionOnDifferentMaterial", false);
-            properties.setProperty("electronShading", false);
+            properties.setProperty(
+                {"detectionDistance", "Detection distance", 1.f});
+            properties.setProperty({"detectionFarColor", "Detection far color",
+                                    std::array<float, 3>{{1.f, 0.f, 0.f}}});
+            properties.setProperty({"detectionNearColor",
+                                    "Detection near color",
+                                    std::array<float, 3>{{0.f, 1.f, 0.f}}});
+            properties.setProperty({"detectionOnDifferentMaterial",
+                                    "Detection on different material", false});
+            properties.setProperty(
+                {"electronShading", "Electron shading", false});
         }
         if (renderer == "simulationrenderer")
         {
-            properties.setProperty("aoDistance", 1e20f);
-            properties.setProperty("aoWeight", 0.f);
-            properties.setProperty("detectionDistance", 15.f);
-            properties.setProperty("electronShading", false);
-            properties.setProperty("shadingEnabled", false);
-            properties.setProperty("shadows", 0.f);
-            properties.setProperty("softShadows", 0.f);
+            properties.setProperty({"aoDistance", "Ambient occlusion distance",
+                                    10000.f, 1e-20f, 1e20f});
+            properties.setProperty(
+                {"aoWeight", "Ambient occlusion weight", 0.f, 0.f, 1.f});
+            properties.setProperty({"detectionDistance", "Detection distance",
+                                    15.f, 0.f, 10000.f});
+            properties.setProperty(
+                {"electronShading", "Electron shading", false});
+            properties.setProperty(
+                {"shadingEnabled", "Diffuse shading", false});
+            properties.setProperty(
+                {"shadows", "Shadow intensity", 0.f, 0.f, 1.f});
+            properties.setProperty(
+                {"softShadows", "Shadow softness", 0.f, 0.f, 1.f});
         }
         if (renderer == "scivis")
         {
-            properties.setProperty({"aoDistance", 1e20f});
-            properties.setProperty({"aoSamples", 0});
-            properties.setProperty({"aoTransparencyEnabled", false});
-            properties.setProperty({"aoWeight", 0.f});
-            properties.setProperty({"oneSidedLighting", true});
-            properties.setProperty({"shadowsEnabled", false});
+            properties.setProperty({"aoDistance", "Ambient occlusion distance",
+                                    10000.f, 1e-20f, 1e20f});
+            properties.setProperty(
+                {"aoSamples", "Ambient occlusion samples", 1, 0, 128});
+            properties.setProperty({"aoTransparencyEnabled",
+                                    "Ambient occlusion transpareny", true});
+            properties.setProperty(
+                {"aoWeight", "Ambient occlusion weight", 0.f, 0.f, 1.f});
+            properties.setProperty(
+                {"oneSidedLighting", "One-sided lighting", true});
+            properties.setProperty({"shadowsEnabled", "Shadows", false});
         }
         ospRenderer->setProperties(renderer, properties);
     }

@@ -52,8 +52,24 @@ public:
         };
 
         template <typename T>
-        Property(const std::string &name_, const T &value)
+        Property(const std::string &name_, const std::string &title_,
+                 const T &value)
             : name(name_)
+            , title(title_)
+            , min(std::numeric_limits<T>::min())
+            , max(std::numeric_limits<T>::max())
+            , type(getType<T>())
+            , _data(value)
+        {
+        }
+
+        template <typename T>
+        Property(const std::string &name_, const std::string &title_,
+                 const T &value, const T &min_, const T &max_)
+            : name(name_)
+            , title(title_)
+            , min(min_)
+            , max(max_)
             , type(getType<T>())
             , _data(value)
         {
@@ -74,6 +90,9 @@ public:
         void setData(const boost::any &data) { _data = data; }
         const boost::any &getData() const { return _data; }
         const std::string name;
+        const std::string title;
+        const boost::any min;
+        const boost::any max;
         const Type type;
 
         template <typename T>
@@ -83,19 +102,12 @@ public:
         boost::any _data;
     };
 
-    /**
-     * Set the property of the given name; will create the property if it does
-     * not exist.
-     */
+    /** Update the property of the given name */
     template <typename T>
-    inline void setProperty(const std::string &name, const T &t)
+    inline void updateProperty(const std::string &name, const T &t)
     {
         auto property = findProperty(name);
         if (!property)
-        {
-            _properties.push_back(std::make_shared<Property>(name, t));
-        }
-        else
             property->set(t);
     }
 

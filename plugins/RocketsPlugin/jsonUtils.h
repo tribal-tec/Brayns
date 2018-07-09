@@ -70,12 +70,11 @@ std::string snakeCaseToCamelCase(const std::string& hyphenated)
             camel.insert(x, tempString);
         }
     }
-    // camel[0] = toupper(camel[0]);
     return camel;
 }
 
-rapidjson::Value JSON_STRING(const std::string& camelCase,
-                             rapidjson::Document& document)
+rapidjson::Value make_json_string(const std::string& camelCase,
+                                  rapidjson::Document& document)
 {
     const auto snake_case = brayns::camelCaseToSnakeCase(camelCase);
     rapidjson::Value val;
@@ -240,21 +239,55 @@ std::string buildJsonRpcSchema(const std::string& title,
     return buffer.GetString();
 }
 
-#define ADD_PROP(T)                                                          \
-    {                                                                        \
-        auto value = prop->get<T>();                                         \
-        properties.AddMember(JSON_STRING(prop->name, schema).Move(),         \
-                             staticjson::export_json_schema(&value, schema), \
-                             schema.GetAllocator());                         \
-        break;                                                               \
-    }
-#define ADD_PROP_ARRAY(T, S)                                                 \
-    {                                                                        \
-        auto value = prop->get<std::array<T, S>>();                          \
-        properties.AddMember(JSON_STRING(prop->name, schema).Move(),         \
-                             staticjson::export_json_schema(&value, schema), \
-                             schema.GetAllocator());                         \
-        break;                                                               \
+template <typename T>
+void _addProp(const std::shared_ptr<brayns::PropertyMap::Property> prop,
+              rapidjson::Value& properties, rapidjson::Document& schema)
+{
+    using namespace rapidjson;
+    auto value = prop->get<T>();
+    auto jsonSchema = staticjson::export_json_schema(&value, schema);
+    jsonSchema.AddMember(StringRef("title"), StringRef(prop->title.c_str()),
+                         schema.GetAllocator());
+    if (jsonSchema.HasMember("minimum"))
+        jsonSchema["minimum"] = boost::any_cast<T>(prop->min);
+    else
+        jsonSchema.AddMember(StringRef("minimum"),
+                             boost::any_cast<T>(prop->min),
+                             schema.GetAllocator());
+    if (jsonSchema.HasMember("maximum"))
+        jsonSchema["maximum"] = boost::any_cast<T>(prop->max);
+    else
+        jsonSchema.AddMember(StringRef("maximum"),
+                             boost::any_cast<T>(prop->max),
+                             schema.GetAllocator());
+    properties.AddMember(make_json_string(prop->name, schema).Move(),
+                         jsonSchema, schema.GetAllocator());
+}
+
+template <>
+void _addProp<std::string>(
+    const std::shared_ptr<brayns::PropertyMap::Property> prop,
+    rapidjson::Value& properties, rapidjson::Document& schema)
+{
+    using namespace rapidjson;
+    auto value = prop->get<std::string>();
+    auto jsonSchema = staticjson::export_json_schema(&value, schema);
+    jsonSchema.AddMember(StringRef("title"), StringRef(prop->title.c_str()),
+                         schema.GetAllocator());
+    properties.AddMember(make_json_string(prop->name, schema).Move(),
+                         jsonSchema, schema.GetAllocator());
+}
+
+#define ADD_PROP_ARRAY(T, S)                                              \
+    {                                                                     \
+        auto value = prop->get<std::array<T, S>>();                       \
+        auto jsonSchema = staticjson::export_json_schema(&value, schema); \
+        jsonSchema.AddMember(StringRef("title"),                          \
+                             StringRef(prop->title.c_str()),              \
+                             schema.GetAllocator());                      \
+        properties.AddMember(make_json_string(prop->name, schema).Move(), \
+                             jsonSchema, schema.GetAllocator());          \
+        break;                                                            \
     }
 
 void getPropsSchema(
@@ -276,13 +309,17 @@ void getPropsSchema(
             switch (prop->type)
             {
             case PropertyMap::Property::Type::Float:
-                ADD_PROP(float);
+                _addProp<float>(prop, properties, schema);
+                break;
             case PropertyMap::Property::Type::Int:
-                ADD_PROP(int32_t);
+                _addProp<int32_t>(prop, properties, schema);
+                break;
             case PropertyMap::Property::Type::String:
-                ADD_PROP(std::string);
+                _addProp<std::string>(prop, properties, schema);
+                break;
             case PropertyMap::Property::Type::Bool:
-                ADD_PROP(bool);
+                _addProp<bool>(prop, properties, schema);
+                break;
             case PropertyMap::Property::Type::Vec2f:
                 ADD_PROP_ARRAY(float, 2);
             case PropertyMap::Property::Type::Vec2i:

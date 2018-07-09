@@ -94,7 +94,10 @@ void RenderingParameters::parse(const po::variables_map& vm)
     if (vm.count(PARAM_RENDERER))
     {
         const std::string& rendererName = vm[PARAM_RENDERER].as<std::string>();
-        _renderers.push_front(rendererName);
+        _renderer = rendererName;
+        if (std::find(_renderers.begin(), _renderers.end(), rendererName) ==
+            _renderers.end())
+            _renderers.push_front(rendererName);
     }
     if (vm.count(PARAM_SPP))
         _spp = vm[PARAM_SPP].as<size_t>();

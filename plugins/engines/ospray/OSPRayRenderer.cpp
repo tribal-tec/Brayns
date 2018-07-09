@@ -188,11 +188,8 @@ void OSPRayRenderer::createOSPRenderer()
 {
     auto newRenderer = ospNewRenderer(getCurrentType().c_str());
     if (!newRenderer)
-    {
-        BRAYNS_ERROR << getCurrentType() << " is not a registered renderer"
-                     << std::endl;
-        return;
-    }
+        throw std::runtime_error(getCurrentType() +
+                                 " is not a registered renderer");
     if (_renderer)
         ospRelease(_renderer);
     _renderer = newRenderer;

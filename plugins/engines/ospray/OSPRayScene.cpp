@@ -212,11 +212,6 @@ bool OSPRayScene::commitLights()
                                    &_ospLights[0], _memoryManagementFlags);
         ospCommit(_ospLightData);
     }
-    for (auto renderer : _renderers)
-    {
-        auto impl = std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
-        ospSetData(impl, "lights", _ospLightData);
-    }
     return true;
 }
 
@@ -247,6 +242,8 @@ bool OSPRayScene::commitTransferFunctionData()
     for (const auto& renderer : _renderers)
     {
         auto impl = std::static_pointer_cast<OSPRayRenderer>(renderer)->impl();
+        if (!impl)
+            continue; // TODO
 
         // Transfer function Diffuse colors
         ospSetData(impl, "transferFunctionDiffuseData",

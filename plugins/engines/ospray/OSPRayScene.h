@@ -62,6 +62,7 @@ public:
 
     OSPModel getModel() { return _rootModel; }
     OSPModel simulationModelImpl() { return _rootSimulationModel; }
+    OSPData lightData() { return _ospLightData; }
     void resetVolumeHandler() final;
 
 private:

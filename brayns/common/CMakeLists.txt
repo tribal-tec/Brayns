@@ -88,7 +88,5 @@ set(BRAYNSCOMMON_LINK_LIBRARIES
           ${LibArchive_LIBRARIES} ${FREEIMAGE_LIBRARIES}
 )
 
-list(APPEND LCOV_EXCLUDE 'brayns/common/utils/base64/*')
-
 common_library(braynsCommon)
 target_include_directories(braynsCommon SYSTEM PRIVATE ${FREEIMAGE_INCLUDE_DIRS})

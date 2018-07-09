@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(default_scene_benckmark)
 
     // Shadows
     auto props = renderer.getPropertyMap(renderer.getCurrentType());
-    props.setProperty("shadows", 1.f);
+    props.updateProperty("shadows", 1.f);
     renderer.updateProperties(renderer.getCurrentType(), props);
     brayns.getEngine().commit();
 
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(default_scene_benckmark)
     BOOST_TEST_MESSAGE("Shadows cost. expected: 165%, realized: " << t * 100.f);
     BOOST_CHECK(t < 1.65f);
 
-    props.setProperty("softShadows", 1.f);
+    props.updateProperty("softShadows", 1.f);
     renderer.updateProperties(renderer.getCurrentType(), props);
     brayns.getEngine().commit();
 
@@ -86,9 +86,9 @@ BOOST_AUTO_TEST_CASE(default_scene_benckmark)
     BOOST_CHECK(t < 1.85f);
 
     // Ambient occlustion
-    props.setProperty("shadows", 0.f);
-    props.setProperty("softShadows", 0.f);
-    props.setProperty("aoWeight", 1.f);
+    props.updateProperty("shadows", 0.f);
+    props.updateProperty("softShadows", 0.f);
+    props.updateProperty("aoWeight", 1.f);
     renderer.updateProperties(renderer.getCurrentType(), props);
     brayns.getEngine().commit();
 
@@ -104,9 +104,9 @@ BOOST_AUTO_TEST_CASE(default_scene_benckmark)
     BOOST_CHECK(t < 2.5f);
 
     // All options
-    props.setProperty("shadows", 1.f);
-    props.setProperty("softShadows", 1.f);
-    props.setProperty("aoWeight", 1.f);
+    props.updateProperty("shadows", 1.f);
+    props.updateProperty("softShadows", 1.f);
+    props.updateProperty("aoWeight", 1.f);
     renderer.updateProperties(renderer.getCurrentType(), props);
     brayns.getEngine().commit();
 

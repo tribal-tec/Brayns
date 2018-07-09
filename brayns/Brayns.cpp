@@ -225,7 +225,6 @@ struct Brayns::Impl : public PluginAPI
             {
                 sun->setDirection(camera.getTarget() - camera.getPosition());
                 scene.commitLights();
-                renderer.commit(); // TODO
             }
         }
 

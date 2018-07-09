@@ -52,14 +52,11 @@ if(libuv_FOUND)
     message(FATAL_ERROR "uvw missing, run: git submodule update --init")
   endif()
   include_directories(SYSTEM uvw/src)
-  list(APPEND LCOV_EXCLUDE 'uvw/*')
   # TODO: use tag v1.6.0_libuv-v1.18 for Docker
 endif()
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Async++ as a shared library" FORCE)
 add_subdirectory(async++)
-list(APPEND LCOV_EXCLUDE 'async++/include/async++/*'
-                         'async++/src/*')
 
 # HTTP messaging
 common_find_package(LibJpegTurbo)
@@ -215,6 +212,14 @@ if(BRAYNS_OSPRAY_ENABLED)
   endif()
 
 endif()
+
+set(LCOV_EXCLUDE 'uvw/*'
+                 'async++/include/async++/*'
+                 'async++/src/*'
+                 'brayns/common/utils/base64/*'
+                 'plugins/RocketsPlugin/rapidjson/*'
+                 'plugins/RocketsPlugin/staticjson/*'
+)
 
 include(CommonCPack)
 

@@ -118,6 +118,12 @@ void OSPRayRenderer::commit()
                      << getCurrentType() << std::endl;
     }
 
+    if (_scene->isModified())
+    {
+        auto ospScene = std::static_pointer_cast<OSPRayScene>(_scene);
+        ospSetData(_renderer, "lights", ospScene->lightData());
+    }
+
     ospSet1f(_renderer, "timestamp", ap.getFrame());
     ospSet1i(_renderer, "randomNumber", rand() % 10000);
 
@@ -146,6 +152,7 @@ void OSPRayRenderer::setCamera(CameraPtr camera)
 {
     _camera = static_cast<OSPRayCamera*>(camera.get());
     assert(_camera);
+    createOSPRenderer();
     ospSetObject(_renderer, "camera", _camera->impl());
     markModified();
 }

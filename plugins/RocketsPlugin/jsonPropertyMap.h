@@ -84,16 +84,14 @@ void _addProp(const std::shared_ptr<PropertyMap::Property> prop,
     jsonSchema.AddMember(StringRef("title"), StringRef(prop->title.c_str()),
                          schema.GetAllocator());
     if (jsonSchema.HasMember("minimum"))
-        jsonSchema["minimum"] = boost::any_cast<T>(prop->min);
+        jsonSchema["minimum"] = prop->min<T>();
     else
-        jsonSchema.AddMember(StringRef("minimum"),
-                             boost::any_cast<T>(prop->min),
+        jsonSchema.AddMember(StringRef("minimum"), prop->min<T>(),
                              schema.GetAllocator());
     if (jsonSchema.HasMember("maximum"))
-        jsonSchema["maximum"] = boost::any_cast<T>(prop->max);
+        jsonSchema["maximum"] = prop->max<T>();
     else
-        jsonSchema.AddMember(StringRef("maximum"),
-                             boost::any_cast<T>(prop->max),
+        jsonSchema.AddMember(StringRef("maximum"), prop->max<T>(),
                              schema.GetAllocator());
     properties.AddMember(make_json_string(prop->name, schema).Move(),
                          jsonSchema, schema.GetAllocator());

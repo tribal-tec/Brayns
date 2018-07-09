@@ -52,6 +52,8 @@ private:
     OSPRenderer _renderer{nullptr};
     float _variance{std::numeric_limits<float>::max()};
     std::string _currentOSPRenderer;
+
+    void _setCustomProperties();
 };
 }
 

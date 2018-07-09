@@ -77,56 +77,11 @@ void OSPRayRenderer::commit()
     if (rendererChanged)
         createOSPRenderer();
 
-    if (hasProperties(getCurrentType()))
-    {
-        try
-        {
-            for (const auto& prop : getProperties(getCurrentType()))
-            {
-                switch (prop->type)
-                {
-                case PropertyMap::Property::Type::Float:
-                    SET_SCALAR(f, float);
-                    break;
-                case PropertyMap::Property::Type::Int:
-                    SET_SCALAR(i, int32_t);
-                    break;
-                case PropertyMap::Property::Type::Bool:
-                    SET_SCALAR(i, bool);
-                    break;
-                case PropertyMap::Property::Type::String:
-                    SET_STRING();
-                    break;
-                case PropertyMap::Property::Type::Vec2f:
-                    SET_ARRAY(2fv, float, 2);
-                    break;
-                case PropertyMap::Property::Type::Vec2i:
-                    SET_ARRAY(2iv, int32_t, 2);
-                    break;
-                case PropertyMap::Property::Type::Vec3f:
-                    SET_ARRAY(3fv, float, 3);
-                    break;
-                case PropertyMap::Property::Type::Vec3i:
-                    SET_ARRAY(3iv, int32_t, 3);
-                    break;
-                case PropertyMap::Property::Type::Vec4f:
-                    SET_ARRAY(4fv, float, 4);
-                    break;
-                }
-            }
-        }
-        catch (const std::exception& e)
-        {
-            BRAYNS_ERROR << "Failed to apply properties for renderer "
-                         << getCurrentType() << std::endl;
-        }
-    }
+    _setCustomProperties();
 
+    auto scene = std::static_pointer_cast<OSPRayScene>(_scene);
     if (isModified() || rendererChanged || _scene->isModified())
-    {
-        auto ospScene = std::static_pointer_cast<OSPRayScene>(_scene);
-        ospSetData(_renderer, "lights", ospScene->lightData());
-    }
+        ospSetData(_renderer, "lights", scene->lightData());
 
     ospSet1f(_renderer, "timestamp", ap.getFrame());
     ospSet1i(_renderer, "randomNumber", rand() % 10000);
@@ -136,7 +91,6 @@ void OSPRayRenderer::commit()
     ospSet1f(_renderer, "varianceThreshold", rp.getVarianceThreshold());
     ospSet1i(_renderer, "spp", rp.getSamplesPerPixel());
 
-    auto scene = std::static_pointer_cast<OSPRayScene>(_scene);
     auto bgMaterial = std::static_pointer_cast<OSPRayMaterial>(
         scene->getBackgroundMaterial());
     if (bgMaterial)
@@ -200,5 +154,52 @@ void OSPRayRenderer::createOSPRenderer()
         ospSetObject(_renderer, "camera", _camera->impl());
     _currentOSPRenderer = getCurrentType();
     markModified();
+}
+
+void OSPRayRenderer::_setCustomProperties()
+{
+    if (!hasProperties(getCurrentType()))
+        return;
+    try
+    {
+        for (const auto& prop : getProperties(getCurrentType()))
+        {
+            switch (prop->type)
+            {
+            case PropertyMap::Property::Type::Float:
+                SET_SCALAR(f, float);
+                break;
+            case PropertyMap::Property::Type::Int:
+                SET_SCALAR(i, int32_t);
+                break;
+            case PropertyMap::Property::Type::Bool:
+                SET_SCALAR(i, bool);
+                break;
+            case PropertyMap::Property::Type::String:
+                SET_STRING();
+                break;
+            case PropertyMap::Property::Type::Vec2f:
+                SET_ARRAY(2fv, float, 2);
+                break;
+            case PropertyMap::Property::Type::Vec2i:
+                SET_ARRAY(2iv, int32_t, 2);
+                break;
+            case PropertyMap::Property::Type::Vec3f:
+                SET_ARRAY(3fv, float, 3);
+                break;
+            case PropertyMap::Property::Type::Vec3i:
+                SET_ARRAY(3iv, int32_t, 3);
+                break;
+            case PropertyMap::Property::Type::Vec4f:
+                SET_ARRAY(4fv, float, 4);
+                break;
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        BRAYNS_ERROR << "Failed to apply properties for renderer "
+                     << getCurrentType() << std::endl;
+    }
 }
 }

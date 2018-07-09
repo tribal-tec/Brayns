@@ -51,4 +51,7 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/plugins/RocketsPlugin)
 
+list(APPEND LCOV_EXCLUDE '${PROJECT_SOURCE_DIR}/brayns/common/utils/base64/*'
+                         '${PROJECT_SOURCE_DIR}/plugins/RocketsPlugin/rapidjson/*'
+                         '${PROJECT_SOURCE_DIR}/plugins/RocketsPlugin/staticjson/*')
 include(CommonCTest)

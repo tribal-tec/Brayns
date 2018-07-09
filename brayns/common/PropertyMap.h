@@ -56,10 +56,10 @@ public:
                  const T &value)
             : name(name_)
             , title(title_)
-            , min(std::numeric_limits<T>::min())
-            , max(std::numeric_limits<T>::max())
             , type(getType<T>())
             , _data(value)
+            , _min(std::numeric_limits<T>::min())
+            , _max(std::numeric_limits<T>::max())
         {
         }
 
@@ -68,10 +68,10 @@ public:
                  const T &value, const T &min_, const T &max_)
             : name(name_)
             , title(title_)
-            , min(min_)
-            , max(max_)
             , type(getType<T>())
             , _data(value)
+            , _min(min_)
+            , _max(max_)
         {
         }
 
@@ -87,12 +87,22 @@ public:
             return boost::any_cast<T>(_data);
         }
 
+        template <typename T>
+        T min() const
+        {
+            return boost::any_cast<T>(_min);
+        }
+
+        template <typename T>
+        T max() const
+        {
+            return boost::any_cast<T>(_max);
+        }
+
         void setData(const boost::any &data) { _data = data; }
         const boost::any &getData() const { return _data; }
         const std::string name;
         const std::string title;
-        const boost::any min;
-        const boost::any max;
         const Type type;
 
         template <typename T>
@@ -100,6 +110,8 @@ public:
 
     private:
         boost::any _data;
+        const boost::any _min;
+        const boost::any _max;
     };
 
     /** Update the property of the given name */

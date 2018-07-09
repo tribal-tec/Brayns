@@ -125,10 +125,37 @@ std::string getRequestEndpointName(const std::string& endpoint)
 
 namespace brayns
 {
-template <class T, class F>
-inline bool from_json(T& obj, const std::string& json, F postUpdateFunc = [] {})
+template <class T, class PRE>
+bool preUpdate(const std::string& json, PRE preUpdateFunc,
+               typename std::enable_if<!std::is_abstract<T>::value>::type* = 0)
+{
+    if (std::function<bool(const T&)>(preUpdateFunc))
+    {
+        T temp;
+        if (!staticjson::from_json_string(json.c_str(), &temp, nullptr))
+            return false;
+        if (!preUpdateFunc(temp))
+            return false;
+    }
+    return true;
+}
+
+template <class T, class PRE>
+bool preUpdate(const std::string&, PRE,
+               typename std::enable_if<std::is_abstract<T>::value>::type* = 0)
+{
+    return true;
+}
+
+template <class T, class PRE, class POST>
+inline bool from_json(T& obj, const std::string& json,
+                      PRE preUpdateFunc = [] {}, POST postUpdateFunc = [] {})
 {
     staticjson::ParseStatus status;
+
+    if (!preUpdate<T>(json, preUpdateFunc))
+        return false;
+
     const auto success =
         staticjson::from_json_string(json.c_str(), &obj, &status);
     if (success)
@@ -326,18 +353,22 @@ public:
     template <class T>
     void _handlePUT(const std::string& endpoint, T& obj)
     {
-        _handlePUT(endpoint, obj, std::function<void(T&)>());
+        _handlePUT(endpoint, obj, std::function<bool(const T&)>(),
+                   std::function<void(T&)>());
     }
 
-    template <class T, class F>
-    void _handlePUT(const std::string& endpoint, T& obj, F postUpdateFunc)
+    template <class T, class PRE, class POST>
+    void _handlePUT(const std::string& endpoint, T& obj, PRE preUpdateFunc,
+                    POST postUpdateFunc)
     {
         using namespace rockets::http;
-        _rocketsServer->handle(Method::PUT, endpoint, [&obj, postUpdateFunc](
+        _rocketsServer->handle(Method::PUT, endpoint, [&obj, preUpdateFunc,
+                                                       postUpdateFunc](
                                                           const Request& req) {
-            return make_ready_response(from_json(obj, req.body, postUpdateFunc)
-                                           ? Code::OK
-                                           : Code::BAD_REQUEST);
+            return make_ready_response(
+                from_json(obj, req.body, preUpdateFunc, postUpdateFunc)
+                    ? Code::OK
+                    : Code::BAD_REQUEST);
         });
 
         _handleObjectSchema(endpoint, obj);
@@ -346,9 +377,9 @@ public:
 
         _jsonrpcServer->bind(rpcEndpoint, [
             engine = _engine, &server = _rocketsServer, rpcEndpoint, &obj,
-            postUpdateFunc
+            preUpdateFunc, postUpdateFunc
         ](rockets::jsonrpc::Request request) {
-            if (from_json(obj, request.message, postUpdateFunc))
+            if (from_json(obj, request.message, preUpdateFunc, postUpdateFunc))
             {
                 engine->triggerRender();
 
@@ -565,6 +596,7 @@ public:
     {
         _handleGeometryParams();
         _handleImageJPEG();
+        _handleRenderer();
         _handleStreaming();
         _handleVersion();
         _handleVolumeParams();
@@ -573,7 +605,6 @@ public:
                 _parametersManager.getApplicationParameters());
         _handle(ENDPOINT_ANIMATION_PARAMS,
                 _parametersManager.getAnimationParameters());
-        _handle(ENDPOINT_RENDERER, _parametersManager.getRenderingParameters());
         _handle(ENDPOINT_SCENE_PARAMS, _parametersManager.getSceneParameters());
 
         // following endpoints need a valid engine
@@ -624,7 +655,9 @@ public:
             _engine->markRebuildScene();
         };
         _handleGET(ENDPOINT_GEOMETRY_PARAMS, params);
-        _handlePUT(ENDPOINT_GEOMETRY_PARAMS, params, postUpdate);
+        _handlePUT(ENDPOINT_GEOMETRY_PARAMS, params,
+                   std::function<bool(const GeometryParameters&)>(),
+                   postUpdate);
     }
 
     void _handleImageJPEG()
@@ -744,7 +777,22 @@ public:
             _engine->markRebuildScene();
         };
         _handleGET(ENDPOINT_VOLUME_PARAMS, params);
-        _handlePUT(ENDPOINT_VOLUME_PARAMS, params, postUpdate);
+        _handlePUT(ENDPOINT_VOLUME_PARAMS, params,
+                   std::function<bool(const VolumeParameters&)>(), postUpdate);
+    }
+
+    void _handleRenderer()
+    {
+        auto& params = _parametersManager.getRenderingParameters();
+        auto preUpdate = [](const RenderingParameters& obj) {
+            return std::find(obj.getRenderers().begin(),
+                             obj.getRenderers().end(),
+                             obj.getCurrentRenderer()) !=
+                   obj.getRenderers().end();
+        };
+        _handleGET(ENDPOINT_RENDERER, params);
+        _handlePUT(ENDPOINT_RENDERER, params, preUpdate,
+                   std::function<void(RenderingParameters&)>());
     }
 
     void _handleSchemaRPC()

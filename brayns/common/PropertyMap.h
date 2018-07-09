@@ -107,7 +107,7 @@ public:
     inline void updateProperty(const std::string &name, const T &t)
     {
         auto property = findProperty(name);
-        if (!property)
+        if (property)
             property->set(t);
     }
 

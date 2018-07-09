@@ -27,6 +27,7 @@ if(BRAYNS_NETWORKING_ENABLED)
     RocketsPlugin/ImageGenerator.h
     RocketsPlugin/jsonSerialization.h
     RocketsPlugin/jsonUtils.h
+    RocketsPlugin/jsonPropertyMap.h
     RocketsPlugin/SnapshotTask.h
   )
   list(APPEND BRAYNSPLUGINS_SOURCES

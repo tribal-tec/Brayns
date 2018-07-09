@@ -20,7 +20,7 @@
 
 // needs to be before RocketsPlugin.h to make template instantiation for
 // _handleRPC work
-#include "jsonSerialization.h"
+#include "jsonPropertyMap.h"
 
 #include "RocketsPlugin.h"
 

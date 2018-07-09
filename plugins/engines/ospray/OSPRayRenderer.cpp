@@ -122,7 +122,7 @@ void OSPRayRenderer::commit()
         }
     }
 
-    if (rendererChanged || _scene->isModified())
+    if (isModified() || rendererChanged || _scene->isModified())
     {
         auto ospScene = std::static_pointer_cast<OSPRayScene>(_scene);
         ospSetData(_renderer, "lights", ospScene->lightData());
@@ -131,7 +131,7 @@ void OSPRayRenderer::commit()
     ospSet1f(_renderer, "timestamp", ap.getFrame());
     ospSet1i(_renderer, "randomNumber", rand() % 10000);
 
-    Vector3f color = rp.getBackgroundColor();
+    const auto& color = rp.getBackgroundColor();
     ospSet3f(_renderer, "bgColor", color.x(), color.y(), color.z());
     ospSet1f(_renderer, "varianceThreshold", rp.getVarianceThreshold());
     ospSet1i(_renderer, "spp", rp.getSamplesPerPixel());
@@ -143,8 +143,7 @@ void OSPRayRenderer::commit()
     {
         bgMaterial->setDiffuseColor(rp.getBackgroundColor());
         bgMaterial->commit();
-        auto ospBgMaterial = bgMaterial->getOSPMaterial();
-        ospSetObject(_renderer, "bgMaterial", ospBgMaterial);
+        ospSetObject(_renderer, "bgMaterial", bgMaterial->getOSPMaterial());
     }
 
     ospSetObject(_renderer, "world", scene->getModel());
@@ -200,5 +199,6 @@ void OSPRayRenderer::createOSPRenderer()
     if (_camera)
         ospSetObject(_renderer, "camera", _camera->impl());
     _currentOSPRenderer = getCurrentType();
+    markModified();
 }
 }

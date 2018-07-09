@@ -24,8 +24,6 @@
 
 #include "RocketsPlugin.h"
 
-#include "jsonUtils.h"
-
 #include <brayns/common/Timer.h>
 #include <brayns/common/tasks/Task.h>
 #include <brayns/common/volume/VolumeHandler.h>

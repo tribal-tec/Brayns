@@ -39,9 +39,9 @@ void PathTracingRenderer::commit()
     AbstractRenderer::commit();
 
     _shadows = getParam1f("shadows", 0.f);
-    _softShadows = getParam1f("soft_shadows", 0.f);
-    _ambientOcclusionStrength = getParam1f("ao_weight", 0.f);
-    _ambientOcclusionDistance = getParam1f("ao_distance", 1e20f);
+    _softShadows = getParam1f("softShadows", 0.f);
+    _ambientOcclusionStrength = getParam1f("aoWeight", 0.f);
+    _ambientOcclusionDistance = getParam1f("aoDistance", 1e20f);
 
     ispc::PathTracingRenderer_set(
         getIE(), (_bgMaterial ? _bgMaterial->getIE() : nullptr), _timestamp,

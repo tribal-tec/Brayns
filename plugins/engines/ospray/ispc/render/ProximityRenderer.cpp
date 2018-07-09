@@ -37,13 +37,12 @@ void ProximityRenderer::commit()
 {
     AbstractRenderer::commit();
 
-    _nearColor =
-        getParam3f("detection_near_color", ospray::vec3f(0.f, 1.f, 0.f));
-    _farColor = getParam3f("detection_far_color", ospray::vec3f(1.f, 0.f, 0.f));
-    _detectionDistance = getParam1f("detection_distance", 1.f);
+    _nearColor = getParam3f("detectionNearColor", ospray::vec3f(0.f, 1.f, 0.f));
+    _farColor = getParam3f("detectionFarColor", ospray::vec3f(1.f, 0.f, 0.f));
+    _detectionDistance = getParam1f("detectionDistance", 1.f);
     _detectionOnDifferentMaterial =
-        bool(getParam1i("detection_on_different_material", 0));
-    _electronShadingEnabled = bool(getParam1i("electron_shading", 0));
+        bool(getParam1i("detectionOnDifferentMaterial", 0));
+    _electronShadingEnabled = bool(getParam1i("electronShading", 0));
     _randomNumber = getParam1i("randomNumber", 0);
 
     ispc::ProximityRenderer_set(getIE(),

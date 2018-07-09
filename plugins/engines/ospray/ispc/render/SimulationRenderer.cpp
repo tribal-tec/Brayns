@@ -38,12 +38,12 @@ void SimulationRenderer::commit()
     AbstractRenderer::commit();
 
     _shadows = getParam1f("shadows", 0.f);
-    _softShadows = getParam1f("soft_shadows", 0.f);
-    _ambientOcclusionStrength = getParam1f("ao_weight", 0.f);
-    _ambientOcclusionDistance = getParam1f("ao_distance", 1e20f);
-    _shadingEnabled = bool(getParam1i("shading_enabled", 1));
-    _electronShadingEnabled = bool(getParam1i("electron_shading", 0));
-    _detectionDistance = getParam1f("detection_distance", 15.f);
+    _softShadows = getParam1f("softShadows", 0.f);
+    _ambientOcclusionStrength = getParam1f("aoWeight", 0.f);
+    _ambientOcclusionDistance = getParam1f("aoDistance", 1e20f);
+    _shadingEnabled = bool(getParam1i("shadingEnabled", 1));
+    _electronShadingEnabled = bool(getParam1i("electronShading", 0));
+    _detectionDistance = getParam1f("detectionDistance", 15.f);
 
     _randomNumber = getParam1i("randomNumber", 0);
 

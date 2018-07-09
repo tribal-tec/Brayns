@@ -54,17 +54,6 @@ public:
         template <typename T>
         Property(const std::string &name_, const T &value)
             : name(name_)
-            , apiName(name_)
-            , type(getType<T>())
-            , _data(value)
-        {
-        }
-
-        template <typename T>
-        Property(const std::string &name_, const std::string &apiName_,
-                 const T &value)
-            : name(name_)
-            , apiName(apiName_)
             , type(getType<T>())
             , _data(value)
         {
@@ -85,7 +74,6 @@ public:
         void setData(const boost::any &data) { _data = data; }
         const boost::any &getData() const { return _data; }
         const std::string name;
-        const std::string apiName;
         const Type type;
 
         template <typename T>
@@ -166,9 +154,7 @@ private:
     {
         auto foundProperty =
             std::find_if(_properties.begin(), _properties.end(),
-                         [&](const auto &p) {
-                             return p->name == name || p->apiName == name;
-                         });
+                         [&](const auto &p) { return p->name == name; });
 
         return foundProperty != _properties.end() ? foundProperty->get()
                                                   : nullptr;

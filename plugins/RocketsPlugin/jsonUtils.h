@@ -36,6 +36,54 @@
 
 namespace brayns
 {
+std::string camelCaseToSnakeCase(const std::string& camelCase)
+{
+    if (camelCase.empty())
+        return camelCase;
+
+    std::string str(1, tolower(camelCase[0]));
+    for (auto it = camelCase.begin() + 1; it != camelCase.end(); ++it)
+    {
+        if (isupper(*it) && *(it - 1) != '-' && islower(*(it - 1)))
+            str += "_";
+        str += *it;
+    }
+
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    return str;
+}
+
+std::string snakeCaseToCamelCase(const std::string& hyphenated)
+{
+    std::string camel = hyphenated;
+
+    for (size_t x = 0; x < camel.length(); x++)
+    {
+        if (camel[x] == '_')
+        {
+            std::string tempString = camel.substr(x + 1, 1);
+
+            transform(tempString.begin(), tempString.end(), tempString.begin(),
+                      toupper);
+
+            camel.erase(x, 2);
+            camel.insert(x, tempString);
+        }
+    }
+    // camel[0] = toupper(camel[0]);
+    return camel;
+}
+
+rapidjson::Value JSON_STRING(const std::string& camelCase,
+                             rapidjson::Document& document)
+{
+    const auto snake_case = brayns::camelCaseToSnakeCase(camelCase);
+    rapidjson::Value val;
+    val.SetString(snake_case.c_str(), snake_case.length(),
+                  document.GetAllocator());
+    return val;
+}
+
 /** @return JSON schema from JSON-serializable type */
 template <class T>
 std::string getSchema(const std::string& title)
@@ -195,7 +243,7 @@ std::string buildJsonRpcSchema(const std::string& title,
 #define ADD_PROP(T)                                                          \
     {                                                                        \
         auto value = prop->get<T>();                                         \
-        properties.AddMember(rapidjson::StringRef(prop->apiName.c_str()),    \
+        properties.AddMember(JSON_STRING(prop->name, schema).Move(),         \
                              staticjson::export_json_schema(&value, schema), \
                              schema.GetAllocator());                         \
         break;                                                               \
@@ -203,7 +251,7 @@ std::string buildJsonRpcSchema(const std::string& title,
 #define ADD_PROP_ARRAY(T, S)                                                 \
     {                                                                        \
         auto value = prop->get<std::array<T, S>>();                          \
-        properties.AddMember(rapidjson::StringRef(prop->apiName.c_str()),    \
+        properties.AddMember(JSON_STRING(prop->name, schema).Move(),         \
                              staticjson::export_json_schema(&value, schema), \
                              schema.GetAllocator());                         \
         break;                                                               \

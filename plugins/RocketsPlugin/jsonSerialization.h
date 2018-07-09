@@ -45,16 +45,7 @@
 #include "ImageGenerator.h"
 #include "SnapshotTask.h"
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#endif
-#include "staticjson/staticjson.hpp"
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-#include "rapidjson/prettywriter.h"
+#include "jsonUtils.h"
 
 namespace brayns
 {
@@ -507,7 +498,7 @@ inline void init(brayns::AnimationParameters* a, ObjectHandler* h)
 template <class T>
 inline std::string to_json(const T& obj)
 {
-    return staticjson::to_pretty_json_string(obj);
+    return staticjson::to_json_string(obj);
 }
 
 template <>
@@ -524,7 +515,7 @@ void addProperty(rapidjson::Document& document,
     for (const auto& val : prop.get<T>())
         array.PushBack(val, document.GetAllocator());
 
-    document.AddMember(rapidjson::StringRef(prop.apiName.c_str()), array,
+    document.AddMember(brayns::JSON_STRING(prop.name, document).Move(), array,
                        document.GetAllocator());
 }
 
@@ -540,21 +531,21 @@ inline std::string to_json(const brayns::PropertyMap& obj)
         switch (prop->type)
         {
         case PropertyMap::Property::Type::Float:
-            json.AddMember(StringRef(prop->apiName.c_str()), prop->get<float>(),
-                           json.GetAllocator());
+            json.AddMember(brayns::JSON_STRING(prop->name, json).Move(),
+                           prop->get<float>(), json.GetAllocator());
             break;
         case PropertyMap::Property::Type::Int:
-            json.AddMember(StringRef(prop->apiName.c_str()),
+            json.AddMember(brayns::JSON_STRING(prop->name, json).Move(),
                            prop->get<int32_t>(), json.GetAllocator());
             break;
         case PropertyMap::Property::Type::String:
-            json.AddMember(StringRef(prop->apiName.c_str()),
+            json.AddMember(brayns::JSON_STRING(prop->name, json).Move(),
                            StringRef(prop->get<std::string>().c_str()),
                            json.GetAllocator());
             break;
         case PropertyMap::Property::Type::Bool:
-            json.AddMember(StringRef(prop->apiName.c_str()), prop->get<bool>(),
-                           json.GetAllocator());
+            json.AddMember(brayns::JSON_STRING(prop->name, json).Move(),
+                           prop->get<bool>(), json.GetAllocator());
             break;
         case PropertyMap::Property::Type::Vec2f:
             addProperty<std::array<float, 2>>(json, *prop);
@@ -592,14 +583,14 @@ inline bool from_json(brayns::Vector2f& obj, const std::string& json)
                                         nullptr);
 }
 
-#define SET_ARRAY(T, P, S)                        \
-    {                                             \
-        std::array<T, S> val;                     \
-        int j = 0;                                \
-        for (const auto& i : m.value.GetArray())  \
-            val[j++] = i.Get##P();                \
-        obj.setProperty(m.name.GetString(), val); \
-        break;                                    \
+#define SET_ARRAY(T, P, S)                       \
+    {                                            \
+        std::array<T, S> val;                    \
+        int j = 0;                               \
+        for (const auto& i : m.value.GetArray()) \
+            val[j++] = i.Get##P();               \
+        obj.setProperty(propName, val);          \
+        break;                                   \
     }
 
 template <>
@@ -612,22 +603,22 @@ inline bool from_json(brayns::PropertyMap& obj, const std::string& json)
 
     for (const auto& m : document.GetObject())
     {
-        if (!obj.hasProperty(m.name.GetString()))
+        const auto propName = brayns::snakeCaseToCamelCase(m.name.GetString());
+        if (!obj.hasProperty(propName))
             return false;
-        switch (obj.getPropertyType(m.name.GetString()))
+        switch (obj.getPropertyType(propName))
         {
         case PropertyMap::Property::Type::Float:
-            obj.setProperty(m.name.GetString(), m.value.GetFloat());
+            obj.setProperty(propName, m.value.GetFloat());
             break;
         case PropertyMap::Property::Type::Int:
-            obj.setProperty(m.name.GetString(), m.value.GetInt());
+            obj.setProperty(propName, m.value.GetInt());
             break;
         case PropertyMap::Property::Type::String:
-            obj.setProperty(m.name.GetString(),
-                            std::string(m.value.GetString()));
+            obj.setProperty(propName, std::string(m.value.GetString()));
             break;
         case PropertyMap::Property::Type::Bool:
-            obj.setProperty(m.name.GetString(), m.value.GetBool());
+            obj.setProperty(propName, m.value.GetBool());
             break;
         case PropertyMap::Property::Type::Vec2f:
             SET_ARRAY(float, Float, 2)

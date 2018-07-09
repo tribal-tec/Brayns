@@ -73,52 +73,56 @@ void OSPRayRenderer::commit()
         return;
     }
 
-    if (_currentOSPRenderer != getCurrentType())
+    const bool rendererChanged = _currentOSPRenderer != getCurrentType();
+    if (rendererChanged)
         createOSPRenderer();
 
-    try
+    if (hasProperties(getCurrentType()))
     {
-        for (const auto& prop : getProperties(getCurrentType()))
+        try
         {
-            switch (prop->type)
+            for (const auto& prop : getProperties(getCurrentType()))
             {
-            case PropertyMap::Property::Type::Float:
-                SET_SCALAR(f, float);
-                break;
-            case PropertyMap::Property::Type::Int:
-                SET_SCALAR(i, int32_t);
-                break;
-            case PropertyMap::Property::Type::Bool:
-                SET_SCALAR(i, bool);
-                break;
-            case PropertyMap::Property::Type::String:
-                SET_STRING();
-                break;
-            case PropertyMap::Property::Type::Vec2f:
-                SET_ARRAY(2fv, float, 2);
-                break;
-            case PropertyMap::Property::Type::Vec2i:
-                SET_ARRAY(2iv, int32_t, 2);
-                break;
-            case PropertyMap::Property::Type::Vec3f:
-                SET_ARRAY(3fv, float, 3);
-                break;
-            case PropertyMap::Property::Type::Vec3i:
-                SET_ARRAY(3iv, int32_t, 3);
-                break;
-            case PropertyMap::Property::Type::Vec4f:
-                SET_ARRAY(4fv, float, 4);
-                break;
+                switch (prop->type)
+                {
+                case PropertyMap::Property::Type::Float:
+                    SET_SCALAR(f, float);
+                    break;
+                case PropertyMap::Property::Type::Int:
+                    SET_SCALAR(i, int32_t);
+                    break;
+                case PropertyMap::Property::Type::Bool:
+                    SET_SCALAR(i, bool);
+                    break;
+                case PropertyMap::Property::Type::String:
+                    SET_STRING();
+                    break;
+                case PropertyMap::Property::Type::Vec2f:
+                    SET_ARRAY(2fv, float, 2);
+                    break;
+                case PropertyMap::Property::Type::Vec2i:
+                    SET_ARRAY(2iv, int32_t, 2);
+                    break;
+                case PropertyMap::Property::Type::Vec3f:
+                    SET_ARRAY(3fv, float, 3);
+                    break;
+                case PropertyMap::Property::Type::Vec3i:
+                    SET_ARRAY(3iv, int32_t, 3);
+                    break;
+                case PropertyMap::Property::Type::Vec4f:
+                    SET_ARRAY(4fv, float, 4);
+                    break;
+                }
             }
         }
-    }
-    catch (const std::exception& e)
-    {
-        BRAYNS_ERROR << "Failed to apply properties for renderer "
-                     << getCurrentType() << std::endl;
+        catch (const std::exception& e)
+        {
+            BRAYNS_ERROR << "Failed to apply properties for renderer "
+                         << getCurrentType() << std::endl;
+        }
     }
 
-    if (_scene->isModified())
+    if (rendererChanged || _scene->isModified())
     {
         auto ospScene = std::static_pointer_cast<OSPRayScene>(_scene);
         ospSetData(_renderer, "lights", ospScene->lightData());

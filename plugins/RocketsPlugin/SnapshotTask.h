@@ -72,7 +72,11 @@ public:
         , _scene(engine.createScene({_renderer}, engine.getParametersManager()))
         , _imageGenerator(imageGenerator)
     {
-        _renderer->setCurrentType(engine.getRenderer().getCurrentType());
+        const auto& renderer = engine.getRenderer();
+        _renderer->setCurrentType(renderer.getCurrentType());
+        _renderer->setProperties(renderer.getCurrentType(),
+                                 renderer.getPropertyMap(
+                                     renderer.getCurrentType()));
         if (_params.camera)
             *_camera = *_params.camera;
         else

@@ -191,9 +191,6 @@ class MeshLoader;
 
 class Statistics;
 
-using RendererTypes = std::deque<std::string>;
-using RendererMap = std::map<std::string, RendererPtr>;
-
 enum class EngineType
 {
     ospray,

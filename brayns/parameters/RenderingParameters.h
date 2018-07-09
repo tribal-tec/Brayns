@@ -42,14 +42,13 @@ public:
     void print() final;
 
     /** OSPRay renderer */
-    void initializeDefaultRenderers();
     const std::string& getCurrentRenderer() const { return _renderer; }
     void setCurrentRenderer(const std::string renderer)
     {
         _updateValue(_renderer, renderer);
     }
     /** OSPRay supported renderers */
-    const RendererTypes& getRenderers() const { return _renderers; }
+    const auto& getRenderers() const { return _renderers; }
     /**
        Camera type
     */
@@ -100,17 +99,18 @@ public:
     }
     size_t getMaxAccumFrames() const { return _maxAccumFrames; }
 protected:
+    void initializeDefaultRenderers();
     void parse(const po::variables_map& vm) final;
 
     std::string _renderer{"basic"};
-    RendererTypes _renderers;
+    std::deque<std::string> _renderers;
     CameraType _cameraType{CameraType::default_};
     StereoMode _stereoMode{StereoMode::none};
     strings _cameraTypeNames;
     int _spp{1};
     bool _accumulation{true};
     Vector3f _backgroundColor{0.f, 0.f, 0.f};
-    bool _headLight{false};
+    bool _headLight{true};
     float _varianceThreshold{-1.f};
     size_t _maxAccumFrames{100};
 

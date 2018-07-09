@@ -47,6 +47,10 @@ public:
         markModified();
     }
 
+    bool hasProperties(const std::string& type) const
+    {
+        return _mappedProperties.count(type) != 0;
+    }
     const auto& getProperties(const std::string& type) const
     {
         return _mappedProperties.at(type).getProperties();

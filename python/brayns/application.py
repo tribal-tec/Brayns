@@ -35,7 +35,7 @@ import websocket
 import inflection
 
 from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, \
-    http_request, set_ws_protocol, WS_PATH
+    http_request, set_http_protocol, set_ws_protocol, WS_PATH
 
 
 def camelcase_to_snake_case(name):
@@ -117,7 +117,7 @@ class Application(object):
         :param url: a string 'hostname:port' to connect to a running brayns instance
         """
 
-        self._url = url + '/'
+        self._url = set_http_protocol(url) + '/'
 
         if not self._check_version():
             raise Exception('Minimal version check failed')
@@ -262,7 +262,7 @@ class Application(object):
 
             is_object = schema['type'] == 'object'
             if is_object:
-                self._add_enums(value, self)
+                _add_enums(value, self)
                 self._add_commit(class_type, object_name)
 
             # add member to Application
@@ -374,7 +374,7 @@ class Application(object):
             param_types.append(pretty_class_name)
 
             # create and add potential enums to type
-            self._add_enums(class_type(), class_type)
+            _add_enums(class_type(), class_type)
 
         return '''
                             def function(self, params, response_timeout=5):
@@ -551,7 +551,7 @@ class Application(object):
 
         payload = None
         if 'result' in data:
-            payload = None if data['result'] == '' or data['result'] == 'OK' or data['result']\
+            payload = None if data['result'] == '' or data['result'] == 'OK' \
                            else data['result']
         elif 'error' in data:
             payload = data['error']

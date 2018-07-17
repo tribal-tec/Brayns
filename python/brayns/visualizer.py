@@ -30,25 +30,9 @@ The visualizer is the remote rendering resource in charge of rendering datasets
 import base64
 import io
 
-import atexit
-import gc
 from PIL import Image
 from .application import Application
 from .utils import in_notebook
-
-
-visualizers = list()
-
-
-@atexit.register
-def clean_all():
-    """
-    Cleans up the resources allocated by the visualizer and forces garbage collection
-    """
-    for visualizer in visualizers:
-        visualizer.free()
-    gc.enable()
-    gc.collect()
 
 
 def camelcase_to_snake_case(name):
@@ -75,16 +59,10 @@ class Visualizer(Application):
                          ResourceAllocator instance or None for default allocation.
         """
 
-        visualizers.append(self)
-
         super(Visualizer, self).__init__(resource)
 
         if in_notebook():
             self._add_widgets()
-
-    def __del__(self):
-        if visualizers is not None:
-            visualizers.remove(self)
 
     # pylint: disable=W0613,W0622
     def image(self, format='jpg', quality=None, samples_per_pixel=None, size=None):

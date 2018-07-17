@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=R0801,E1101
 
 # Copyright (c) 2016-2018, Blue Brain Project
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
@@ -53,6 +52,7 @@ class Brayns(Visualizer):
         contributions = []
         diffuses = []
         emissions = []
+        # pylint: disable=E1101
         tf = self.transfer_function
         for i in range(0, palette_size):
             color = palette[i]
@@ -97,6 +97,7 @@ class Brayns(Visualizer):
         greens = interp1d(x, greens)
         blues = interp1d(x, blues)
 
+        # pylint: disable=E1101
         tf = self.transfer_function
         tf.contribution = []
         tf.diffuse = []

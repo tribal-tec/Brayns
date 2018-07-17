@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=E1101,W0122
-#
+
 # Copyright (c) 2016-2018, Blue Brain Project
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
 #                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
@@ -38,17 +37,6 @@ from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, \
     http_request, set_http_protocol, set_ws_protocol, WS_PATH
 
 
-def camelcase_to_snake_case(name):
-    """
-    Convert CamelCase to snake_case
-    :param name: CamelCase to convert
-    :return: converted snake_case
-    """
-    import re
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
 def _handle_param_object(param, method, description):
     """
     Create types from oneOf parameter of RPC and adds the RPC function itself.
@@ -68,17 +56,17 @@ def _handle_param_object(param, method, description):
         arg_list += ', '
     arg_list += ', '.join(filter(None, optional))
     return '''
-                        def function(self, {0}, response_timeout=5):
-                            """
-                            {1}
-                            """
-                            args = locals()
-                            del args['self']
-                            del args['response_timeout']
-                            return self.rpc_request("{2}", params={{k:v for k,v in args.items()
-                                                             if v is not None}},
-                                                             response_timeout=response_timeout)
-                        '''.format(arg_list, description, method)
+        def function(self, {0}, response_timeout=5):
+            """
+            {1}
+            """
+            args = locals()
+            del args['self']
+            del args['response_timeout']
+            return self.rpc_request("{2}", params={{k:v for k,v in args.items()
+                                             if v is not None}},
+                                             response_timeout=response_timeout)
+        '''.format(arg_list, description, method)
 
 
 def _add_enums(value, target):
@@ -98,7 +86,7 @@ def _add_enums(value, target):
 
         enum_class = str(i).upper()
         if 'title' in enum:
-            enum_class = str(camelcase_to_snake_case(enum['title'])).upper()
+            enum_class = str(inflection.underscore(enum['title'])).upper()
         enum_class += "_"
         for val in enum['enum']:
             enum_value = enum_class + inflection.parameterize(val, '_').upper()
@@ -142,6 +130,7 @@ class Application(object):
         return self._url
 
     def __str__(self):
+        # pylint: disable=E1101
         if self.version:
             version = '.'.join(str(x) for x in [self.version.major, self.version.minor,
                                                 self.version.patch, self.version.revision])
@@ -336,7 +325,7 @@ class Application(object):
             return
         try:
             d = {}
-            exec(code.strip(), d)
+            exec(code.strip(), d)  # pylint: disable=W0122
             function = d['function']
             function.__name__ = func_name
             setattr(self.__class__, function.__name__, function)

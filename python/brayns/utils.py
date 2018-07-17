@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=R0801,E1101,R0912
 
 # Copyright (c) 2016-2018, Blue Brain Project
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
@@ -55,6 +54,7 @@ class Status(object):
         self.contents = contents
 
 
+# pylint: disable=R0912
 def http_request(method, url, command, body=None, query_params=None):
     """
     Perform http requests to the given URL and return the applications' response.

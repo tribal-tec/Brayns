@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=R0801
 
 # Copyright (c) 2016-2018, Blue Brain Project
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>

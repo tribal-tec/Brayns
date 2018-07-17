@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=E1101
 #
 # Copyright (c) 2016-2018, Blue Brain Project
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
@@ -64,7 +63,7 @@ class Visualizer(Application):
         if in_notebook():
             self._add_widgets()
 
-    # pylint: disable=W0613,W0622
+    # pylint: disable=W0613,W0622,E1101
     def image(self, format='jpg', quality=None, samples_per_pixel=None, size=None):
         """
         Requests a snapshot from the application and returns a PIL image
@@ -110,7 +109,7 @@ class Visualizer(Application):
 
                 self._setup_websocket()
                 if self._ws_connected:
-                    # pylint: disable=F0401
+                    # pylint: disable=F0401,E1101
                     from IPython.display import display
                     import ipywidgets as widgets
                     image = widgets.Image(format='jpg')
@@ -142,7 +141,7 @@ class Visualizer(Application):
             def simulation_slider():
                 """ Show slider to control simulation """
 
-                # pylint: disable=F0401
+                # pylint: disable=F0401,E1101
                 import ipywidgets as widgets
                 from IPython.display import display
 
@@ -198,7 +197,7 @@ class Visualizer(Application):
             def show_progress():
                 """ Show progress bar and message for current operation """
 
-                # pylint: disable=F0401
+                # pylint: disable=F0401,E1101
                 from ipywidgets import FloatProgress, Label, VBox
                 from IPython.display import display
 

@@ -24,3 +24,7 @@ CMakeFiles
 *.includes
 *.creator*
 *.user
+python/.idea/
+python/brayns.egg-info/
+python/.installed
+python/pycodestyle.txt

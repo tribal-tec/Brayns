@@ -1,6 +1,0 @@
-.idea*
-env/
-*.pyc
-dist/
-build/
-pyBrayns.egg-info/

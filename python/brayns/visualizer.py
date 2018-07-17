@@ -7,8 +7,7 @@
 #                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
 #                          Cyrille Favreau <cyrille.favreau@epfl.ch>
 #
-# This file is part of VizTools
-# <https://github.com/BlueBrain/VizTools>
+# This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 #
 # This library is free software; you can redistribute it and/or modify it under
 # the terms of the GNU Lesser General Public License version 3.0 as published
@@ -31,12 +30,12 @@ The visualizer is the remote rendering resource in charge of rendering datasets
 import base64
 import io
 
-from viztools.application import Application
-from viztools.utils import in_notebook
-from PIL import Image
-
 import atexit
 import gc
+from PIL import Image
+from .application import Application
+from .utils import in_notebook
+
 
 visualizers = list()
 
@@ -171,7 +170,7 @@ class Visualizer(Application):
 
                 button = widgets.ToggleButton(value=self.animation_parameters.delta != 0,
                                               icon='play' if self.animation_parameters.delta == 0
-                                                          else 'pause')
+                                              else 'pause')
                 button.layout = widgets.Layout(width='40px')
 
                 def on_button_change(change):

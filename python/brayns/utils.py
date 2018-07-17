@@ -2,14 +2,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=R0801,E1101,R0912
 
-# Copyright (c) 2016, Blue Brain Project
-#                     Raphael Dumusc <raphael.dumusc@epfl.ch>
-#                     Daniel Nachbaur <daniel.nachbaur@epfl.ch>
-#                     Cyrille Favreau <cyrille.favreau@epfl.ch>
-#                     Roland Groza <roland.groza@epfl.ch>
+# Copyright (c) 2016-2018, Blue Brain Project
+#                          Raphael Dumusc <raphael.dumusc@epfl.ch>
+#                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
+#                          Cyrille Favreau <cyrille.favreau@epfl.ch>
 #
-# This file is part of VizTools
-# <https://github.com/BlueBrain/VizTools>
+# This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 #
 # This library is free software; you can redistribute it and/or modify it under
 # the terms of the GNU Lesser General Public License version 3.0 as published
@@ -29,9 +27,9 @@
 The visualizer is the remote rendering resource in charge of rendering datasets
 """
 
-import requests
 import sys
 from collections import OrderedDict
+import requests
 
 
 HTTP_METHOD_PUT = 'PUT'
@@ -57,7 +55,7 @@ class Status(object):
         self.contents = contents
 
 
-def http_request(method, url, body=None, command=None, query_params=None):
+def http_request(method, url, command, body=None, query_params=None):
     """
     Perform http requests to the given URL and return the applications' response.
 
@@ -70,8 +68,7 @@ def http_request(method, url, body=None, command=None, query_params=None):
     """
     full_url = url
     request = None
-    if command is not None:
-        full_url = full_url + command
+    full_url = full_url + command
     try:
         if method == HTTP_METHOD_POST:
             if body == '':
@@ -169,5 +166,4 @@ def set_ws_protocol(url):
     """
     if url.find(HTTPS_PREFIX) != -1:
         return WSS_PREFIX + url[len(HTTPS_PREFIX):]
-    else:
-        return WS_PREFIX + url[len(HTTP_PREFIX):]
+    return WS_PREFIX + url[len(HTTP_PREFIX):]

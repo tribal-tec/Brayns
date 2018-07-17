@@ -6,11 +6,8 @@
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
 #                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
 #                          Cyrille Favreau <cyrille.favreau@epfl.ch>
-#                          Stefan Eilemann <stefan.eilemann@epfl.ch>
-#                          Roland Groza <roland.groza@epfl.ch>
 #
-# This file is part of VizTools
-# <https://github.com/BlueBrain/VizTools>
+# This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 #
 # This library is free software; you can redistribute it and/or modify it under
 # the terms of the GNU Lesser General Public License version 3.0 as published

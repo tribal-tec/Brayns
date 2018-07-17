@@ -27,14 +27,10 @@
 Python package allowing remote control of visualization applications through HTTP REST API.
 """
 
-__all__ = ['ResourceAllocator', 'Visualizer', 'SIMULATION_DEFAULT_RANGE',
-           'Brayns', 'Application', 'TopologyViewer', 'MembranelessOrganellesViewer']
+__all__ = ['Visualizer', 'SIMULATION_DEFAULT_RANGE', 'Brayns', 'Application']
 from .version import VERSION
-from .resource_allocator import ResourceAllocator
 from .application import Application
 from .visualizer import Visualizer
 from .brayns import Brayns
-from .topology_viewer import TopologyViewer
-from .membraneless_organelles_viewer import MembranelessOrganellesViewer
 from .settings import SIMULATION_DEFAULT_RANGE, DEFAULT_SAURON_URI
 from .utils import inherit_docstring_from, simulation_control_points

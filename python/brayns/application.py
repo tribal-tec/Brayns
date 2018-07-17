@@ -6,10 +6,8 @@
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
 #                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
 #                          Cyrille Favreau <cyrille.favreau@epfl.ch>
-#                          Roland Groza <roland.groza@epfl.ch>
 #
-# This file is part of VizTools
-# <https://github.com/BlueBrain/VizTools>
+# This file is part of Brayns <https://github.com/BlueBrain/Brayns>
 #
 # This library is free software; you can redistribute it and/or modify it under
 # the terms of the GNU Lesser General Public License version 3.0 as published
@@ -31,14 +29,13 @@ The application class exposes a dynamic generated API from HTTP/websockets serve
 
 import json
 import os
+import threading
 import python_jsonschema_objects as pjs
 import websocket
-import threading
 import inflection
 
-from viztools.utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, \
-    set_http_protocol, set_ws_protocol, WS_PATH
-from viztools.resource_allocator import ResourceAllocator
+from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, \
+    http_request, set_ws_protocol, WS_PATH
 
 
 def camelcase_to_snake_case(name):
@@ -50,15 +47,6 @@ def camelcase_to_snake_case(name):
     import re
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-def make_allocator(url):
-    """
-    Create an allocator referencing an existing resource
-    :param url: the "hostname:port" of an existing application
-    :return: the allocator
-    """
-    return ResourceAllocator(resource_url=url)
 
 
 def _handle_param_object(param, method, description):
@@ -123,39 +111,19 @@ class Application(object):
     registry.
     """
 
-    def __init__(self, resource=None):
+    def __init__(self, url):
         """
         Create a new application instance by connecting to the given resource
-        :param resource: can be a string 'hostname:port' to connect to a known application, a
-                         ResourceAllocator instance or None for default allocation.
+        :param url: a string 'hostname:port' to connect to a running brayns instance
         """
 
-        import sys
-        if sys.version_info[0] == 2:
-            string_types = basestring
-        else:
-            string_types = str
-
-        self._allocator = None
-        if isinstance(resource, ResourceAllocator):
-            self._allocator = resource
-        elif isinstance(resource, string_types):
-            self._allocator = make_allocator(resource)
-        else:
-            self._allocator = ResourceAllocator()
-
-        try:
-            self._url = self._allocator.resource_url()
-        except Exception:
-            raise Exception('Job allocation failed')
+        self._url = url + '/'
 
         if not self._check_version():
-            self._allocator.session_delete()
             raise Exception('Minimal version check failed')
 
         self._registry, ret_code = self._obtain_registry()
         if ret_code != HTTP_STATUS_OK:
-            self._allocator.session_delete()
             raise Exception('Failed to obtain registry from application')
 
         self._create_all_properties()
@@ -171,12 +139,7 @@ class Application(object):
         """
         :return: The url of the rendering resource
         """
-        session = self._allocator.session_status()
-        if session.code == HTTP_STATUS_OK:
-            return set_http_protocol(':'.join([session.contents['hostname'],
-                                               session.contents['port']]))
-        else:
-            return self._url
+        return self._url
 
     def __str__(self):
         if self.version:
@@ -186,33 +149,11 @@ class Application(object):
             version = 'unknown'
         return "Application version {0} running on {1}".format(version, self.url())
 
-    def free(self):
-        """
-        Frees resources allocated by the application
-        """
-        if self._allocator:
-            self._allocator.free()
-
-    def log(self):
-        """
-        Show the application log output
-        """
-        log = self._allocator.session_log()
-        if log.code == HTTP_STATUS_OK:
-            return log.contents['contents']
-        return "Can only provide log output from applications launched with ResourceAllocator"
-
     def resource_url(self):
         """
         Get the url for the current renderer resource
         """
         return self._url
-
-    def session(self):
-        """
-        Get the session for the current running resource (if it exists)
-        """
-        return self._allocator.get_session_id()
 
     def rpc_request(self, method, params=None, response_timeout=5):
         """
@@ -283,7 +224,7 @@ class Application(object):
         :return True if minimal version matches expectation, False otherwise
         """
 
-        status = self._allocator.session_command(HTTP_METHOD_GET, 'version')
+        status = http_request(HTTP_METHOD_GET, self._url, 'version')
         if status.code != HTTP_STATUS_OK:
             print('Cannot obtain version from application')
             return False
@@ -345,7 +286,7 @@ class Application(object):
             return False
 
         method = object_name[:-len('/schema')]
-        status = self._allocator.session_command(HTTP_METHOD_GET, method)
+        status = http_request(HTTP_METHOD_GET, self._url, method)
         schema, ret_code = self._schema(method)
         if status.code != HTTP_STATUS_OK and ret_code == HTTP_STATUS_OK:
             self._add_rpc(schema)
@@ -462,7 +403,7 @@ class Application(object):
 
         # initialize object from application state with GET if applicable
         if object_name and HTTP_METHOD_GET in self._registry[object_name]:
-            status = self._allocator.session_command(HTTP_METHOD_GET, object_name)
+            status = http_request(HTTP_METHOD_GET, self._url, object_name)
             if status.code != HTTP_STATUS_OK:
                 print('Error getting data for {0}: {1}'.format(object_name, status.code))
                 return False, None
@@ -502,7 +443,7 @@ class Application(object):
 
                 # Initialize on first access; updates are received via websocket
                 if not value.as_dict():
-                    status = self._allocator.session_command(HTTP_METHOD_GET, object_name)
+                    status = http_request(HTTP_METHOD_GET, self._url, object_name)
                     if status.code == HTTP_STATUS_OK:
                         value.__init__(**status.contents)
 
@@ -519,7 +460,7 @@ class Application(object):
                 """ Update the current state of the property locally and in the application """
                 if property_type == 'object':
                     setattr(self, member, prop)
-                    self._allocator.session_command(HTTP_METHOD_PUT, object_name, prop.serialize())
+                    http_request(HTTP_METHOD_PUT, self._url, object_name, prop.serialize())
                     return
 
                 if property_type == 'array':
@@ -527,7 +468,7 @@ class Application(object):
                     value.data = prop
                 else:
                     setattr(self, member, prop)
-                self._allocator.session_command(HTTP_METHOD_PUT, object_name, json.dumps(prop))
+                    http_request(HTTP_METHOD_PUT, self._url, object_name, json.dumps(prop))
 
             return function if HTTP_METHOD_PUT in self._registry[object_name] else None
 
@@ -540,12 +481,12 @@ class Application(object):
 
     def _obtain_registry(self):
         """ Returns the registry of PUT and GET objects of the application """
-        status = self._allocator.session_command(HTTP_METHOD_GET, 'registry')
+        status = http_request(HTTP_METHOD_GET, self._url, 'registry')
         return status.contents, status.code
 
     def _schema(self, object_name):
         """ Returns the JSON schema for the given object """
-        status = self._allocator.session_command(HTTP_METHOD_GET, object_name + '/schema')
+        status = http_request(HTTP_METHOD_GET, self._url, object_name + '/schema')
         return status.contents, status.code
 
     def _setup_websocket(self):

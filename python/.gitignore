@@ -1,0 +1,10 @@
+.coverage
+.idea/
+brayns.egg-info/
+.installed
+pycodestyle.txt
+pylint.txt
+*.pyc
+dist/
+.tox/
+venv/

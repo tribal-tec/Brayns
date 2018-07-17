@@ -31,3 +31,4 @@ python/.installed
 python/pycodestyle.txt
 python/pylint.txt
 *.pyc
+python/dist/

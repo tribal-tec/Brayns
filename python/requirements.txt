@@ -19,10 +19,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-matplotlib~=2.1.2
 Pillow~=4.2.1
 python-jsonschema-objects~=0.3.3
-pandas~=0.22.0
 requests~=2.11.1
 scipy~=0.19.1
 seaborn~=0.8.1

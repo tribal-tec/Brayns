@@ -53,6 +53,8 @@ exec(open('brayns/version.py').read())
 setup(name="brayns",
       version=VERSION,
       description="Brayns python API",
+      long_description="The Brayns python package gives full access to the websocket API of the "
+      "Brayns application.",
       packages=['brayns'],
       url='https://github.com/BlueBrain/Brayns.git',
       author='Blue Brain Project Visualization team',

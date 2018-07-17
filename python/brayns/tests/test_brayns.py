@@ -22,7 +22,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_true, assert_equal
+from nose.tools import assert_true, assert_equal, raises
 from mock import Mock, patch
 import brayns
 
@@ -36,6 +36,9 @@ VERSION_SCHEMA = dict()
 VERSION_SCHEMA['title'] = 'Version'
 VERSION_SCHEMA['type'] = 'object'
 
+TEST_REGISTRY = dict()
+TEST_REGISTRY['version'] = ['GET']
+
 
 def mock_http_request(method, url, command, body=None, query_params=None):
     if command == 'version':
@@ -43,10 +46,22 @@ def mock_http_request(method, url, command, body=None, query_params=None):
     if command == 'version/schema':
         return brayns.utils.Status(200, VERSION_SCHEMA)
     if command == 'registry':
-        registry = dict()
-        registry['version'] = ['GET']
-        return brayns.utils.Status(200, registry)
+        return brayns.utils.Status(200, TEST_REGISTRY)
     return brayns.utils.Status(404, 'muh')
+
+def mock_http_request_wrong_version(method, url, command, body=None, query_params=None):
+    if command == 'version':
+        import copy
+        version = copy.deepcopy(TEST_VERSION)
+        version['minor'] = 3
+        return brayns.utils.Status(200, TEST_VERSION)
+
+
+def mock_http_request_no_registry(method, url, command, body=None, query_params=None):
+    if command == 'version':
+        return brayns.utils.Status(200, TEST_VERSION)
+    if command == 'registry':
+        return brayns.utils.Status(404, None)
 
 
 def test_brayns_init():
@@ -54,3 +69,15 @@ def test_brayns_init():
         app = brayns.Brayns('localhost:8200')
         assert_equal(app.url(), 'http://localhost:8200/')
         assert_equal(app.version.as_dict(), TEST_VERSION)
+
+
+@raises(Exception)
+def test_brayns_init_wrong_version():
+    with patch('brayns.utils.http_request', new=mock_http_request_wrong_version):
+        brayns.Brayns('localhost:8200')
+
+
+@raises(Exception)
+def test_brayns_init_no_registry():
+    with patch('brayns.utils.http_request', new=mock_http_request_no_registry):
+        brayns.Brayns('localhost:8200')

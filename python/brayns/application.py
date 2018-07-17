@@ -215,7 +215,8 @@ class Application(object):
             return False
 
         minimal_version = '0.5.0'
-        version = '.'.join(str(x) for x in list(status.contents.values())[:3])
+        version = '{0}.{1}.{2}'.format(status.contents['major'], status.contents['minor'],
+                                       status.contents['patch'])
 
         import semver
         if semver.match(version, '<{0}'.format(minimal_version)):

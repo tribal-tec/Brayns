@@ -22,10 +22,35 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose import tools as nt
+from nose.tools import assert_true, assert_equal
+from mock import Mock, patch
 import brayns
 
+TEST_VERSION = dict()
+TEST_VERSION['major'] = 0
+TEST_VERSION['minor'] = 7
+TEST_VERSION['patch'] = 0
+TEST_VERSION['revision'] = 12345
 
-def test_brayns():
-    app = brayns.Brayns('localhost:8200')
-    nt.assert_equal(app.url(), 'http://localhost:8200/')
+VERSION_SCHEMA = dict()
+VERSION_SCHEMA['title'] = 'Version'
+VERSION_SCHEMA['type'] = 'object'
+
+
+def mock_http_request(method, url, command, body=None, query_params=None):
+    if command == 'version':
+        return brayns.utils.Status(200, TEST_VERSION)
+    if command == 'version/schema':
+        return brayns.utils.Status(200, VERSION_SCHEMA)
+    if command == 'registry':
+        registry = dict()
+        registry['version'] = ['GET']
+        return brayns.utils.Status(200, registry)
+    return brayns.utils.Status(404, 'muh')
+
+
+def test_brayns_init():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_equal(app.url(), 'http://localhost:8200/')
+        assert_equal(app.version.as_dict(), TEST_VERSION)

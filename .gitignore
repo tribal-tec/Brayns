@@ -33,3 +33,4 @@ python/pylint.txt
 *.pyc
 python/dist/
 python/.tox/
+python/venv/

@@ -34,7 +34,9 @@ import websocket
 import inflection
 
 from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, \
-    http_request, set_http_protocol, set_ws_protocol, WS_PATH
+    set_http_protocol, set_ws_protocol, WS_PATH
+
+from . import utils
 
 
 def _handle_param_object(param, method, description):
@@ -207,7 +209,7 @@ class Application(object):
         :return True if minimal version matches expectation, False otherwise
         """
 
-        status = http_request(HTTP_METHOD_GET, self._url, 'version')
+        status = utils.http_request(HTTP_METHOD_GET, self._url, 'version')
         if status.code != HTTP_STATUS_OK:
             print('Cannot obtain version from application')
             return False
@@ -269,7 +271,7 @@ class Application(object):
             return False
 
         method = object_name[:-len('/schema')]
-        status = http_request(HTTP_METHOD_GET, self._url, method)
+        status = utils.http_request(HTTP_METHOD_GET, self._url, method)
         schema, ret_code = self._schema(method)
         if status.code != HTTP_STATUS_OK and ret_code == HTTP_STATUS_OK:
             self._add_rpc(schema)
@@ -386,7 +388,7 @@ class Application(object):
 
         # initialize object from application state with GET if applicable
         if object_name and HTTP_METHOD_GET in self._registry[object_name]:
-            status = http_request(HTTP_METHOD_GET, self._url, object_name)
+            status = utils.http_request(HTTP_METHOD_GET, self._url, object_name)
             if status.code != HTTP_STATUS_OK:
                 print('Error getting data for {0}: {1}'.format(object_name, status.code))
                 return False, None
@@ -426,7 +428,7 @@ class Application(object):
 
                 # Initialize on first access; updates are received via websocket
                 if not value.as_dict():
-                    status = http_request(HTTP_METHOD_GET, self._url, object_name)
+                    status = utils.http_request(HTTP_METHOD_GET, self._url, object_name)
                     if status.code == HTTP_STATUS_OK:
                         value.__init__(**status.contents)
 
@@ -443,7 +445,7 @@ class Application(object):
                 """ Update the current state of the property locally and in the application """
                 if property_type == 'object':
                     setattr(self, member, prop)
-                    http_request(HTTP_METHOD_PUT, self._url, object_name, prop.serialize())
+                    utils.http_request(HTTP_METHOD_PUT, self._url, object_name, prop.serialize())
                     return
 
                 if property_type == 'array':
@@ -451,7 +453,7 @@ class Application(object):
                     value.data = prop
                 else:
                     setattr(self, member, prop)
-                    http_request(HTTP_METHOD_PUT, self._url, object_name, json.dumps(prop))
+                    utils.http_request(HTTP_METHOD_PUT, self._url, object_name, json.dumps(prop))
 
             return function if HTTP_METHOD_PUT in self._registry[object_name] else None
 
@@ -464,12 +466,12 @@ class Application(object):
 
     def _obtain_registry(self):
         """ Returns the registry of PUT and GET objects of the application """
-        status = http_request(HTTP_METHOD_GET, self._url, 'registry')
+        status = utils.http_request(HTTP_METHOD_GET, self._url, 'registry')
         return status.contents, status.code
 
     def _schema(self, object_name):
         """ Returns the JSON schema for the given object """
-        status = http_request(HTTP_METHOD_GET, self._url, object_name + '/schema')
+        status = utils.http_request(HTTP_METHOD_GET, self._url, object_name + '/schema')
         return status.contents, status.code
 
     def _setup_websocket(self):

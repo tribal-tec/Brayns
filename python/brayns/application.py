@@ -149,12 +149,6 @@ class Application(object):
             version = 'unknown'
         return "Application version {0} running on {1}".format(version, self.url())
 
-    def resource_url(self):
-        """
-        Get the url for the current renderer resource
-        """
-        return self._url
-
     def rpc_request(self, method, params=None, response_timeout=5):
         """
         Invoke a RPC on the application.

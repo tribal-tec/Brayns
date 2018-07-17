@@ -24,6 +24,6 @@
 # All rights reserved. Do not distribute without further notice.
 
 """
-The version of the viztools package
+The version of the brayns package
 """
-VERSION = "0.9.0.dev3"
+VERSION = "0.7.0.dev0"

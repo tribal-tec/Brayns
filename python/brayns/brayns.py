@@ -28,7 +28,7 @@ Python package allowing remote control of visualization applications through HTT
 """
 
 from .visualizer import Visualizer
-from .settings import DEFAULT_SAURON_URI
+from .settings import DEFAULT_BRAYNS_UI_URI
 from .utils import simulation_control_points
 
 
@@ -121,14 +121,8 @@ class Brayns(Visualizer):
 
     def open_ui(self):
         """
-        Open the Sauron UI in a new page of the default system browser
+        Open the Brayns UI in a new page of the default system browser
         """
         import webbrowser
-        url = DEFAULT_SAURON_URI + '/?host=' + self.url()
+        url = DEFAULT_BRAYNS_UI_URI + '/?host=' + self.url()
         webbrowser.open(url)
-
-    def open_sauron(self):
-        """
-        Alias to open_ui for us, developers and Sauron lovers
-        """
-        self.open_ui()

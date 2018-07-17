@@ -24,30 +24,10 @@
 # All rights reserved. Do not distribute without further notice.
 
 """
-Settings and default values for the viztools
+Settings and default values for Brayns
 """
 
-import getpass
 
-DEFAULT_ALLOCATOR_URI = 'https://visualization-dev.humanbrainproject.eu/viz'
-DEFAULT_SAURON_URI = 'http://brayns.ocp.bbp.epfl.ch'
-
-DEFAULT_ALLOCATOR_API_VERSION = 'v1'
-DEFAULT_ALLOCATOR_NAME = 'rendering-resource-manager'
-DEFAULT_ALLOCATOR_SESSION_PREFIX = 'session'
-DEFAULT_ALLOCATOR_CONFIG_PREFIX = 'config'
-DEFAULT_ALLOCATOR_NB_NODES = 1
-DEFAULT_ALLOCATOR_NB_CPUS = 1
-DEFAULT_ALLOCATOR_NB_GPUS = 0
-DEFAULT_ALLOCATOR_TIME = '0:05:00'
-DEFAULT_ALLOCATOR_EXCLUSIVE = False
-
-DEFAULT_RENDERER = 'brayns_generic'
-DEFAULT_APPLICATION = 'viztools_any'
-DEFAULT_SESSION = getpass.getuser()
-
-SESSION_MAX_CONNECTION_ATTEMPTS = 5
-
-SESSION_ID_QUERY_PARAM_NAME = 'session_id'
+DEFAULT_BRAYNS_UI_URI = 'http://brayns.ocp.bbp.epfl.ch'
 
 SIMULATION_DEFAULT_RANGE = [-92.0915, 49.5497]

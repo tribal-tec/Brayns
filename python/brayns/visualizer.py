@@ -34,17 +34,6 @@ from .application import Application
 from .utils import in_notebook
 
 
-def camelcase_to_snake_case(name):
-    """
-    Convert CamelCase to snake_case
-    :param name: CamelCase to convert
-    :return: converted snake_case
-    """
-    import re
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
 class Visualizer(Application):
     """
     The visualizer class provides specialization like widgets, image display and image streaming

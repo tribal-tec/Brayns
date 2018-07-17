@@ -133,11 +133,10 @@ class Application(object):
 
     def __str__(self):
         # pylint: disable=E1101
+        version = 'unknown'
         if self.version:
             version = '.'.join(str(x) for x in [self.version.major, self.version.minor,
                                                 self.version.patch, self.version.revision])
-        else:
-            version = 'unknown'
         return "Application version {0} running on {1}".format(version, self.url())
 
     def rpc_request(self, method, params=None, response_timeout=5):
@@ -215,8 +214,8 @@ class Application(object):
             return False
 
         minimal_version = '0.5.0'
-        version = '{0}.{1}.{2}'.format(status.contents['major'], status.contents['minor'],
-                                       status.contents['patch'])
+        version = '.'.join(str(x) for x in [status.contents['major'], status.contents['minor'],
+                                            status.contents['patch']])
 
         import semver
         if semver.match(version, '<{0}'.format(minimal_version)):

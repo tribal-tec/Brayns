@@ -55,7 +55,7 @@ class Status(object):
 
 
 # pylint: disable=R0912
-def http_request(method, url, command, body=None, query_params=None):
+def http_request(method, url, command, body=None, query_params=None):  # pragma: no cover
     """
     Perform http requests to the given URL and return the applications' response.
 
@@ -109,22 +109,6 @@ def in_notebook():
     ``False`` if in IPython shell or other Python shell.
     """
     return 'ipykernel' in sys.modules
-
-
-def inherit_docstring_from(cls):
-    """
-    Provide a decorator for inheriting docstring of overridden functions.
-    :param cls: The class where to inherit the docstring from
-    :return: The decorator function
-    """
-    def docstring_inheriting_decorator(fn):
-        """
-        :param fn: the function to decorate
-        :return: the decorated function with inherited docstring
-        """
-        fn.__doc__ = getattr(cls, fn.__name__).__doc__
-        return fn
-    return docstring_inheriting_decorator
 
 
 def simulation_control_points(colormap_size, data_range):

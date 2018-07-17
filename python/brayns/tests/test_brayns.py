@@ -54,7 +54,7 @@ def mock_http_request_wrong_version(method, url, command, body=None, query_param
         import copy
         version = copy.deepcopy(TEST_VERSION)
         version['minor'] = 3
-        return brayns.utils.Status(200, TEST_VERSION)
+        return brayns.utils.Status(200, version)
 
 
 def mock_http_request_no_registry(method, url, command, body=None, query_params=None):
@@ -64,20 +64,27 @@ def mock_http_request_no_registry(method, url, command, body=None, query_params=
         return brayns.utils.Status(404, None)
 
 
-def test_brayns_init():
+def test_init():
     with patch('brayns.utils.http_request', new=mock_http_request):
         app = brayns.Brayns('localhost:8200')
         assert_equal(app.url(), 'http://localhost:8200/')
         assert_equal(app.version.as_dict(), TEST_VERSION)
+        assert_equal(str(app), 'Application version 0.7.0.12345 running on http://localhost:8200/')
 
 
 @raises(Exception)
-def test_brayns_init_wrong_version():
+def test_init_wrong_version():
     with patch('brayns.utils.http_request', new=mock_http_request_wrong_version):
         brayns.Brayns('localhost:8200')
 
 
 @raises(Exception)
-def test_brayns_init_no_registry():
+def test_init_no_registry():
     with patch('brayns.utils.http_request', new=mock_http_request_no_registry):
         brayns.Brayns('localhost:8200')
+
+
+# def test_rpc():
+#     with patch('brayns.utils.http_request', new=mock_http_request):
+#         app = brayns.Brayns('localhost:8200')
+#         app.rpc_request('foo')

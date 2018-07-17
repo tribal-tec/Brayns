@@ -32,4 +32,4 @@ from .application import Application
 from .visualizer import Visualizer
 from .brayns import Brayns
 from .settings import SIMULATION_DEFAULT_RANGE, DEFAULT_BRAYNS_UI_URI
-from .utils import inherit_docstring_from, simulation_control_points
+from .utils import simulation_control_points

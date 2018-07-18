@@ -311,14 +311,11 @@ class Application(object):
                     return self.rpc_request("{1}", response_timeout=response_timeout)
                 '''.format(description, method)
 
-        try:
-            d = {}
-            exec(code.strip(), d)  # pylint: disable=W0122
-            function = d['function']
-            function.__name__ = func_name
-            setattr(self.__class__, function.__name__, function)
-        except ValueError as e:
-            print(e)
+        d = {}
+        exec(code.strip(), d)  # pylint: disable=W0122
+        function = d['function']
+        function.__name__ = func_name
+        setattr(self.__class__, function.__name__, function)
 
     def _handle_param_oneof(self, param, method, description):
         """

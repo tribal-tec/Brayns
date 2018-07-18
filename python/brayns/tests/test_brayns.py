@@ -89,6 +89,15 @@ TEST_RPC_TWO_PARAMETERS = {
     }]
 }
 
+TEST_RPC_ONLY_RETURN = {
+    'title': 'test-rpc-return',
+    'description': 'Only returns something, no parameter',
+    'type': 'method',
+    'returns': {
+        'type': 'boolean'
+    }
+}
+
 TEST_RPC_ONEOF_PARAMETER = {
     'title': 'set-camera',
     'description': 'Pass on oneOf parameter to brayns',
@@ -153,6 +162,7 @@ TEST_REGISTRY = {
     'set-camera/schema': ['GET'],
     'test-rpc-invalid-type/schema': ['GET'],
     'test-rpc-invalid-param/schema': ['GET'],
+    'test-rpc-return/schema': ['GET'],
     'test-rpc-two-params/schema': ['GET'],
     'test-object': ['GET', 'PUT'],
     'test-object/schema': ['GET'],
@@ -168,6 +178,8 @@ def mock_http_request(method, url, command, body=None, query_params=None):
         return brayns.utils.Status(200, TEST_RPC_INVALID_TYPE)
     if command == 'test-rpc-two-params/schema':
         return brayns.utils.Status(200, TEST_RPC_TWO_PARAMETERS)
+    if command == 'test-rpc-return/schema':
+        return brayns.utils.Status(200, TEST_RPC_ONLY_RETURN)
     if command == 'test-object/schema':
         return brayns.utils.Status(200, TEST_OBJECT_SCHEMA)
     if command == 'test-object':
@@ -301,6 +313,15 @@ def test_rpc_two_parameters():
          patch('brayns.Application.rpc_request', new=mock_rpc_request):
         app = brayns.Brayns('localhost:8200')
         assert_false(hasattr(app, 'test-rpc-two-params'))
+
+
+def test_rpc_only_return():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('brayns.Application.rpc_request', new=mock_rpc_request):
+        app = brayns.Brayns('localhost:8200')
+        import inspect
+        assert_equal(inspect.getdoc(app.test_rpc_return), TEST_RPC_ONLY_RETURN['description'])
+        assert_true(app.test_rpc_return())
 
 
 def test_rpc_invalid_type():

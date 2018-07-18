@@ -50,13 +50,13 @@ class Visualizer(Application):
         super(Visualizer, self).__init__(resource)
 
         if in_notebook():
-            self._add_widgets()
+            self._add_widgets()  # pragma: no cover
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, format='jpg', quality=None, samples_per_pixel=None, size=None):
         """
         Requests a snapshot from the application and returns a PIL image
-        :param image_format: image type as recognized by ImageMagick
+        :param format: image type as recognized by ImageMagick
         :param quality: compression quality between 1 (worst) and 100 (best)
         :param samples_per_pixel: samples per pixel to increase render quality
         :param size: tuple (width,height) for the resulting image
@@ -78,7 +78,7 @@ class Visualizer(Application):
             print(e)
         return None
 
-    def _add_widgets(self):
+    def _add_widgets(self):  # pragma: no cover
         """ Add functions to the visualizer to provide widgets for appropriate properties """
 
         if self._ws_connected:
@@ -87,7 +87,7 @@ class Visualizer(Application):
         if hasattr(self, 'animation_parameters'):
             self._add_simulation_slider()
 
-    def _add_show_function(self):
+    def _add_show_function(self):  # pragma: no cover
         """ Add show() function for live streaming """
 
         def function_builder():
@@ -121,7 +121,7 @@ class Visualizer(Application):
 
         setattr(self, 'show', function_builder())
 
-    def _add_simulation_slider(self):
+    def _add_simulation_slider(self):  # pragma: no cover
         """ Add simulation_slider() function for animation_parameters control """
 
         def function_builder():
@@ -177,7 +177,7 @@ class Visualizer(Application):
 
         setattr(self, 'simulation_slider', function_builder())
 
-    def _add_show_progress(self):
+    def _add_show_progress(self):  # pragma: no cover
         """ Add show_progress() function for lexis/data/progress display """
 
         def function_builder():

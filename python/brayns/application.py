@@ -139,7 +139,7 @@ class Application(object):
                                                 self.version.patch, self.version.revision])
         return "Application version {0} running on {1}".format(version, self.url())
 
-    def rpc_request(self, method, params=None, response_timeout=5):
+    def rpc_request(self, method, params=None, response_timeout=5):  # pragma: no cover
         """
         Invoke a RPC on the application.
         :param method: name of the method to invoke

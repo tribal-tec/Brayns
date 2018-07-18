@@ -51,18 +51,26 @@ ADD_MODEL_SCHEMA_PARAM['required'] = ['name']
 ADD_MODEL_SCHEMA['params'] = list()
 ADD_MODEL_SCHEMA['params'].append(ADD_MODEL_SCHEMA_PARAM)
 
-ANIMATION_PARAMETERS_SCHEMA = dict()
-ANIMATION_PARAMETERS_SCHEMA['title'] = 'AnimationParameters'
-ANIMATION_PARAMETERS_SCHEMA['type'] = 'object'
-ANIMATION_PARAMETERS_SCHEMA['properties'] = dict()
-ANIMATION_PARAMETERS_SCHEMA['properties']['dt'] = {'type':'number'}
-ANIMATION_PARAMETERS_SCHEMA['properties']['current'] = {'type':'integer'}
-ANIMATION_PARAMETERS_SCHEMA['properties']['unit'] = {'type':'string'}
+TEST_OBJECT_SCHEMA = dict()
+TEST_OBJECT_SCHEMA['title'] = 'TestObject'
+TEST_OBJECT_SCHEMA['type'] = 'object'
+TEST_OBJECT_SCHEMA['properties'] = dict()
+TEST_OBJECT_SCHEMA['properties']['number'] = {'type':'number'}
+TEST_OBJECT_SCHEMA['properties']['integer'] = {'type':'integer'}
+TEST_OBJECT_SCHEMA['properties']['string'] = {'type':'string'}
+TEST_OBJECT_SCHEMA['properties']['boolean'] = {'type':'boolean'}
+TEST_OBJECT_SCHEMA['properties']['enum'] = {'type':'string', 'enum': [u'value_a', u'value_b']}
+TEST_OBJECT_SCHEMA['properties']['enum_title'] = {'type':'string', 'title': 'my_enum', 'enum': [u'mine', u'yours']}
+TEST_OBJECT_SCHEMA['properties']['enum_array'] = {'type':'array', 'items': { 'type':'string', 'enum': [u'one', u'two', u'three']}}
 
-TEST_ANIMATION_PARAMS = dict()
-TEST_ANIMATION_PARAMS['dt'] = 0.1
-TEST_ANIMATION_PARAMS['current'] = 5
-TEST_ANIMATION_PARAMS['unit'] = 'ms'
+TEST_OBJECT = dict()
+TEST_OBJECT['number'] = 0.1
+TEST_OBJECT['integer'] = 5
+TEST_OBJECT['string'] = 'foobar'
+TEST_OBJECT['boolean'] = False
+TEST_OBJECT['enum'] = 'value_b'
+TEST_OBJECT['enum_title'] = 'yours'
+TEST_OBJECT['enum_array'] = ['one', 'three']
 
 VERSION_SCHEMA = dict()
 VERSION_SCHEMA['title'] = 'Version'
@@ -70,18 +78,18 @@ VERSION_SCHEMA['type'] = 'object'
 
 TEST_REGISTRY = dict()
 TEST_REGISTRY['add-model/schema'] = ['GET']
-TEST_REGISTRY['animation-parameters'] = ['GET', 'PUT']
-TEST_REGISTRY['animation-parameters/schema'] = ['GET']
+TEST_REGISTRY['test-object'] = ['GET', 'PUT']
+TEST_REGISTRY['test-object/schema'] = ['GET']
 TEST_REGISTRY['version'] = ['GET']
 
 
 def mock_http_request(method, url, command, body=None, query_params=None):
     if command == 'add-model/schema':
         return brayns.utils.Status(200, ADD_MODEL_SCHEMA)
-    if command == 'animation-parameters/schema':
-        return brayns.utils.Status(200, ANIMATION_PARAMETERS_SCHEMA)
-    if command == 'animation-parameters':
-        return brayns.utils.Status(200, TEST_ANIMATION_PARAMS)
+    if command == 'test-object/schema':
+        return brayns.utils.Status(200, TEST_OBJECT_SCHEMA)
+    if command == 'test-object':
+        return brayns.utils.Status(200, TEST_OBJECT)
     if command == 'version':
         return brayns.utils.Status(200, TEST_VERSION)
     if command == 'version/schema':
@@ -130,12 +138,40 @@ def test_init_no_registry():
         brayns.Brayns('localhost:8200')
 
 
-def test_object_generation():
+def test_object_properties():
     with patch('brayns.utils.http_request', new=mock_http_request):
         app = brayns.Brayns('localhost:8200')
-        assert_equal(app.animation_parameters.current, TEST_ANIMATION_PARAMS['current'])
-        assert_equal(app.animation_parameters.dt, TEST_ANIMATION_PARAMS['dt'])
-        assert_equal(app.animation_parameters.unit, TEST_ANIMATION_PARAMS['unit'])
+        assert_equal(app.test_object.integer, TEST_OBJECT['integer'])
+        assert_equal(app.test_object.number, TEST_OBJECT['number'])
+        assert_equal(app.test_object.string, TEST_OBJECT['string'])
+        assert_equal(app.test_object.boolean, TEST_OBJECT['boolean'])
+
+
+def test_object_properties_enum():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_equal(app.test_object.enum, TEST_OBJECT['enum'])
+        assert_true(hasattr(app, 'ENUM_VALUE_A'))
+        assert_true(hasattr(app, 'ENUM_VALUE_B'))
+
+
+def test_object_properties_enum_with_title():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_equal(app.test_object.enum_title, TEST_OBJECT['enum_title'])
+        assert_true(hasattr(app, 'MY_ENUM_MINE'))
+        assert_true(hasattr(app, 'MY_ENUM_YOURS'))
+
+
+def test_object_properties_enum_array():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_equal(app.test_object.enum_array, TEST_OBJECT['enum_array'])
+
+        assert_true(hasattr(app, 'ENUM_ARRAY_ONE'))
+        assert_true(hasattr(app, 'ENUM_ARRAY_TWO'))
+        assert_true(hasattr(app, 'ENUM_ARRAY_THREE'))
+
 
 def test_method_generation():
     with patch('brayns.utils.http_request', new=mock_http_request), \

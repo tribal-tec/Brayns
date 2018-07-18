@@ -187,7 +187,7 @@ class Application(object):
 
         return result['result']
 
-    def rpc_notify(self, method, params=None):
+    def rpc_notify(self, method, params=None):  # pragma: no cover
         """
         Invoke a RPC on the application without waiting for a response.
         :param method: name of the method to invoke

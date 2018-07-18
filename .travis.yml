@@ -7,8 +7,10 @@ python:
 cache: pip
 install:
   - pip install .
+  - pip install tox-travis
 script:
-  - Makefile run_tests
+  - cd python
+  - tox
 after_success:
   - pip install codecov
   - codecov

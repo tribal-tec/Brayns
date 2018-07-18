@@ -123,7 +123,6 @@ class Application(object):
         self._request_id = 0
         self._update_callback = {}
         self._ws_requests = {}
-        self._setup_websocket()
 
     def url(self):
         """
@@ -301,17 +300,8 @@ class Application(object):
             elif params['type'] == 'object':
                 code = _handle_param_object(params, method, description)
             else:
-                code = '''
-                    def function(self, {1}, response_timeout=5):
-                        """
-                        {0}
-                        {2}
-                        """
-                        return self.rpc_request("{3}", params={1},
-                                                response_timeout=response_timeout)
-                    '''.format(description, params['name'],
-                               ":param {0}: {1}".format(params['name'], params['description']),
-                               method)
+                raise Exception('Invalid parameter type for method "{0}":'.format(method) +
+                                'neither "oneOf" nor "object"')
         else:
             code = '''
                 def function(self, response_timeout=5):
@@ -321,8 +311,6 @@ class Application(object):
                     return self.rpc_request("{1}", response_timeout=response_timeout)
                 '''.format(description, method)
 
-        if code is None:
-            return
         try:
             d = {}
             exec(code.strip(), d)  # pylint: disable=W0122
@@ -366,14 +354,14 @@ class Application(object):
             _add_enums(class_type(), class_type)
 
         return '''
-                            def function(self, params, response_timeout=5):
-                                """
-                                {0}
-                                ":param: one of the params for the active type: {1}
-                                """
-                                return self.rpc_request("{2}", params.for_json(),
-                                                        response_timeout=response_timeout)
-                            '''.format(description, ', '.join(param_types), method)
+            def function(self, params, response_timeout=5):
+                """
+                {0}
+                ":param: one of the params for the active type: {1}
+                """
+                return self.rpc_request("{2}", params.for_json(),
+                                        response_timeout=response_timeout)
+            '''.format(description, ', '.join(param_types), method)
 
     def _add_commit(self, class_type, object_name):
         """ Add commit() for given property """
@@ -402,7 +390,7 @@ class Application(object):
                 value = getattr(self, member)
 
                 # Initialize on first access; updates are received via websocket
-                if not value.as_dict():
+                if not value.as_dict() or not self._ws_connected:
                     status = utils.http_request(HTTP_METHOD_GET, self._url, object_name)
                     if status.code == HTTP_STATUS_OK:
                         value.__init__(**status.contents)
@@ -449,7 +437,7 @@ class Application(object):
         status = utils.http_request(HTTP_METHOD_GET, self._url, object_name + '/schema')
         return status.contents, status.code
 
-    def _setup_websocket(self):
+    def _setup_websocket(self):  # pragma: no cover
         """
         Setups websocket with handling for binary (image) and text (all properties) messages. The
         websocket app runs in a separate thread to unblock all notebook cells.
@@ -506,7 +494,7 @@ class Application(object):
             time.sleep(0.2)
             conn_timeout -= 1
 
-    def _handle_reply(self, data):
+    def _handle_reply(self, data):  # pragma: no cover
         """
         Handle JSON RPC reply
         :param data: data of the reply

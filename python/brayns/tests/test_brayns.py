@@ -61,9 +61,17 @@ TEST_RPC_ONE_PARAMETER = {
     }]
 }
 
-TEST_RPC_INVALID = {
-    'title': 'test-rpc',
+TEST_RPC_INVALID_TYPE = {
+    'title': 'test-rpc-invalid-type',
+    'description': 'Should be method, not object',
     'type': 'object'
+}
+
+TEST_RPC_INVALID_PARAM = {
+    'title': 'test-rpc-invalid-param',
+    'description': 'Only objects for params, no single values',
+    'type': 'method',
+    'params': [{'type': 'string'}]
 }
 
 TEST_RPC_TWO_PARAMETERS = {
@@ -78,6 +86,23 @@ TEST_RPC_TWO_PARAMETERS = {
         'type': 'object',
         'name': 'param_two',
         'properties': {}
+    }]
+}
+
+TEST_RPC_ONEOF_PARAMETER = {
+    'title': 'set-camera',
+    'description': 'Pass on oneOf parameter to brayns',
+    'type': 'method',
+    'params': [{
+        'oneOf': [{
+            'type': 'object',
+            'title': 'perspective',
+            'properties': { 'fov': { 'type': 'number' }}
+        }, {
+            'type': 'object',
+            'title': 'panoramic',
+            'properties': {}
+        }]
     }]
 }
 
@@ -125,7 +150,9 @@ VERSION_SCHEMA = {
 
 TEST_REGISTRY = {
     'test-rpc/schema': ['GET'],
-    'test-rpc-invalid/schema': ['GET'],
+    'set-camera/schema': ['GET'],
+    'test-rpc-invalid-type/schema': ['GET'],
+    'test-rpc-invalid-param/schema': ['GET'],
     'test-rpc-two-params/schema': ['GET'],
     'test-object': ['GET', 'PUT'],
     'test-object/schema': ['GET'],
@@ -135,8 +162,10 @@ TEST_REGISTRY = {
 def mock_http_request(method, url, command, body=None, query_params=None):
     if command == 'test-rpc/schema':
         return brayns.utils.Status(200, TEST_RPC_ONE_PARAMETER)
-    if command == 'test-rpc-invalid/schema':
-        return brayns.utils.Status(200, TEST_RPC_INVALID)
+    if command == 'set-camera/schema':
+        return brayns.utils.Status(200, TEST_RPC_ONEOF_PARAMETER)
+    if command == 'test-rpc-invalid-type/schema':
+        return brayns.utils.Status(200, TEST_RPC_INVALID_TYPE)
     if command == 'test-rpc-two-params/schema':
         return brayns.utils.Status(200, TEST_RPC_TWO_PARAMETERS)
     if command == 'test-object/schema':
@@ -169,6 +198,16 @@ def mock_http_request_no_registry(method, url, command, body=None, query_params=
         return brayns.utils.Status(200, TEST_VERSION)
     if command == 'registry':
         return brayns.utils.Status(404, None)
+
+
+def mock_http_request_invalid_rpc_param(method, url, command, body=None, query_params=None):
+    if command == 'test-rpc-invalid-param/schema':
+        return brayns.utils.Status(200, TEST_RPC_INVALID_PARAM)
+    if command == 'version':
+        return brayns.utils.Status(200, TEST_VERSION)
+    if command == 'registry':
+        return brayns.utils.Status(200, TEST_REGISTRY)
+    return brayns.utils.Status(404, None)
 
 
 def mock_rpc_request(self, method, params=None, response_timeout=5):
@@ -245,6 +284,18 @@ def test_rpc_one_parameter():
         assert_true(app.test_rpc(doit=False, name='foo'))
 
 
+def test_rpc_one_of_parameter():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('brayns.Application.rpc_request', new=mock_rpc_request):
+        app = brayns.Brayns('localhost:8200')
+        import inspect
+        assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
+        assert_true(hasattr(app, 'PerspectiveCamera'))
+        param = app.PerspectiveCamera()
+        param.fov = 10.2
+        assert_true(app.set_camera(param))
+
+
 def test_rpc_two_parameters():
     with patch('brayns.utils.http_request', new=mock_http_request), \
          patch('brayns.Application.rpc_request', new=mock_rpc_request):
@@ -252,11 +303,17 @@ def test_rpc_two_parameters():
         assert_false(hasattr(app, 'test-rpc-two-params'))
 
 
-def test_rpc_invalid():
+def test_rpc_invalid_type():
     with patch('brayns.utils.http_request', new=mock_http_request), \
             patch('brayns.Application.rpc_request', new=mock_rpc_request):
         app = brayns.Brayns('localhost:8200')
-        assert_false(hasattr(app, 'test-rpc-invalid'))
+        assert_false(hasattr(app, 'test-rpc-invalid-type'))
+
+
+@raises(Exception)
+def test_rpc_invalid_param():
+    with patch('brayns.utils.http_request', new=mock_http_request_invalid_rpc_param):
+        brayns.Brayns('localhost:8200')
 
 if __name__ == '__main__':
     import nose

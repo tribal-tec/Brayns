@@ -247,9 +247,7 @@ class Application(object):
                     break
 
             class_type = getattr(classes, class_name)
-            success, value = self._create_member(class_type)
-            if not success:
-                continue
+            value = class_type()
 
             is_object = schema['type'] == 'object'
             if is_object:
@@ -376,29 +374,6 @@ class Application(object):
                                 return self.rpc_request("{2}", params.for_json(),
                                                         response_timeout=response_timeout)
                             '''.format(description, ', '.join(param_types), method)
-
-    def _create_member(self, class_type, object_name=None, object_type=None):
-        """
-        Create a new object from the given class type and initialize it from the application state.
-        :param class_type: class type of the new object
-        :param object_name: name of the new object
-        :param object_type: type as string of the new object
-        :return: tuple(success, object)
-        """
-
-        # initialize object from application state with GET if applicable
-        if object_name and HTTP_METHOD_GET in self._registry[object_name]:
-            status = utils.http_request(HTTP_METHOD_GET, self._url, object_name)
-            if status.code != HTTP_STATUS_OK:
-                print('Error getting data for {0}: {1}'.format(object_name, status.code))
-                return False, None
-            if object_type in ['array', 'object']:
-                value = class_type.from_json(json.dumps(status.contents))
-            else:
-                value = class_type(status.contents)
-        else:
-            value = class_type()
-        return True, value
 
     def _add_commit(self, class_type, object_name):
         """ Add commit() for given property """

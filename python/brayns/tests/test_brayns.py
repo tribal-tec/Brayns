@@ -22,70 +22,123 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_true, assert_equal, raises
+from nose.tools import assert_true, assert_false, assert_equal, raises
 from mock import Mock, patch
 import brayns
 
-TEST_VERSION = dict()
-TEST_VERSION['major'] = 0
-TEST_VERSION['minor'] = 7
-TEST_VERSION['patch'] = 0
-TEST_VERSION['revision'] = 12345
+TEST_VERSION = {
+    'major': 0,
+    'minor': 7,
+    'patch': 0,
+    'revision': 12345
+}
 
-ADD_MODEL_SCHEMA = dict()
-ADD_MODEL_SCHEMA['title'] = 'add-model'
-ADD_MODEL_SCHEMA['description'] = 'Add model from remote path; returns model descriptor on success'
-ADD_MODEL_SCHEMA['type'] = 'method'
-ADD_MODEL_SCHEMA['returns'] = dict()
-ADD_MODEL_SCHEMA['returns']['anyOf'] = list()
-ADD_MODEL_SCHEMA['returns']['anyOf'].append({'type': 'null'})
-ADD_MODEL_SCHEMA['returns']['anyOf'].append({'type': 'object'})
-ADD_MODEL_SCHEMA_PARAM = dict()
-ADD_MODEL_SCHEMA_PARAM['type'] = 'object'
-ADD_MODEL_SCHEMA_PARAM['name'] = 'model_param'
-ADD_MODEL_SCHEMA_PARAM['description'] = 'bla'
-ADD_MODEL_SCHEMA_PARAM['properties'] = dict()
-ADD_MODEL_SCHEMA_PARAM['properties']['visible'] = {'type':'boolean'}
-ADD_MODEL_SCHEMA_PARAM['properties']['name'] = {'type':'string'}
-ADD_MODEL_SCHEMA_PARAM['required'] = ['name']
-ADD_MODEL_SCHEMA['params'] = list()
-ADD_MODEL_SCHEMA['params'].append(ADD_MODEL_SCHEMA_PARAM)
+TEST_RPC_ONE_PARAMETER = {
+    'title': 'test-rpc',
+    'description': 'Pass on parameter to brayns',
+    'type': 'method',
+    'returns': {
+        'anyOf': [{
+                'type': 'null'
+            }, {
+                'type': 'object'
+            }
+        ]
+    },
+    'params': [{
+        'type': 'object',
+        'name': 'model_param',
+        'description': 'bla',
+        'properties': {
+            'doit': {
+                'type':'boolean'
+            },
+            'name': {
+                'type: string'
+            }
+        },
+        'required': ['name']
+    }]
+}
 
-TEST_OBJECT_SCHEMA = dict()
-TEST_OBJECT_SCHEMA['title'] = 'TestObject'
-TEST_OBJECT_SCHEMA['type'] = 'object'
-TEST_OBJECT_SCHEMA['properties'] = dict()
-TEST_OBJECT_SCHEMA['properties']['number'] = {'type':'number'}
-TEST_OBJECT_SCHEMA['properties']['integer'] = {'type':'integer'}
-TEST_OBJECT_SCHEMA['properties']['string'] = {'type':'string'}
-TEST_OBJECT_SCHEMA['properties']['boolean'] = {'type':'boolean'}
-TEST_OBJECT_SCHEMA['properties']['enum'] = {'type':'string', 'enum': [u'value_a', u'value_b']}
-TEST_OBJECT_SCHEMA['properties']['enum_title'] = {'type':'string', 'title': 'my_enum', 'enum': [u'mine', u'yours']}
-TEST_OBJECT_SCHEMA['properties']['enum_array'] = {'type':'array', 'items': { 'type':'string', 'enum': [u'one', u'two', u'three']}}
+TEST_RPC_INVALID = {
+    'title': 'test-rpc',
+    'type': 'object'
+}
 
-TEST_OBJECT = dict()
-TEST_OBJECT['number'] = 0.1
-TEST_OBJECT['integer'] = 5
-TEST_OBJECT['string'] = 'foobar'
-TEST_OBJECT['boolean'] = False
-TEST_OBJECT['enum'] = 'value_b'
-TEST_OBJECT['enum_title'] = 'yours'
-TEST_OBJECT['enum_array'] = ['one', 'three']
+TEST_RPC_TWO_PARAMETERS = {
+    'title': 'test-rpc-two-params',
+    'description': 'Pass on two parameters to brayns',
+    'type': 'method',
+    'params': [{
+        'type': 'object',
+        'name': 'param_one',
+        'properties': {}
+    }, {
+        'type': 'object',
+        'name': 'param_two',
+        'properties': {}
+    }]
+}
 
-VERSION_SCHEMA = dict()
-VERSION_SCHEMA['title'] = 'Version'
-VERSION_SCHEMA['type'] = 'object'
+TEST_OBJECT_SCHEMA = {
+    'title': 'TestObject',
+    'type': 'object',
+    'properties': {
+        'number:': {'type': 'number'},
+        'integer:': {'type': 'integer'},
+        'string:': {'type': 'string'},
+        'boolean:': {'type': 'boolean'},
+        'enum': {
+            'type': 'string',
+            'enum': [u'value_a', u'value_b']
+        },
+        'enum_title': {
+            'type': 'string',
+            'title': 'my_enum',
+            'enum': [u'mine', u'yours']
+        },
+        'enum_array': {
+            'type': 'array',
+            'items': {
+                'type':'string',
+                'enum': [u'one', u'two', u'three']
+            }
+        }
+    }
+}
 
-TEST_REGISTRY = dict()
-TEST_REGISTRY['add-model/schema'] = ['GET']
-TEST_REGISTRY['test-object'] = ['GET', 'PUT']
-TEST_REGISTRY['test-object/schema'] = ['GET']
-TEST_REGISTRY['version'] = ['GET']
+TEST_OBJECT = {
+    'number': 0.1,
+    'integer': 5,
+    'string': 'foobar',
+    'boolean': False,
+    'enum': 'value_b',
+    'enum_title': 'yours',
+    'enum_array': ['one', 'three']
+}
 
+VERSION_SCHEMA = {
+    'title': 'Version',
+    'type': 'object'
+}
+
+TEST_REGISTRY = {
+    'test-rpc/schema': ['GET'],
+    'test-rpc-invalid/schema': ['GET'],
+    'test-rpc-two-params/schema': ['GET'],
+    'test-object': ['GET', 'PUT'],
+    'test-object/schema': ['GET'],
+    'version': ['GET']
+}
 
 def mock_http_request(method, url, command, body=None, query_params=None):
-    if command == 'add-model/schema':
-        return brayns.utils.Status(200, ADD_MODEL_SCHEMA)
+    if command == 'test-rpc/schema':
+        return brayns.utils.Status(200, TEST_RPC_ONE_PARAMETER)
+    if command == 'test-rpc-invalid/schema':
+        return brayns.utils.Status(200, TEST_RPC_INVALID)
+    if command == 'test-rpc-two-params/schema':
+        return brayns.utils.Status(200, TEST_RPC_TWO_PARAMETERS)
     if command == 'test-object/schema':
         return brayns.utils.Status(200, TEST_OBJECT_SCHEMA)
     if command == 'test-object':
@@ -107,6 +160,10 @@ def mock_http_request_wrong_version(method, url, command, body=None, query_param
         return brayns.utils.Status(200, version)
 
 
+def mock_http_request_no_version(method, url, command, body=None, query_params=None):
+    return brayns.utils.Status(404, None)
+
+
 def mock_http_request_no_registry(method, url, command, body=None, query_params=None):
     if command == 'version':
         return brayns.utils.Status(200, TEST_VERSION)
@@ -124,6 +181,12 @@ def test_init():
         assert_equal(app.url(), 'http://localhost:8200/')
         assert_equal(app.version.as_dict(), TEST_VERSION)
         assert_equal(str(app), 'Application version 0.7.0.12345 running on http://localhost:8200/')
+
+
+@raises(Exception)
+def test_init_no_version():
+    with patch('brayns.utils.http_request', new=mock_http_request_no_version):
+        brayns.Brayns('localhost:8200')
 
 
 @raises(Exception)
@@ -173,13 +236,27 @@ def test_object_properties_enum_array():
         assert_true(hasattr(app, 'ENUM_ARRAY_THREE'))
 
 
-def test_method_generation():
+def test_rpc_one_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
             patch('brayns.Application.rpc_request', new=mock_rpc_request):
         app = brayns.Brayns('localhost:8200')
         import inspect
-        assert_equal(inspect.getdoc(app.add_model), ADD_MODEL_SCHEMA['description'])
-        assert_true(app.add_model(visible=False, name='foo'))
+        assert_equal(inspect.getdoc(app.test_rpc), TEST_RPC_ONE_PARAMETER['description'])
+        assert_true(app.test_rpc(doit=False, name='foo'))
+
+
+def test_rpc_two_parameters():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('brayns.Application.rpc_request', new=mock_rpc_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_false(hasattr(app, 'test-rpc-two-params'))
+
+
+def test_rpc_invalid():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+            patch('brayns.Application.rpc_request', new=mock_rpc_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_false(hasattr(app, 'test-rpc-invalid'))
 
 if __name__ == '__main__':
     import nose

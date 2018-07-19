@@ -53,13 +53,13 @@ class Visualizer(Application):
             self._add_widgets()  # pragma: no cover
 
     # pylint: disable=W0613,W0622,E1101
-    def image(self, format='jpg', quality=None, samples_per_pixel=None, size=None):
+    def image(self, size, format='jpg', quality=None, samples_per_pixel=None):
         """
         Requests a snapshot from the application and returns a PIL image
+        :param size: tuple (width,height) for the resulting image
         :param format: image type as recognized by ImageMagick
         :param quality: compression quality between 1 (worst) and 100 (best)
         :param samples_per_pixel: samples per pixel to increase render quality
-        :param size: tuple (width,height) for the resulting image
         :return: the PIL image of the current rendering, None on error obtaining the image
         """
 
@@ -72,11 +72,7 @@ class Visualizer(Application):
             print(result['message'])
             return None
 
-        try:
-            return Image.open(io.BytesIO(base64.b64decode(result['data'])))
-        except IOError as e:
-            print(e)
-        return None
+        return Image.open(io.BytesIO(base64.b64decode(result['data'])))
 
     def _add_widgets(self):  # pragma: no cover
         """ Add functions to the visualizer to provide widgets for appropriate properties """

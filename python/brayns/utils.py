@@ -150,4 +150,6 @@ def set_ws_protocol(url):
     """
     if url.find(HTTPS_PREFIX) != -1:
         return WSS_PREFIX + url[len(HTTPS_PREFIX):]
-    return WS_PREFIX + url[len(HTTP_PREFIX):]
+    if url.find(HTTP_PREFIX) != -1:
+        return WS_PREFIX + url[len(HTTP_PREFIX):]
+    return WS_PREFIX + url

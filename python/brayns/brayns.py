@@ -65,7 +65,7 @@ class Brayns(Visualizer):
         tf.range = data_range
         tf.commit()
 
-    # pylint: disable = R0914
+    # pylint: disable=R0914
     def set_simulation_colormap(self, colormap_size=1024, intensity=1, opacity=0.8,
                                 data_range=(-80.0, -10.0), ambient_light=None):
         """

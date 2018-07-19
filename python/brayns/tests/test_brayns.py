@@ -226,6 +226,19 @@ def mock_rpc_request(self, method, params=None, response_timeout=5):
     return True
 
 
+def mock_snapshot(format, size, animation_parameters=None, camera=None, name=None, quality=None,
+                  renderer=None, samples_per_pixel=None, response_timeout=None):
+    if format == 'png':
+        return {'data': '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'}
+    if format == 'jpg':
+        return {'data': 'not base 64'}
+    return {
+        'code': 'wrong format',
+        'message': 'bad'
+    }
+
+
+
 def test_init():
     with patch('brayns.utils.http_request', new=mock_http_request):
         app = brayns.Brayns('localhost:8200')
@@ -335,6 +348,28 @@ def test_rpc_invalid_type():
 def test_rpc_invalid_param():
     with patch('brayns.utils.http_request', new=mock_http_request_invalid_rpc_param):
         brayns.Brayns('localhost:8200')
+
+
+def test_image():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        setattr(app, 'snapshot', mock_snapshot)
+        assert_true(app.image(size=[50,50], format='png'))
+
+
+def test_image_wrong_format():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        setattr(app, 'snapshot', mock_snapshot)
+        assert_false(app.image(size=[50,50], format='foo'))
+
+
+@raises(TypeError)
+def test_image_not_base64():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        setattr(app, 'snapshot', mock_snapshot)
+        app.image(size=[50, 50], format='jpg')
 
 if __name__ == '__main__':
     import nose

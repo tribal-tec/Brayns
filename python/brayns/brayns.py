@@ -51,7 +51,6 @@ class Brayns(Visualizer):
         palette_size = len(palette)
         contributions = []
         diffuses = []
-        emissions = []
         # pylint: disable=E1101
         tf = self.transfer_function
         for i in range(0, palette_size):
@@ -60,7 +59,6 @@ class Brayns(Visualizer):
                              opacity])
             contributions.append(0)
         tf.diffuse = diffuses
-        tf.emission = emissions
         tf.contribution = contributions
         tf.range = data_range
         tf.commit()

@@ -371,6 +371,61 @@ def test_image_not_base64():
         setattr(app, 'snapshot', mock_snapshot)
         app.image(size=[50, 50], format='jpg')
 
+
+class MockTransferFunction(object):
+    def __init__(self):
+        self.contribution = []
+        self.diffuse = []
+        self.emission = []
+        self.range = (0,1)
+        self.commit_called = False
+
+    def commit(self):
+        self.commit_called = True
+
+
+def test_set_colormap():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        setattr(app, 'transfer_function', MockTransferFunction())
+        app.set_colormap(colormap_size=123, data_range=(0, 42))
+        assert_equal(len(app.transfer_function.contribution), 123)
+        assert_equal(len(app.transfer_function.diffuse), 123)
+        assert_equal(len(app.transfer_function.emission), 0)
+        assert_equal(app.transfer_function.range, (0,42))
+        assert_true(app.transfer_function.commit_called)
+
+
+@raises(ValueError)
+def test_set_colormap_unknown_colormap():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        setattr(app, 'transfer_function', MockTransferFunction())
+        app.set_colormap(colormap='foo')
+
+
+def test_set_simulation_colormap():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        setattr(app, 'transfer_function', MockTransferFunction())
+        app.set_simulation_colormap()
+        assert_equal(len(app.transfer_function.contribution), 1024)
+        assert_equal(len(app.transfer_function.diffuse), 1024)
+        assert_equal(len(app.transfer_function.emission), 1024)
+        assert_equal(app.transfer_function.range, (-80.0,-10.0))
+        assert_true(app.transfer_function.commit_called)
+
+
+def mock_webbrowser_open(url):
+    assert_equal(url, brayns.settings.DEFAULT_BRAYNS_UI_URI + '/?host=http://localhost:8200/')
+
+def test_open_ui():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+            patch('webbrowser.open', new=mock_webbrowser_open):
+        app = brayns.Brayns('localhost:8200')
+        app.open_ui()
+
+
 if __name__ == '__main__':
     import nose
     nose.run(defaultTest=__name__)

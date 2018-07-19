@@ -71,6 +71,18 @@ def _handle_param_object(param, method, description):
         '''.format(arg_list, description, method)
 
 
+def _handle_param_array(name, method, description):
+    return '''
+        def function(self, {1}, response_timeout=5):
+            """
+            {0}
+            {2}
+            """
+            return self.rpc_request("{3}", params={1},
+                                    response_timeout=response_timeout)
+        '''.format(description, name, ":param {0}: {1}".format(name, description), method)
+
+
 def _add_enums(value, target):
     """
     Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>
@@ -301,9 +313,11 @@ class Application(object):
             # parameters from object properties
             elif params['type'] == 'object':
                 code = _handle_param_object(params, method, description)
+            elif params['type'] == 'array':
+                code = _handle_param_array(params['name'], method, description)
             else:
                 raise Exception('Invalid parameter type for method "{0}":'.format(method) +
-                                'neither "oneOf" nor "object"')
+                                ' must be "object", "array" or "oneOf"')
         else:
             code = '''
                 def function(self, response_timeout=5):

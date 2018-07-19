@@ -115,6 +115,16 @@ TEST_RPC_ONEOF_PARAMETER = {
     }]
 }
 
+TEST_RPC_ARRAY_PARAMETER = {
+    'title': 'inspect',
+    'description': 'Pass on array parameter to brayns',
+    'type': 'method',
+    'params': [{
+        'type': 'array',
+        'name': 'xy',
+    }]
+}
+
 TEST_OBJECT_SCHEMA = {
     'title': 'TestObject',
     'type': 'object',
@@ -177,6 +187,7 @@ VERSION_SCHEMA = {
 TEST_REGISTRY = {
     'test-rpc/schema': ['GET'],
     'set-camera/schema': ['GET'],
+    'inspect/schema': ['GET'],
     'test-rpc-invalid-type/schema': ['GET'],
     'test-rpc-invalid-param/schema': ['GET'],
     'test-rpc-return/schema': ['GET'],
@@ -193,6 +204,8 @@ def mock_http_request(method, url, command, body=None, query_params=None):
         return brayns.utils.Status(200, TEST_RPC_ONE_PARAMETER)
     if command == 'set-camera/schema':
         return brayns.utils.Status(200, TEST_RPC_ONEOF_PARAMETER)
+    if command == 'inspect/schema':
+        return brayns.utils.Status(200, TEST_RPC_ARRAY_PARAMETER)
     if command == 'test-rpc-invalid-type/schema':
         return brayns.utils.Status(200, TEST_RPC_INVALID_TYPE)
     if command == 'test-rpc-two-params/schema':
@@ -275,7 +288,7 @@ def test_init():
         app = brayns.Brayns('localhost:8200')
         assert_equal(app.url(), 'http://localhost:8200/')
         assert_equal(app.version.as_dict(), TEST_VERSION)
-        assert_equal(str(app), 'Application version 0.7.0.12345 running on http://localhost:8200/')
+        assert_equal(str(app), 'Brayns version 0.7.0.12345 running on http://localhost:8200/')
 
 
 @raises(Exception)
@@ -378,6 +391,15 @@ def test_rpc_one_of_parameter():
         param = app.PerspectiveCamera()
         param.fov = 10.2
         assert_true(app.set_camera(param))
+
+
+def test_rpc_array_parameter():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+            patch('brayns.Application.rpc_request', new=mock_rpc_request):
+        app = brayns.Brayns('localhost:8200')
+        import inspect
+        assert_true(inspect.getdoc(app.inspect).startswith(TEST_RPC_ARRAY_PARAMETER['description']))
+        assert_true(app.inspect(xy=[1,2]))
 
 
 def test_rpc_two_parameters():

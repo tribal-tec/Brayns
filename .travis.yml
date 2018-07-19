@@ -6,15 +6,18 @@ python:
   - 3.6
 cache: pip
 install:
-  - pip install .
+  - cd python
+  - pip install
   - pip install tox-travis
 script:
   - cd python
   - tox
 after_success:
+  - cd python
   - pip install codecov
   - codecov
 before_deploy:
+  - cd python
   - pip install twine
 deploy:
   provider: pypi

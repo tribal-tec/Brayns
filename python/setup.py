@@ -49,14 +49,7 @@ def parse_reqs(reqs_file):
 REQS = parse_reqs(os.path.join(BASEDIR, "requirements.txt"))
 
 exec(open('brayns/version.py').read())
-setup(name="brayns",
-      version=VERSION,
-      description="Brayns python API",
-      long_description="The Brayns python package gives full access to the websocket API of the "
-      "Brayns application.",
+setup(version=VERSION,
       packages=['brayns'],
-      url='https://github.com/BlueBrain/Brayns.git',
-      author='Blue Brain Project Visualization team',
-      author_email='bbp-open-source@googlegroups.com',
-      license='GNU LGPL',
-      install_requires=REQS)
+      install_requires=REQS
+)

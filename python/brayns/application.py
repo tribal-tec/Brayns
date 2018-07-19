@@ -136,7 +136,7 @@ class Application(object):
         if self.version:
             version = '.'.join(str(x) for x in [self.version.major, self.version.minor,
                                                 self.version.patch, self.version.revision])
-        return "Application version {0} running on {1}".format(version, self.url())
+        return "Brayns version {0} running on {1}".format(version, self.url())
 
     def rpc_request(self, method, params=None, response_timeout=5):  # pragma: no cover
         """

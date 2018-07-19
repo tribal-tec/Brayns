@@ -72,7 +72,12 @@ class Visualizer(Application):
             print(result['message'])
             return None
 
-        return Image.open(io.BytesIO(base64.b64decode(result['data'])))
+        # https://stackoverflow.com/a/9807138
+        data = result['data']
+        missing_padding = len(data) % 4
+        if missing_padding != 0:
+            data += b'=' * (4 - missing_padding)
+        return Image.open(io.BytesIO(base64.b64decode(data)))
 
     def _add_widgets(self):  # pragma: no cover
         """ Add functions to the visualizer to provide widgets for appropriate properties """

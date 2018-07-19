@@ -261,7 +261,6 @@ def mock_snapshot(format, size, animation_parameters=None, camera=None, name=Non
     }
 
 
-
 def test_init():
     with patch('brayns.utils.http_request', new=mock_http_request):
         app = brayns.Brayns('localhost:8200')

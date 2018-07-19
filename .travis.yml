@@ -10,7 +10,6 @@ install:
   - pip install
   - pip install tox-travis
 script:
-  - cd python
   - tox
 after_success:
   - cd python

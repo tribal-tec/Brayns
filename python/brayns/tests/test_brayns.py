@@ -138,6 +138,12 @@ TEST_OBJECT_SCHEMA = {
                 'type':'string',
                 'enum': [u'one', u'two', u'three']
             }
+        },
+        'array': {
+            'type': 'array',
+            'items': {
+                'type': 'number'
+            }
         }
     }
 }
@@ -149,8 +155,19 @@ TEST_OBJECT = {
     'boolean': False,
     'enum': 'value_b',
     'enum_title': 'yours',
-    'enum_array': ['one', 'three']
+    'enum_array': ['one', 'three'],
+    'array': [0, 42, 1]
 }
+
+TEST_ARRAY_SCHEMA = {
+    'title': 'TestArray',
+    'type': 'array',
+    'items': {
+        'type': 'number'
+    }
+}
+
+TEST_ARRAY = [1, 42, -5]
 
 VERSION_SCHEMA = {
     'title': 'Version',
@@ -164,6 +181,8 @@ TEST_REGISTRY = {
     'test-rpc-invalid-param/schema': ['GET'],
     'test-rpc-return/schema': ['GET'],
     'test-rpc-two-params/schema': ['GET'],
+    'test-array': ['GET', 'PUT'],
+    'test-array/schema': ['GET'],
     'test-object': ['GET', 'PUT'],
     'test-object/schema': ['GET'],
     'version': ['GET']
@@ -184,6 +203,10 @@ def mock_http_request(method, url, command, body=None, query_params=None):
         return brayns.utils.Status(200, TEST_OBJECT_SCHEMA)
     if command == 'test-object':
         return brayns.utils.Status(200, TEST_OBJECT)
+    if command == 'test-array/schema':
+        return brayns.utils.Status(200, TEST_ARRAY_SCHEMA)
+    if command == 'test-array':
+        return brayns.utils.Status(200, TEST_ARRAY)
     if command == 'version':
         return brayns.utils.Status(200, TEST_VERSION)
     if command == 'version/schema':
@@ -298,6 +321,18 @@ def test_object_properties_enum_array():
         assert_true(hasattr(app, 'ENUM_ARRAY_ONE'))
         assert_true(hasattr(app, 'ENUM_ARRAY_TWO'))
         assert_true(hasattr(app, 'ENUM_ARRAY_THREE'))
+
+
+def test_object_properties_array():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_equal(app.test_object.array, TEST_OBJECT['array'])
+
+
+def test_array():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        assert_equal(app.test_array, TEST_ARRAY)
 
 
 def test_rpc_one_parameter():

@@ -246,12 +246,14 @@ class Application(object):
                     break
 
             class_type = getattr(classes, class_name)
-            value = class_type()
 
             is_object = schema['type'] == 'object'
             if is_object:
+                value = class_type()
                 _add_enums(value, self)
                 self._add_commit(class_type, object_name)
+            else:  # array
+                value = class_type(())
 
             # add member to Application
             member = '_' + os.path.basename(object_name).replace('-', '_')
@@ -387,10 +389,17 @@ class Application(object):
                 value = getattr(self, member)
 
                 # Initialize on first access; updates are received via websocket
-                if not value.as_dict() or not self._ws_connected:
+                if property_type == 'array':
+                    has_value = value.data
+                else:
+                    has_value = value.as_dict()
+                if not has_value or not self._ws_connected:
                     status = utils.http_request(HTTP_METHOD_GET, self._url, object_name)
                     if status.code == HTTP_STATUS_OK:
-                        value.__init__(**status.contents)
+                        if property_type == 'array':
+                            value.__init__(status.contents)
+                        else:
+                            value.__init__(**status.contents)
 
                 if property_type == 'array':
                     return value.data

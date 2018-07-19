@@ -407,30 +407,10 @@ class Application(object):
 
             return function
 
-        def setter_builder(member, object_name):
-            """ Wrapper for updating the property state """
-
-            def function(self, prop):
-                """ Update the current state of the property locally and in the application """
-                if property_type == 'object':
-                    setattr(self, member, prop)
-                    utils.http_request(HTTP_METHOD_PUT, self._url, object_name, prop.serialize())
-                    return
-
-                if property_type == 'array':
-                    value = getattr(self, member)
-                    value.data = prop
-                else:
-                    setattr(self, member, prop)
-                    utils.http_request(HTTP_METHOD_PUT, self._url, object_name, json.dumps(prop))
-
-            return function if HTTP_METHOD_PUT in self._registry[object_name] else None
-
         endpoint_name = os.path.basename(object_name)
         snake_case_name = endpoint_name.replace('-', '_')
         setattr(type(self), snake_case_name,
                 property(fget=getter_builder(member, object_name),
-                         fset=setter_builder(member, object_name),
                          doc='Access to the {0} property'.format(endpoint_name)))
 
     def _obtain_registry(self):

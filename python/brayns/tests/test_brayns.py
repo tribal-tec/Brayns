@@ -249,6 +249,15 @@ def mock_rpc_request(self, method, params=None, response_timeout=5):
     return True
 
 
+def mock_rpc_request_object_commit(self, method, params=None, response_timeout=5):
+    assert_equal(method, 'set-test-object')
+    import copy
+    obj = copy.deepcopy(TEST_OBJECT)
+    obj['integer'] = 42
+    assert_equal(obj, params)
+    return True
+
+
 def mock_snapshot(format, size, animation_parameters=None, camera=None, name=None, quality=None,
                   renderer=None, samples_per_pixel=None, response_timeout=None):
     if format == 'png':
@@ -326,6 +335,22 @@ def test_object_properties_array():
     with patch('brayns.utils.http_request', new=mock_http_request):
         app = brayns.Brayns('localhost:8200')
         assert_equal(app.test_object.array, TEST_OBJECT['array'])
+
+
+@raises(AttributeError)
+def test_object_replace():
+    with patch('brayns.utils.http_request', new=mock_http_request):
+        app = brayns.Brayns('localhost:8200')
+        app.test_object = [1,2,3]
+
+
+def test_object_commit():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+            patch('brayns.Application.rpc_request', new=mock_rpc_request_object_commit):
+        app = brayns.Brayns('localhost:8200')
+        app._ws_connected = True
+        app.test_object.integer = 42
+        app.test_object.commit()
 
 
 def test_array():

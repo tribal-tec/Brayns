@@ -460,7 +460,11 @@ class Application(object):
                 if self._handle_reply(data):
                     return
 
-                prop = getattr(self, '_' + data['method'].replace('-', '_'), None)
+                if not data['method'].startswith('set-'):
+                    return
+
+                prop_name = data['method'].replace('-', '_')[4:]
+                prop = getattr(self, '_' + prop_name, None)
                 if prop is None:
                     return
 

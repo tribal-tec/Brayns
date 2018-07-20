@@ -82,11 +82,8 @@ class Visualizer(Application):
     def _add_widgets(self):  # pragma: no cover
         """ Add functions to the visualizer to provide widgets for appropriate properties """
 
-        if self._ws_connected:
-            self._add_show_function()
-
-        if hasattr(self, 'animation_parameters'):
-            self._add_simulation_slider()
+        self._add_show_function()
+        self._add_simulation_slider()
 
     def _add_show_function(self):  # pragma: no cover
         """ Add show() function for live streaming """
@@ -172,43 +169,8 @@ class Visualizer(Application):
                         slider.value = data.current
                         slider.observe(on_value_change, names='value')
 
-                self._update_callback['animation-parameters'] = slider_update
+                self._update_callback['set-animation-parameters'] = slider_update
 
             return simulation_slider
 
         setattr(self, 'simulation_slider', function_builder())
-
-    def _add_show_progress(self):  # pragma: no cover
-        """ Add show_progress() function for lexis/data/progress display """
-
-        def function_builder():
-            """ Wrapper for returning the visualizer.show_progress() function """
-
-            def show_progress():
-                """ Show progress bar and message for current operation """
-
-                # pylint: disable=F0401,E1101
-                from ipywidgets import FloatProgress, Label, VBox
-                from IPython.display import display
-
-                progress = FloatProgress(min=0, max=1, value=self.progress.amount)
-                label = Label(value=self.progress.operation)
-                box = VBox([label, progress])
-                display(box)
-
-                def progress_update(data=None, close=False):
-                    """
-                    Update callback when we receive a progress update or when the websocket was
-                    closed
-                    """
-                    if close:
-                        box.close()
-                    elif data is not None:
-                        progress.value = data.amount
-                        label.value = data.operation
-
-                self._update_callback['progress'] = progress_update
-
-            return show_progress
-
-        setattr(self, 'show_progress', function_builder())

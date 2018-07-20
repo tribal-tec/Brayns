@@ -39,13 +39,13 @@ from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, \
 from . import utils
 
 
-def _handle_param_object(param, method, description):
+def _create_rpc_object_parameter(param, method, description):
     """
-    Create types from oneOf parameter of RPC and adds the RPC function itself.
-    :param param: the parameter object
-    :param method: name of RPC
-    :param description: description of RPC
-    :return:
+    Create an RPC where each property of the param object is a key-value argument.
+    :param param: the parameter object from the RPC
+    :param method: the name of RPC
+    :param description: the description of RPC
+    :return: the code of the function
     """
 
     required = param['required'] if 'required' in param else list()
@@ -71,7 +71,14 @@ def _handle_param_object(param, method, description):
         '''.format(arg_list, description, method)
 
 
-def _handle_param_array(name, method, description):
+def _create_rpc_array_parameter(name, method, description):
+    """
+    Create an RPC where the parameter is an array argument.
+    :param name: the name of the array argument
+    :param method: the name of RPC
+    :param description: the description of RPC
+    :return: the code of the function
+    """
     return '''
         def function(self, {1}, response_timeout=5):
             """
@@ -121,13 +128,9 @@ class Application(object):
 
         self._url = set_http_protocol(url) + '/'
 
-        if not self._check_version():
-            raise Exception('Minimal version check failed')
+        self._check_version()
 
-        self._registry, ret_code = self._obtain_registry()
-        if ret_code != HTTP_STATUS_OK:
-            raise Exception('Failed to obtain registry from application')
-
+        self._obtain_registry()
         self._create_all_properties()
 
         self._ws = None
@@ -138,7 +141,7 @@ class Application(object):
 
     def url(self):
         """
-        :return: The url of the rendering resource
+        :return: The address of the remote running Brayns instance.
         """
         return self._url
 
@@ -214,26 +217,20 @@ class Application(object):
         self._ws.send(json.dumps(data))
 
     def _check_version(self):
-        """
-        Check if the application version is sufficient enough.
-        :return True if minimal version matches expectation, False otherwise
-        """
+        """ Check if the Brayns' version is sufficient enough. """
 
         status = utils.http_request(HTTP_METHOD_GET, self._url, 'version')
         if status.code != HTTP_STATUS_OK:
-            print('Cannot obtain version from application')
-            return False
+            raise Exception('Cannot obtain version from Brayns')
 
-        minimal_version = '0.5.0'
+        minimal_version = '0.7.0'
         version = '.'.join(str(x) for x in [status.contents['major'], status.contents['minor'],
                                             status.contents['patch']])
 
         import semver
         if semver.match(version, '<{0}'.format(minimal_version)):
-            print('Application does not satisfy minimal required version; '
-                  'needed {0}, got {1}'.format(minimal_version, version))
-            return False
-        return True
+            raise Exception('Application does not satisfy minimal required version; '
+                            'needed {0}, got {1}'.format(minimal_version, version))
 
     def _create_all_properties(self):
         """
@@ -312,9 +309,9 @@ class Application(object):
             # in the absence of multiple parameters support, create a function with multiple
             # parameters from object properties
             elif params['type'] == 'object':
-                code = _handle_param_object(params, method, description)
+                code = _create_rpc_object_parameter(params, method, description)
             elif params['type'] == 'array':
-                code = _handle_param_array(params['name'], method, description)
+                code = _create_rpc_array_parameter(params['name'], method, description)
             else:
                 raise Exception('Invalid parameter type for method "{0}":'.format(method) +
                                 ' must be "object", "array" or "oneOf"')
@@ -335,11 +332,12 @@ class Application(object):
 
     def _handle_param_oneof(self, param, method, description):
         """
-        Create types from oneOf parameter of RPC and adds the RPC function itself.
+        Create an RPC where the parameter is from the oneOf array and create a type for each oneOf
+        type.
         :param param: the oneOf array
         :param method: name of RPC
         :param description: description of RPC
-        :return:
+        :return: the code of the function
         """
 
         param_types = list()
@@ -428,9 +426,11 @@ class Application(object):
                          doc='Access to the {0} property'.format(endpoint_name)))
 
     def _obtain_registry(self):
-        """ Returns the registry of PUT and GET objects of the application """
+        """ Obtain the registry of exposed objects and RPCs from brayns """
         status = utils.http_request(HTTP_METHOD_GET, self._url, 'registry')
-        return status.contents, status.code
+        if status.code != HTTP_STATUS_OK:
+            raise Exception('Failed to obtain registry from Brayns')
+        self._registry = status.contents
 
     def _schema(self, object_name):
         """ Returns the JSON schema for the given object """

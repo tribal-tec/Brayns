@@ -67,18 +67,18 @@ lint: run_pycodestyle run_pylint
 test: lint run_tests
 
 doc: $(VENV_INSTALLED)
-	make SPHINXBUILD=$(ROOT_DIR)/$(VENV_BIN)/sphinx-build -C doc html
+	make SPHINXBUILD=$(VENV_BIN)/sphinx-build -C doc html
 
 doc_pdf: $(VENV_INSTALLED)
-	make SPHINXBUILD=$(ROOT_DIR)/$(VENV_BIN)/sphinx-build -C doc latexpdf
+	make SPHINXBUILD=$(VENV_BIN)/sphinx-build -C doc latexpdf
 
 clean_test_venv:
 	@rm -rf $(VENV_INSTALLED)
 	@rm -rf $(ROOT_DIR)/test-reports
 
 clean_doc:
-	@test -x $(ROOT_DIR)/$(VENV_BIN)/sphinx-build && make SPHINXBUILD=$(ROOT_DIR)/$(VENV_BIN)/sphinx-build  -C doc clean || true
-	@rm -rf $(ROOT_DIR)/doc/source/_brayns_build
+	@test -x $(VENV_BIN)/sphinx-build && make SPHINXBUILD=$(VENV_BIN)/sphinx-build  -C doc clean || true
+	@rm -rf $(ROOT_DIR)/doc/build
 
 clean: clean_doc clean_test_venv
 	@rm -f pycodestyle.txt

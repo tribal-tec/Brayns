@@ -83,7 +83,7 @@ clean_doc:
 clean: clean_doc clean_test_venv
 	@rm -f pycodestyle.txt
 	@rm -f pylint.txt
-	@rm -rf brayns.egg-info
+	@rm -rf brayns/brayns.egg-info
 	@rm -f .coverage
 	@rm -rf test-reports
 	@rm -rf dist

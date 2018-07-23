@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+
 # Copyright (c) 2016-2018, Blue Brain Project
 #                          Raphael Dumusc <raphael.dumusc@epfl.ch>
 #                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
@@ -23,34 +23,47 @@
 # All rights reserved. Do not distribute without further notice.
 
 """
-The visualizer is the remote rendering resource in charge of rendering datasets
+Python package allowing remote control of visualization applications through HTTP REST API.
 """
 
 import base64
 import io
 
 from PIL import Image
-from .application import Application
+from .api_generator import create_all_properties
+from .rpcclient import RpcClient
 from .utils import in_notebook
+from .settings import DEFAULT_BRAYNS_UI_URI
+
+from .utils import HTTP_METHOD_GET, HTTP_STATUS_OK
+from . import utils
 
 
-class Visualizer(Application):
+class Client(RpcClient):
     """
-    The visualizer class provides specialization like widgets, image display and image streaming
-    for applications that expose according APIs.
+    Visualizer for large-scale and interactive ray-tracing of neurons
     """
 
-    def __init__(self, resource=None):
+    def __init__(self, url):
         """
-        Create a new visualizer instance by connecting to the given resource
-        :param resource: can be a string 'hostname:port' to connect to a known application, a
-                         ResourceAllocator instance or None for default allocation.
+        Create a new application instance by connecting to the given resource
+        :param url: a string 'hostname:port' to connect to a running brayns instance
         """
 
-        super(Visualizer, self).__init__(resource)
+        super(Client, self).__init__(url)
+        self._check_version()
+        create_all_properties(self, self.url())
 
         if in_notebook():
             self._add_widgets()  # pragma: no cover
+
+    def __str__(self):
+        # pylint: disable=E1101
+        version = 'unknown'
+        if self.version:
+            version = '.'.join(str(x) for x in [self.version.major, self.version.minor,
+                                                self.version.patch, self.version.revision])
+        return "Brayns version {0} running on {1}".format(version, self.url())
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', quality=None, samples_per_pixel=None):
@@ -78,6 +91,22 @@ class Visualizer(Application):
         if missing_padding != 0:
             data += b'=' * (4 - missing_padding)
         return Image.open(io.BytesIO(base64.b64decode(data)))
+
+    def _check_version(self):
+        """ Check if the Brayns' version is sufficient enough. """
+
+        status = utils.http_request(HTTP_METHOD_GET, self.url(), 'version')
+        if status.code != HTTP_STATUS_OK:
+            raise Exception('Cannot obtain version from Brayns')
+
+        minimal_version = '0.7.0'
+        version = '.'.join(str(x) for x in [status.contents['major'], status.contents['minor'],
+                                            status.contents['patch']])
+
+        import semver
+        if semver.match(version, '<{0}'.format(minimal_version)):
+            raise Exception('Application does not satisfy minimal required version; '
+                            'needed {0}, got {1}'.format(minimal_version, version))
 
     def _add_widgets(self):  # pragma: no cover
         """ Add functions to the visualizer to provide widgets for appropriate properties """
@@ -141,6 +170,7 @@ class Visualizer(Application):
                     """ Callback after play/pause button update to send delta for animation """
                     button.icon = 'pause' if change['new'] else 'play'
                     self.set_animation_parameters(delta=1 if change['new'] else 0)
+
                 button.observe(on_button_change, names='value')
 
                 slider = widgets.IntSlider(min=self.animation_parameters.start,
@@ -150,6 +180,7 @@ class Visualizer(Application):
                 def on_value_change(change):
                     """ Callback after slider update to send current for animation """
                     self.set_animation_parameters(current=change['new'])
+
                 slider.observe(on_value_change, names='value')
 
                 w = widgets.HBox([button, slider])
@@ -174,3 +205,38 @@ class Visualizer(Application):
             return simulation_slider
 
         setattr(self, 'simulation_slider', function_builder())
+
+    def set_colormap(self, colormap='magma', colormap_size=256, intensity=1, opacity=1,
+                     data_range=(0, 256)):
+        """
+        Set a colormap to Brayns.
+        :param colormap: color palette to use from matplotlib and seaborn
+        :param colormap_size: the number of colors to use to control precision
+        :param intensity: value to amplify the color values
+        :param opacity: opacity for colormap values
+        :param data_range: data range on which values the colormap should be applied
+        """
+        import seaborn as sns
+        palette = sns.color_palette(colormap, colormap_size)
+        palette_size = len(palette)
+        contributions = []
+        diffuses = []
+        # pylint: disable=E1101
+        tf = self.transfer_function
+        for i in range(0, palette_size):
+            color = palette[i]
+            diffuses.append([intensity * color[0], intensity * color[1], intensity * color[2],
+                             opacity])
+            contributions.append(0)
+        tf.diffuse = diffuses
+        tf.contribution = contributions
+        tf.range = data_range
+        tf.commit()
+
+    def open_ui(self):
+        """
+        Open the Brayns UI in a new page of the default system browser
+        """
+        import webbrowser
+        url = DEFAULT_BRAYNS_UI_URI + '/?host=' + self.url()
+        webbrowser.open(url)

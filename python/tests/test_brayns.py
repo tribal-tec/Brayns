@@ -285,7 +285,7 @@ def mock_snapshot(format, size, animation_parameters=None, camera=None, name=Non
 
 def test_init():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.url(), 'http://localhost:8200/')
         assert_equal(app.version.as_dict(), TEST_VERSION)
         assert_equal(str(app), 'Brayns version 0.7.0.12345 running on http://localhost:8200/')
@@ -294,24 +294,24 @@ def test_init():
 @raises(Exception)
 def test_init_no_version():
     with patch('brayns.utils.http_request', new=mock_http_request_no_version):
-        brayns.Brayns('localhost:8200')
+        brayns.Client('localhost:8200')
 
 
 @raises(Exception)
 def test_init_wrong_version():
     with patch('brayns.utils.http_request', new=mock_http_request_wrong_version):
-        brayns.Brayns('localhost:8200')
+        brayns.Client('localhost:8200')
 
 
 @raises(Exception)
 def test_init_no_registry():
     with patch('brayns.utils.http_request', new=mock_http_request_no_registry):
-        brayns.Brayns('localhost:8200')
+        brayns.Client('localhost:8200')
 
 
 def test_object_properties():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.integer, TEST_OBJECT['integer'])
         assert_equal(app.test_object.number, TEST_OBJECT['number'])
         assert_equal(app.test_object.string, TEST_OBJECT['string'])
@@ -320,7 +320,7 @@ def test_object_properties():
 
 def test_object_properties_enum():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.enum, TEST_OBJECT['enum'])
         assert_true(hasattr(app, 'ENUM_VALUE_A'))
         assert_true(hasattr(app, 'ENUM_VALUE_B'))
@@ -328,7 +328,7 @@ def test_object_properties_enum():
 
 def test_object_properties_enum_with_title():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.enum_title, TEST_OBJECT['enum_title'])
         assert_true(hasattr(app, 'MY_ENUM_MINE'))
         assert_true(hasattr(app, 'MY_ENUM_YOURS'))
@@ -336,7 +336,7 @@ def test_object_properties_enum_with_title():
 
 def test_object_properties_enum_array():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.enum_array, TEST_OBJECT['enum_array'])
 
         assert_true(hasattr(app, 'ENUM_ARRAY_ONE'))
@@ -346,21 +346,21 @@ def test_object_properties_enum_array():
 
 def test_object_properties_array():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.array, TEST_OBJECT['array'])
 
 
 @raises(AttributeError)
 def test_object_replace():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         app.test_object = [1,2,3]
 
 
 def test_object_commit():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.Application.rpc_request', new=mock_rpc_request_object_commit):
-        app = brayns.Brayns('localhost:8200')
+            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request_object_commit):
+        app = brayns.Client('localhost:8200')
         app._ws_connected = True
         app.test_object.integer = 42
         app.test_object.commit()
@@ -368,14 +368,14 @@ def test_object_commit():
 
 def test_array():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         assert_equal(app.test_array, TEST_ARRAY)
 
 
 def test_rpc_one_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.Application.rpc_request', new=mock_rpc_request):
-        app = brayns.Brayns('localhost:8200')
+            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc), TEST_RPC_ONE_PARAMETER['description'])
         assert_true(app.test_rpc(doit=False, name='foo'))
@@ -383,8 +383,8 @@ def test_rpc_one_parameter():
 
 def test_rpc_one_of_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.Application.rpc_request', new=mock_rpc_request):
-        app = brayns.Brayns('localhost:8200')
+         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
         assert_true(hasattr(app, 'PerspectiveCamera'))
@@ -395,8 +395,8 @@ def test_rpc_one_of_parameter():
 
 def test_rpc_array_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.Application.rpc_request', new=mock_rpc_request):
-        app = brayns.Brayns('localhost:8200')
+            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.inspect).startswith(TEST_RPC_ARRAY_PARAMETER['description']))
         assert_true(app.inspect(xy=[1,2]))
@@ -404,15 +404,15 @@ def test_rpc_array_parameter():
 
 def test_rpc_two_parameters():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.Application.rpc_request', new=mock_rpc_request):
-        app = brayns.Brayns('localhost:8200')
+         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
         assert_false(hasattr(app, 'test-rpc-two-params'))
 
 
 def test_rpc_only_return():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.Application.rpc_request', new=mock_rpc_request):
-        app = brayns.Brayns('localhost:8200')
+         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc_return), TEST_RPC_ONLY_RETURN['description'])
         assert_true(app.test_rpc_return())
@@ -420,27 +420,27 @@ def test_rpc_only_return():
 
 def test_rpc_invalid_type():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.Application.rpc_request', new=mock_rpc_request):
-        app = brayns.Brayns('localhost:8200')
+            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
         assert_false(hasattr(app, 'test-rpc-invalid-type'))
 
 
 @raises(Exception)
 def test_rpc_invalid_param():
     with patch('brayns.utils.http_request', new=mock_http_request_invalid_rpc_param):
-        brayns.Brayns('localhost:8200')
+        brayns.Client('localhost:8200')
 
 
 def test_image():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         setattr(app, 'snapshot', mock_snapshot)
         assert_true(app.image(size=[50,50], format='png'))
 
 
 def test_image_wrong_format():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         setattr(app, 'snapshot', mock_snapshot)
         assert_false(app.image(size=[50,50], format='foo'))
 
@@ -448,7 +448,7 @@ def test_image_wrong_format():
 @raises(TypeError)
 def test_image_not_base64():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         setattr(app, 'snapshot', mock_snapshot)
         app.image(size=[50, 50], format='jpg')
 
@@ -467,7 +467,7 @@ class MockTransferFunction(object):
 
 def test_set_colormap():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         setattr(app, 'transfer_function', MockTransferFunction())
         app.set_colormap(colormap_size=123, data_range=(0, 42))
         assert_equal(len(app.transfer_function.contribution), 123)
@@ -480,30 +480,19 @@ def test_set_colormap():
 @raises(ValueError)
 def test_set_colormap_unknown_colormap():
     with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         setattr(app, 'transfer_function', MockTransferFunction())
         app.set_colormap(colormap='foo')
-
-
-def test_set_simulation_colormap():
-    with patch('brayns.utils.http_request', new=mock_http_request):
-        app = brayns.Brayns('localhost:8200')
-        setattr(app, 'transfer_function', MockTransferFunction())
-        app.set_simulation_colormap()
-        assert_equal(len(app.transfer_function.contribution), 1024)
-        assert_equal(len(app.transfer_function.diffuse), 1024)
-        assert_equal(len(app.transfer_function.emission), 1024)
-        assert_equal(app.transfer_function.range, (-80.0,-10.0))
-        assert_true(app.transfer_function.commit_called)
 
 
 def mock_webbrowser_open(url):
     assert_equal(url, brayns.settings.DEFAULT_BRAYNS_UI_URI + '/?host=http://localhost:8200/')
 
+
 def test_open_ui():
     with patch('brayns.utils.http_request', new=mock_http_request), \
             patch('webbrowser.open', new=mock_webbrowser_open):
-        app = brayns.Brayns('localhost:8200')
+        app = brayns.Client('localhost:8200')
         app.open_ui()
 
 

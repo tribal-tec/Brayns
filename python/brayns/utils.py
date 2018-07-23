@@ -111,26 +111,6 @@ def in_notebook():
     return 'ipykernel' in sys.modules
 
 
-def simulation_control_points(colormap_size, data_range):
-    """
-    Return a dict of control points to create a default simulation colormap
-    :param colormap_size: the number of colors to use to control precision
-    :param data_range: data range on which values the colormap should be applied
-    :return: dict of points
-    """
-    delta = colormap_size / (data_range[1] - data_range[0])
-    points = dict()
-    points[int((-80.0 - data_range[0]) * delta)] = [1.0, 0.0, 0.0, 0.0]
-    points[int((-77.181205 - data_range[0]) * delta)] = [0.023529, 0.023529, 0.6549020, 0.05]
-    points[int((-72.06669 - data_range[0]) * delta)] = [0.141176, 0.529412, 0.9607843, 0.16]
-    points[int((-70.2 - data_range[0]) * delta)] = [0.388235, 0.345098, 0.7137255, 0.22]
-    points[int((-67.4 - data_range[0]) * delta)] = [0.960784, 0.0, 0.0196078, 0.3]
-    points[int((-50.67785 - data_range[0]) * delta)] = [0.858824, 0.674510, 0.0000000, 0.4]
-    points[int((-31.47 - data_range[0]) * delta)] = [0.964706, 1.000000, 0.6313725, 0.8]
-    points[int((-10.0 - data_range[0]) * delta)] = [1.0, 1.0, 1.0, 1.0]
-    return sorted(points.items())
-
-
 def set_http_protocol(url):
     """
     Sets the http protocol to the url if it is not present. If not protocol is specified in the url,

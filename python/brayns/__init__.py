@@ -26,10 +26,8 @@
 Python package allowing remote control of visualization applications through HTTP REST API.
 """
 
-__all__ = ['Visualizer', 'SIMULATION_DEFAULT_RANGE', 'Brayns', 'Application']
+__all__ = ['Client']
 from .version import VERSION
-from .application import Application
-from .visualizer import Visualizer
-from .brayns import Brayns
-from .settings import SIMULATION_DEFAULT_RANGE, DEFAULT_BRAYNS_UI_URI
-from .utils import simulation_control_points
+from .client import Client
+from .rpcclient import RpcClient
+from .settings import DEFAULT_BRAYNS_UI_URI

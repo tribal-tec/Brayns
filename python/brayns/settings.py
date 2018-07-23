@@ -27,6 +27,4 @@ Settings and default values for Brayns
 """
 
 
-DEFAULT_BRAYNS_UI_URI = 'http://brayns.ocp.bbp.epfl.ch'
-
-SIMULATION_DEFAULT_RANGE = [-92.0915, 49.5497]
+DEFAULT_BRAYNS_UI_URI = 'https://bbp-brayns.epfl.ch'

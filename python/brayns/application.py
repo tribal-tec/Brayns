@@ -130,7 +130,6 @@ class Application(object):
 
         self._check_version()
 
-        self._obtain_registry()
         self._create_all_properties()
 
         self._ws = None
@@ -237,7 +236,9 @@ class Application(object):
         Add all exposed objects and types from the application as properties to the Application.
         """
 
-        for object_name in self._registry.keys():
+        registry = self._obtain_registry()
+
+        for object_name in registry.keys():
             if self._handle_rpc(object_name):
                 continue
 
@@ -260,7 +261,8 @@ class Application(object):
             if is_object:
                 value = class_type()
                 _add_enums(value, self)
-                self._add_commit(class_type, object_name)
+                if HTTP_METHOD_PUT in registry[object_name]:
+                    self._add_commit(class_type, object_name)
             else:  # array
                 value = class_type(())
 
@@ -377,18 +379,17 @@ class Application(object):
     def _add_commit(self, class_type, object_name):
         """ Add commit() for given property """
 
-        if HTTP_METHOD_PUT in self._registry[object_name]:
-            def commit_builder(url):
-                """ Wrapper for returning the property.commit() function """
+        def commit_builder(url):
+            """ Wrapper for returning the property.commit() function """
 
-                def commit(prop):
-                    """ Update the property in the application """
+            def commit(prop):
+                """ Update the property in the application """
 
-                    return self.rpc_request('set-' + os.path.basename(url), prop.as_dict())
+                return self.rpc_request('set-' + os.path.basename(url), prop.as_dict())
 
-                return commit
+            return commit
 
-            setattr(class_type, 'commit', commit_builder(object_name))
+        setattr(class_type, 'commit', commit_builder(object_name))
 
     def _add_property(self, member, object_name, property_type):
         """ Add property to Application for object """
@@ -430,7 +431,7 @@ class Application(object):
         status = utils.http_request(HTTP_METHOD_GET, self._url, 'registry')
         if status.code != HTTP_STATUS_OK:
             raise Exception('Failed to obtain registry from Brayns')
-        self._registry = status.contents
+        return status.contents
 
     def _schema(self, object_name):
         """ Returns the JSON schema for the given object """

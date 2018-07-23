@@ -30,10 +30,9 @@ import base64
 import io
 
 from PIL import Image
-from .api_generator import create_all_properties
+from .api_generator import build_api
 from .rpcclient import RpcClient
 from .utils import in_notebook
-from .settings import DEFAULT_BRAYNS_UI_URI
 
 from .utils import HTTP_METHOD_GET, HTTP_STATUS_OK
 from . import utils
@@ -52,7 +51,7 @@ class Client(RpcClient):
 
         super(Client, self).__init__(url)
         self._check_version()
-        create_all_properties(self, self.url())
+        build_api(self, self.url())
 
         if in_notebook():
             self._add_widgets()  # pragma: no cover
@@ -92,6 +91,41 @@ class Client(RpcClient):
             data += b'=' * (4 - missing_padding)
         return Image.open(io.BytesIO(base64.b64decode(data)))
 
+    def set_colormap(self, colormap='magma', colormap_size=256, intensity=1, opacity=1,
+                     data_range=(0, 256)):
+        """
+        Set a colormap to Brayns.
+        :param colormap: color palette to use from matplotlib and seaborn
+        :param colormap_size: the number of colors to use to control precision
+        :param intensity: value to amplify the color values
+        :param opacity: opacity for colormap values
+        :param data_range: data range on which values the colormap should be applied
+        """
+        import seaborn as sns
+        palette = sns.color_palette(colormap, colormap_size)
+        palette_size = len(palette)
+        contributions = []
+        diffuses = []
+        # pylint: disable=E1101
+        tf = self.transfer_function
+        for i in range(0, palette_size):
+            color = palette[i]
+            diffuses.append([intensity * color[0], intensity * color[1], intensity * color[2],
+                             opacity])
+            contributions.append(0)
+        tf.diffuse = diffuses
+        tf.contribution = contributions
+        tf.range = data_range
+        tf.commit()
+
+    def open_ui(self):
+        """
+        Open the Brayns UI in a new page of the default system browser
+        """
+        import webbrowser
+        url = 'https://bbp-brayns.epfl.ch?host=' + self.url()
+        webbrowser.open(url)
+
     def _check_version(self):
         """ Check if the Brayns' version is sufficient enough. """
 
@@ -112,7 +146,7 @@ class Client(RpcClient):
         """ Add functions to the visualizer to provide widgets for appropriate properties """
 
         self._add_show_function()
-        self._add_simulation_slider()
+        self._add_animation_slider()
 
     def _add_show_function(self):  # pragma: no cover
         """ Add show() function for live streaming """
@@ -124,38 +158,37 @@ class Client(RpcClient):
                 """ Shows the live rendering of the application """
 
                 self._setup_websocket()
-                if self._ws_connected:
-                    # pylint: disable=F0401,E1101
-                    from IPython.display import display
-                    import ipywidgets as widgets
-                    image = widgets.Image(format='jpg')
-                    image.value = base64.b64decode(self.image_jpeg()['data'])
-                    display(image)
 
-                    def image_update(data=None, close=False):
-                        """
-                        Update callback when we receive a new image or when the websocket was closed
-                        """
-                        if close:
-                            image.close()
-                        elif data is not None:
-                            image.value = data
+                # pylint: disable=F0401,E1101
+                from IPython.display import display
+                import ipywidgets as widgets
+                image = widgets.Image(format='jpg')
+                image.value = base64.b64decode(self.image_jpeg()['data'])
+                display(image)
 
-                    self._update_callback['image-jpeg'] = image_update
-                    return
+                def image_update(data=None, close=False):
+                    """
+                    Update callback when we receive a new image or when the websocket was closed
+                    """
+                    if close:
+                        image.close()
+                    elif data is not None:
+                        image.value = data
+
+                self._update_callback['image-jpeg'] = image_update
 
             return show
 
         setattr(self, 'show', function_builder())
 
-    def _add_simulation_slider(self):  # pragma: no cover
-        """ Add simulation_slider() function for animation_parameters control """
+    def _add_animation_slider(self):  # pragma: no cover
+        """ Add animation_slider() function for animation_parameters control """
 
         def function_builder():
-            """ Wrapper for returning the visualizer.simulation_slider() function """
+            """ Wrapper for returning the visualizer.animation_slider() function """
 
-            def simulation_slider():
-                """ Show slider to control simulation """
+            def animation_slider():
+                """ Show slider to control animation """
 
                 # pylint: disable=F0401,E1101
                 import ipywidgets as widgets
@@ -202,41 +235,6 @@ class Client(RpcClient):
 
                 self._update_callback['set-animation-parameters'] = slider_update
 
-            return simulation_slider
+            return animation_slider
 
-        setattr(self, 'simulation_slider', function_builder())
-
-    def set_colormap(self, colormap='magma', colormap_size=256, intensity=1, opacity=1,
-                     data_range=(0, 256)):
-        """
-        Set a colormap to Brayns.
-        :param colormap: color palette to use from matplotlib and seaborn
-        :param colormap_size: the number of colors to use to control precision
-        :param intensity: value to amplify the color values
-        :param opacity: opacity for colormap values
-        :param data_range: data range on which values the colormap should be applied
-        """
-        import seaborn as sns
-        palette = sns.color_palette(colormap, colormap_size)
-        palette_size = len(palette)
-        contributions = []
-        diffuses = []
-        # pylint: disable=E1101
-        tf = self.transfer_function
-        for i in range(0, palette_size):
-            color = palette[i]
-            diffuses.append([intensity * color[0], intensity * color[1], intensity * color[2],
-                             opacity])
-            contributions.append(0)
-        tf.diffuse = diffuses
-        tf.contribution = contributions
-        tf.range = data_range
-        tf.commit()
-
-    def open_ui(self):
-        """
-        Open the Brayns UI in a new page of the default system browser
-        """
-        import webbrowser
-        url = DEFAULT_BRAYNS_UI_URI + '/?host=' + self.url()
-        webbrowser.open(url)
+        setattr(self, 'animation_slider', function_builder())

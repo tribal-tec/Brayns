@@ -35,6 +35,49 @@ from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK
 from . import utils
 
 
+def build_api(target_object, url):
+    """
+    Fetches the registry from the remote running Brayns instance and adds all found properties, RPCs
+    and types to the given target_object.
+    :param target_object: The target object where to add all generated properties, RPCs and types to
+    :param url: The address of the remote running Brayns instance.
+    """
+
+    registry = _obtain_registry(url)
+    for object_name in registry.keys():
+        if _handle_rpc(target_object, url, object_name):
+            continue
+
+        schema, ret_code = _obtain_schema(url, object_name)
+        if ret_code != HTTP_STATUS_OK:
+            continue
+
+        classes = pjs.ObjectBuilder(schema).build_classes()
+        class_names = dir(classes)
+
+        # find the generated class name that matches our schema root title
+        for c in class_names:
+            if c.lower() == schema['title'].lower():
+                class_name = c
+                break
+
+        class_type = getattr(classes, class_name)
+
+        is_object = schema['type'] == 'object'
+        if is_object:
+            value = class_type()
+            _add_enums(value, target_object)
+            if HTTP_METHOD_PUT in registry[object_name]:
+                _add_commit(target_object, class_type, object_name)
+        else:  # array
+            value = class_type(())
+
+        # add member to Application
+        member = '_' + os.path.basename(object_name).replace('-', '_')
+        setattr(target_object, member, value)
+        _add_property(target_object, member, object_name, schema['type'])
+
+
 def _create_rpc_object_parameter(param, method, description):
     """
     Create an RPC where each property of the param object is a key-value argument.
@@ -108,47 +151,6 @@ def _add_enums(value, target_object):
         for val in enum['enum']:
             enum_value = enum_class + inflection.parameterize(val, '_').upper()
             setattr(target_object, enum_value, val)
-
-
-def create_all_properties(target_object, url):
-    """
-    Add all exposed objects and types from the application as properties to the Application.
-    """
-
-    registry = _obtain_registry(url)
-
-    for object_name in registry.keys():
-        if _handle_rpc(target_object, url, object_name):
-            continue
-
-        schema, ret_code = _obtain_schema(url, object_name)
-        if ret_code != HTTP_STATUS_OK:
-            continue
-
-        classes = pjs.ObjectBuilder(schema).build_classes()
-        class_names = dir(classes)
-
-        # find the generated class name that matches our schema root title
-        for c in class_names:
-            if c.lower() == schema['title'].lower():
-                class_name = c
-                break
-
-        class_type = getattr(classes, class_name)
-
-        is_object = schema['type'] == 'object'
-        if is_object:
-            value = class_type()
-            _add_enums(value, target_object)
-            if HTTP_METHOD_PUT in registry[object_name]:
-                _add_commit(target_object, class_type, object_name)
-        else:  # array
-            value = class_type(())
-
-        # add member to Application
-        member = '_' + os.path.basename(object_name).replace('-', '_')
-        setattr(target_object, member, value)
-        _add_property(target_object, member, object_name, schema['type'])
 
 
 def _handle_rpc(target_object, url, object_name):
@@ -230,8 +232,9 @@ def _handle_param_oneof(target_object, param, method, description):
         class_names = dir(classes)
 
         # find the generated class name that matches our schema root title
+        class_name = None
         for c in class_names:
-            if c == inflection.camelize(o['title']):
+            if c.lower() == inflection.camelize(o['title'].replace(' ', '_')).lower():
                 class_name = c
                 break
 

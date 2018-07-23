@@ -115,6 +115,31 @@ TEST_RPC_ONEOF_PARAMETER = {
     }]
 }
 
+TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING = {
+    'title': 'set-mode',
+    'description': 'Check different casings work with created types',
+    'type': 'method',
+    'params': [{
+        'oneOf': [{
+            'type': 'object',
+            'title': 'StereoFull',
+            'properties': {}
+        }, {
+            'type': 'object',
+            'title': 'mono Full',
+            'properties': {}
+        }, {
+            'type': 'object',
+            'title': 'truthFul',
+            'properties': {}
+        }, {
+            'type': 'object',
+            'title': 'meaning_ful',
+            'properties': {}
+        }]
+    }]
+}
+
 TEST_RPC_ARRAY_PARAMETER = {
     'title': 'inspect',
     'description': 'Pass on array parameter to brayns',
@@ -187,6 +212,7 @@ VERSION_SCHEMA = {
 TEST_REGISTRY = {
     'test-rpc/schema': ['GET'],
     'set-camera/schema': ['GET'],
+    'set-mode/schema': ['GET'],
     'inspect/schema': ['GET'],
     'test-rpc-invalid-type/schema': ['GET'],
     'test-rpc-invalid-param/schema': ['GET'],
@@ -204,6 +230,8 @@ def mock_http_request(method, url, command, body=None, query_params=None):
         return brayns.utils.Status(200, TEST_RPC_ONE_PARAMETER)
     if command == 'set-camera/schema':
         return brayns.utils.Status(200, TEST_RPC_ONEOF_PARAMETER)
+    if command == 'set-mode/schema':
+        return brayns.utils.Status(200, TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING)
     if command == 'inspect/schema':
         return brayns.utils.Status(200, TEST_RPC_ARRAY_PARAMETER)
     if command == 'test-rpc-invalid-type/schema':
@@ -392,6 +420,15 @@ def test_rpc_one_of_parameter():
         param.fov = 10.2
         assert_true(app.set_camera(param))
 
+def test_rpc_one_of_parameter_weird_casings():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
+        assert_true(hasattr(app, 'StereofullMode'))
+        assert_true(hasattr(app, 'MonoFullMode'))
+        assert_true(hasattr(app, 'TruthfulMode'))
+        assert_true(hasattr(app, 'MeaningFulMode'))
+
 
 def test_rpc_array_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
@@ -486,7 +523,7 @@ def test_set_colormap_unknown_colormap():
 
 
 def mock_webbrowser_open(url):
-    assert_equal(url, brayns.settings.DEFAULT_BRAYNS_UI_URI + '/?host=http://localhost:8200/')
+    assert_equal(url, 'https://bbp-brayns.epfl.ch?host=http://localhost:8200/')
 
 
 def test_open_ui():

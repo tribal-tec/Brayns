@@ -23,11 +23,11 @@
 # All rights reserved. Do not distribute without further notice.
 
 """
-Python package allowing remote control of visualization applications through HTTP REST API.
+Python package allowing remote control of a running Brayns instance using websockets and HTTP
+requests.
 """
 
 __all__ = ['Client']
 from .version import VERSION
 from .client import Client
 from .rpcclient import RpcClient
-from .settings import DEFAULT_BRAYNS_UI_URI

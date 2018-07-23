@@ -23,11 +23,13 @@
 # All rights reserved. Do not distribute without further notice.
 
 """
-The application class exposes a dynamic generated API from HTTP/websockets server exposed registry.
+The RpcClient class manages a websocket connection to handle incoming message from the remote Brayns
+instance in a thread, and provides methods to send notifications and requests in JSON-RPC format.
 """
 
 import json
 import threading
+import time
 import websocket
 
 from .utils import set_http_protocol, set_ws_protocol, WS_PATH
@@ -35,14 +37,17 @@ from .utils import set_http_protocol, set_ws_protocol, WS_PATH
 
 class RpcClient(object):
     """
-    The application class exposes a dynamic generated API from HTTP/websockets server exposed
-    registry.
+    The RpcClient class manages a websocket connection to handle incoming message from the remote
+    Brayns instance in a thread, and provides methods to send notifications and requests in JSON-RPC
+    format.
     """
 
     def __init__(self, url):
         """
-
-        :param url:
+        Convert to the URL to a proper format and initialize the state of the client. Does not
+        establish the websocket connection yet. This will be postponed to either the first notify
+        or request.
+        :param url: The address of the remote running Brayns instance.
         """
 
         self._url = set_http_protocol(url) + '/'
@@ -61,7 +66,7 @@ class RpcClient(object):
 
     def rpc_request(self, method, params=None, response_timeout=5):  # pragma: no cover
         """
-        Invoke a RPC on the application.
+        Invoke an RPC on the remote running Brayns instance.
         :param method: name of the method to invoke
         :param params: params for the method
         :param response_timeout: number of seconds to wait for the response
@@ -90,7 +95,6 @@ class RpcClient(object):
         self._setup_websocket()
         self._ws.send(json.dumps(data))
 
-        import time
         if response_timeout:
             timeout = response_timeout * 10
 
@@ -109,7 +113,7 @@ class RpcClient(object):
 
     def rpc_notify(self, method, params=None):  # pragma: no cover
         """
-        Invoke a RPC on the application without waiting for a response.
+        Invoke an RPC on the remote running Brayns instance without waiting for a response.
         :param method: name of the method to invoke
         :param params: params for the method
         """
@@ -142,18 +146,24 @@ class RpcClient(object):
             if data_type == websocket.ABNF.OPCODE_TEXT:
                 data = json.loads(data)
 
-                if self._handle_reply(data):
+                # check if the received data is a response from a previous request
+                if self._handle_response(data):
                     return
 
+                # if the received data is a change notification from any known object
                 if not data['method'].startswith('set-'):
                     return
 
+                # remove the 'set-' part of the data method to find the property to update its
+                # content
                 prop_name = data['method'].replace('-', '_')[4:]
                 prop = getattr(self, '_' + prop_name, None)
                 if prop is None:
                     return
 
                 prop.__init__(**data['params'])
+
+                # call an optionally registered callback on the newly updated property
                 if data['method'] in self._update_callback:
                     self._update_callback[data['method']](data=prop)
             elif data_type == websocket.ABNF.OPCODE_BINARY:
@@ -177,15 +187,14 @@ class RpcClient(object):
         ws_thread.daemon = True
         ws_thread.start()
 
-        import time
         conn_timeout = 5
         while not self._ws_connected and conn_timeout:
             time.sleep(0.2)
             conn_timeout -= 1
 
-    def _handle_reply(self, data):  # pragma: no cover
+    def _handle_response(self, data):  # pragma: no cover
         """
-        Handle JSON RPC reply
+        Handle a potential JSON-RPC response message.
         :param data: data of the reply
         :return True if a request was handled, False otherwise
         """

@@ -27,3 +27,5 @@ nosexcover~=1.0.11
 tox~=3.1.2
 mock~=2.0.0
 Sphinx~=1.7.6
+sphinx_rtd_theme~=0.4.0
+flake8~=3.5.0

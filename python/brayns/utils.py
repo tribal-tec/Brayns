@@ -22,9 +22,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""
-The visualizer is the remote rendering resource in charge of rendering datasets
-"""
+"""Utils module for http request and notebook stuff."""
 
 import sys
 from collections import OrderedDict
@@ -46,25 +44,26 @@ WS_PATH = '/ws'
 
 
 class Status(object):
-    """
-    Holds the execution status of an HTTP request
-    """
+    """Holds the execution status of an HTTP request."""
+
     def __init__(self, code, contents):
+        """Initialize status object with given code and contents."""
         self.code = code
         self.contents = contents
 
 
 # pylint: disable=R0912
 def http_request(method, url, command, body=None, query_params=None):  # pragma: no cover
-    """
-    Perform http requests to the given URL and return the applications' response.
+    """Perform http requests to the given URL and return the applications' response.
 
-    :param method: the type of HTTP request, PUT or GET are supported
-    :param url: the URL of the applications' http server
-    :param body: optional body for PUT requests
-    :param command: the type of HTTP command to be executed on the target app
-    :param query_params: the query params to append to the request url
+    :param str method: the type of HTTP request, PUT or GET are supported
+    :param str url: the URL of the applications' http server
+    :param str body: optional body for PUT requests
+    :param str command: the type of HTTP command to be executed on the target app
+    :param str query_params: the query params to append to the request url
     :return: JSON-encoded response of the request
+    :rtype: Status
+    :raises Exception: on connection error
     """
     full_url = url
     request = None
@@ -104,19 +103,21 @@ def http_request(method, url, command, body=None, query_params=None):  # pragma:
 
 
 def in_notebook():
-    """
-    Returns ``True`` if the module is running in IPython kernel,
-    ``False`` if in IPython shell or other Python shell.
+    """Check we are running in a notebook or not.
+
+    :return: ``True`` if the module is running in IPython kernel, ``False`` if in IPython shell or
+    other Python shell.
+    :rtype: bool
     """
     return 'ipykernel' in sys.modules
 
 
 def set_http_protocol(url):
-    """
-    Sets the http protocol to the url if it is not present. If not protocol is specified in the url,
-     http is used
-    :param url: Url to be checked
+    """Set the http protocol to the url if it is not present.
+
+    :param str url: Url to be checked
     :return: url with protocol
+    :rtype: str
     """
     if url.find(HTTP_PREFIX) == -1 and url.find(HTTPS_PREFIX) == -1:
         return HTTP_PREFIX + url
@@ -124,9 +125,11 @@ def set_http_protocol(url):
 
 
 def set_ws_protocol(url):
-    """
-    Sets the WebSocket protocol according to the resource url
+    """Set the WebSocket protocol according to the resource url.
+
+    :param str url:
     :return: ws for http, wss for https
+    :rtype: str
     """
     if url.find(HTTPS_PREFIX) != -1:
         return WSS_PREFIX + url[len(HTTPS_PREFIX):]

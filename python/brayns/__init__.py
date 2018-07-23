@@ -22,12 +22,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""
-Python package allowing remote control of a running Brayns instance using websockets and HTTP
-requests.
-"""
+"""Enables remote control of a running Brayns instance using websockets and HTTP requests."""
 
-__all__ = ['Client']
-from .version import VERSION
+__all__ = ['Client', 'RpcClient']
 from .client import Client
 from .rpcclient import RpcClient

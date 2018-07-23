@@ -22,8 +22,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""
-The application class exposes a dynamic generated API from HTTP/websockets server exposed registry.
+"""Provides functionality to dynamically add properties, types and functions to a given object,
+based on a registry and JSON-schema of exposed properties and RPCs.
 """
 
 import os
@@ -36,13 +36,13 @@ from . import utils
 
 
 def build_api(target_object, url):
-    """
-    Fetches the registry from the remote running Brayns instance and adds all found properties, RPCs
-    and types to the given target_object.
-    :param target_object: The target object where to add all generated properties, RPCs and types to
-    :param url: The address of the remote running Brayns instance.
-    """
+    """Fetches the registry from the remote running Brayns instance and adds all found properties,
+    RPCs and types to the given target_object.
 
+    :param object target_object: The target object where to add all generated properties, RPCs and
+                                 types to
+    :param str url: The address of the remote running Brayns instance.
+    """
     registry = _obtain_registry(url)
     for object_name in registry.keys():
         if _handle_rpc(target_object, url, object_name):
@@ -79,14 +79,14 @@ def build_api(target_object, url):
 
 
 def _create_rpc_object_parameter(param, method, description):
-    """
-    Create an RPC where each property of the param object is a key-value argument.
-    :param param: the parameter object from the RPC
-    :param method: the name of RPC
-    :param description: the description of RPC
-    :return: the code of the function
-    """
+    """Create an RPC where each property of the param object is a key-value argument.
 
+    :param dict param: the parameter object from the RPC
+    :param str method: the name of RPC
+    :param str description: the description of RPC
+    :return: the code of the function
+    :rtype: str
+    """
     required = param['required'] if 'required' in param else list()
     optional = list()
     for s in param['properties'].keys():
@@ -111,12 +111,13 @@ def _create_rpc_object_parameter(param, method, description):
 
 
 def _create_rpc_array_parameter(name, method, description):
-    """
-    Create an RPC where the parameter is an array argument.
-    :param name: the name of the array argument
-    :param method: the name of RPC
-    :param description: the description of RPC
+    """Create an RPC where the parameter is an array argument.
+
+    :param str name: the name of the array argument
+    :param str method: the name of RPC
+    :param str description: the description of RPC
     :return: the code of the function
+    :rtype: str
     """
     return '''
         def function(self, {1}, response_timeout=5):
@@ -130,10 +131,11 @@ def _create_rpc_array_parameter(name, method, description):
 
 
 def _add_enums(value, target_object):
-    """
-    Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>
-    """
+    """Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>
 
+    :param dict value: don't know now
+    :param object target_object: The target object where to add the enum to
+    """
     for i in value.keys():
         enum = None
         if 'enum' in value.propinfo(i):
@@ -154,10 +156,13 @@ def _add_enums(value, target_object):
 
 
 def _handle_rpc(target_object, url, object_name):
-    """
-    Try to handle object_name as RPC
-    :param object_name: registry endpoint, e.g. v1/foo[/schema]
+    """Try to handle object_name as RPC
+
+    :param object target_object: The target object where to add the enum to
+    :param str url: The address of the remote running Brayns instance.
+    :param str object_name: registry endpoint, e.g. v1/foo[/schema]
     :return: True if object_name was RPC, False otherwise
+    :rtype: bool
     """
     if not object_name.endswith('/schema'):
         return False
@@ -172,9 +177,11 @@ def _handle_rpc(target_object, url, object_name):
 
 
 def _add_rpc(target_object, schema):
-    """
-    Add a new function from the given schema that describes an RPC.
-    :param schema: schema containing name, description, params of the RPC
+    """Add a new function from the given schema that describes an RPC.
+
+    :param object target_object: The target object where to add the RPC to
+    :param dict schema: schema containing name, description, params of the RPC
+    :raises Exception: if the param type of the RPC does not match oneOf, object or array
     """
     if schema['type'] != 'method':
         return
@@ -217,15 +224,16 @@ def _add_rpc(target_object, schema):
 
 
 def _handle_param_oneof(target_object, param, method, description):
-    """
-    Create an RPC where the parameter is from the oneOf array and create a type for each oneOf
+    """Create an RPC where the parameter is from the oneOf array and create a type for each oneOf
     type.
-    :param param: the oneOf array
-    :param method: name of RPC
-    :param description: description of RPC
-    :return: the code of the function
-    """
 
+    :param object target_object: The target object where to add the oneOf types to
+    :param list param: the oneOf array
+    :param str method: name of RPC
+    :param str description: description of RPC
+    :return: the code of the function
+    :rtype: str
+    """
     param_types = list()
     for o in param:
         classes = pjs.ObjectBuilder(o).build_classes()
@@ -263,14 +271,11 @@ def _handle_param_oneof(target_object, param, method, description):
 
 
 def _add_commit(target_object, class_type, object_name):
-    """ Add commit() for given property """
-
+    """Add commit() for given property."""
     def commit_builder(url):
-        """ Wrapper for returning the property.commit() function """
-
+        """Wrapper for returning the property.commit() function."""
         def commit(prop):
-            """ Update the property in the application """
-
+            """Update the property in the application."""
             return target_object.rpc_request('set-' + os.path.basename(url), prop.as_dict())
 
         return commit
@@ -279,13 +284,11 @@ def _add_commit(target_object, class_type, object_name):
 
 
 def _add_property(target_object, member, object_name, property_type):
-    """ Add property to Application for object """
-
+    """Add property to Application for object."""
     def getter_builder(member, object_name):
-        """ Wrapper for returning the property state """
-
+        """Wrapper for returning the property state."""
         def function(self):
-            """ Returns the current state for the property """
+            """Returns the current state for the property."""
             value = getattr(self, member)
 
             # Initialize on first access; updates are received via websocket
@@ -315,7 +318,7 @@ def _add_property(target_object, member, object_name, property_type):
 
 
 def _obtain_registry(url):
-    """ Obtain the registry of exposed objects and RPCs from brayns """
+    """Obtain the registry of exposed objects and RPCs from Brayns."""
     status = utils.http_request(HTTP_METHOD_GET, url, 'registry')
     if status.code != HTTP_STATUS_OK:
         raise Exception('Failed to obtain registry from Brayns')
@@ -323,6 +326,6 @@ def _obtain_registry(url):
 
 
 def _obtain_schema(url, object_name):
-    """ Returns the JSON schema for the given object """
+    """Returns the JSON schema for the given object."""
     status = utils.http_request(HTTP_METHOD_GET, url, object_name + '/schema')
     return status.contents, status.code

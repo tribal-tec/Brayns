@@ -11,6 +11,9 @@ Welcome to Brayns's documentation!
    :caption: Contents:
 
 
+.. automodule:: brayns
+   :members:
+
 
 Indices and tables
 ==================

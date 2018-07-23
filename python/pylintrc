@@ -1,6 +1,9 @@
 ## look at http://docutils.sourceforge.net/sandbox/py-rest-doc/utils/pylintrc
 # for some of the options that are available
 
+[MASTER]
+load-plugins=pylint.extensions.docparams,pylint.extensions.docstyle
+
 [MESSAGES CONTROL]
 #C0103 -  Invalid name "%s" (should match %s) - matches too many things, like variables w/ single char names
 #C0325 - superfluous-parens

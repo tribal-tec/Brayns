@@ -22,7 +22,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""
-The version of the brayns package
-"""
+"""The version of the brayns package"""
+
 VERSION = "0.7.0.dev0"

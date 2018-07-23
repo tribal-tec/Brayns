@@ -22,9 +22,9 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""
-The RpcClient class manages a websocket connection to handle incoming message from the remote Brayns
-instance in a thread, and provides methods to send notifications and requests in JSON-RPC format.
+"""The RpcClient class manages a websocket connection to handle incoming message from the remote
+Brayns instance in a thread, and provides methods to send notifications and requests in JSON-RPC
+format.
 """
 
 import json
@@ -36,20 +36,17 @@ from .utils import set_http_protocol, set_ws_protocol, WS_PATH
 
 
 class RpcClient(object):
-    """
-    The RpcClient class manages a websocket connection to handle incoming message from the remote
+    """The RpcClient class manages a websocket connection to handle incoming message from the remote
     Brayns instance in a thread, and provides methods to send notifications and requests in JSON-RPC
     format.
     """
-
     def __init__(self, url):
-        """
-        Convert to the URL to a proper format and initialize the state of the client. Does not
+        """Convert to the URL to a proper format and initialize the state of the client. Does not
         establish the websocket connection yet. This will be postponed to either the first notify
         or request.
-        :param url: The address of the remote running Brayns instance.
-        """
 
+        :param str url: The address of the remote running Brayns instance.
+        """
         self._url = set_http_protocol(url) + '/'
 
         self._ws = None
@@ -59,18 +56,21 @@ class RpcClient(object):
         self._ws_requests = {}
 
     def url(self):
-        """
+        """Returns the address of the remote running Brayns instance.
         :return: The address of the remote running Brayns instance.
+        :rtype: str
         """
         return self._url
 
     def rpc_request(self, method, params=None, response_timeout=5):  # pragma: no cover
-        """
-        Invoke an RPC on the remote running Brayns instance.
-        :param method: name of the method to invoke
-        :param params: params for the method
-        :param response_timeout: number of seconds to wait for the response
+        """Invoke an RPC on the remote running Brayns instance.
+
+        :param str method: name of the method to invoke
+        :param dict params: params for the method
+        :param int response_timeout: number of seconds to wait for the response
         :return: result or error of RPC
+        :rtype: dict
+        :raises Exception: if request was not answered within given response_timeout
         """
         data = dict()
         data['jsonrpc'] = "2.0"
@@ -82,9 +82,9 @@ class RpcClient(object):
         result = {'done': False, 'result': None}
 
         def callback(payload):
-            """
-            The callback for the reply
-            :param payload: the actual reply data
+            """The callback for the response.
+
+            :param dict payload: the actual response data
             """
             result['result'] = payload
             result['done'] = True
@@ -112,10 +112,10 @@ class RpcClient(object):
         return result['result']
 
     def rpc_notify(self, method, params=None):  # pragma: no cover
-        """
-        Invoke an RPC on the remote running Brayns instance without waiting for a response.
-        :param method: name of the method to invoke
-        :param params: params for the method
+        """Invoke an RPC on the remote running Brayns instance without waiting for a response.
+
+        :param str method: name of the method to invoke
+        :param str params: params for the method
         """
         data = dict()
         data['jsonrpc'] = "2.0"
@@ -127,22 +127,20 @@ class RpcClient(object):
         self._ws.send(json.dumps(data))
 
     def _setup_websocket(self):  # pragma: no cover
-        """
-        Setups websocket with handling for binary (image) and text (all properties) messages. The
+        """Setups websocket with handling for binary (image) and text (all properties) messages. The
         websocket app runs in a separate thread to unblock all notebook cells.
         """
-
         if self._ws_connected:
             return
 
         def on_open(ws):
             # pylint: disable=unused-argument
-            """ Websocket is open, remember this state """
+            """Websocket is open, remember this state."""
             self._ws_connected = True
 
         def on_data(ws, data, data_type, cont):
             # pylint: disable=unused-argument
-            """ Websocket received data, handle it """
+            """Websocket received data, handle it."""
             if data_type == websocket.ABNF.OPCODE_TEXT:
                 data = json.loads(data)
 
@@ -172,7 +170,7 @@ class RpcClient(object):
 
         def on_close(ws):
             # pylint: disable=unused-argument
-            """ Websocket is closing, notify all registered callbacks to e.g. close widgets """
+            """Websocket is closing, notify all registered callbacks to e.g. close widgets."""
             self._ws_connected = False
             for f in self._update_callback.values():
                 f(close=True)
@@ -193,18 +191,18 @@ class RpcClient(object):
             conn_timeout -= 1
 
     def _handle_response(self, data):  # pragma: no cover
-        """
-        Handle a potential JSON-RPC response message.
-        :param data: data of the reply
-        :return True if a request was handled, False otherwise
+        """Handle a potential JSON-RPC response message.
+
+        :param dict data: data of the reply
+        :return: True if a request was handled, False otherwise
+        :rtype: bool
         """
         if 'id' not in data:
             return False
 
         payload = None
         if 'result' in data:
-            payload = None if data['result'] == '' or data['result'] == 'OK' \
-                           else data['result']
+            payload = None if data['result'] == '' or data['result'] == 'OK' else data['result']
         elif 'error' in data:
             payload = data['error']
 

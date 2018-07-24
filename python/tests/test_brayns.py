@@ -387,7 +387,7 @@ def test_object_replace():
 
 def test_object_commit():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request_object_commit):
+            patch('brayns.RpcClient.request', new=mock_rpc_request_object_commit):
         app = brayns.Client('localhost:8200')
         app._ws_connected = True
         app.test_object.integer = 42
@@ -402,7 +402,7 @@ def test_array():
 
 def test_rpc_one_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+            patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc), TEST_RPC_ONE_PARAMETER['description'])
@@ -411,7 +411,7 @@ def test_rpc_one_parameter():
 
 def test_rpc_one_of_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+         patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
@@ -422,7 +422,7 @@ def test_rpc_one_of_parameter():
 
 def test_rpc_one_of_parameter_weird_casings():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+         patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         assert_true(hasattr(app, 'StereofullMode'))
         assert_true(hasattr(app, 'MonoFullMode'))
@@ -432,7 +432,7 @@ def test_rpc_one_of_parameter_weird_casings():
 
 def test_rpc_array_parameter():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+            patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.inspect).startswith(TEST_RPC_ARRAY_PARAMETER['description']))
@@ -441,14 +441,14 @@ def test_rpc_array_parameter():
 
 def test_rpc_two_parameters():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+         patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         assert_false(hasattr(app, 'test-rpc-two-params'))
 
 
 def test_rpc_only_return():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+         patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc_return), TEST_RPC_ONLY_RETURN['description'])
@@ -457,7 +457,7 @@ def test_rpc_only_return():
 
 def test_rpc_invalid_type():
     with patch('brayns.utils.http_request', new=mock_http_request), \
-            patch('brayns.RpcClient.rpc_request', new=mock_rpc_request):
+            patch('brayns.RpcClient.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         assert_false(hasattr(app, 'test-rpc-invalid-type'))
 

@@ -104,7 +104,7 @@ def _create_rpc_object_parameter(param, method, description):
             args = locals()
             del args['self']
             del args['response_timeout']
-            return self.rpc_request("{2}", params={{k:v for k,v in args.items()
+            return self.request("{2}", params={{k:v for k,v in args.items()
                                              if v is not None}},
                                              response_timeout=response_timeout)
         '''.format(arg_list, description, method)
@@ -125,7 +125,7 @@ def _create_rpc_array_parameter(name, method, description):
             {0}
             {2}
             """
-            return self.rpc_request("{3}", params={1},
+            return self.request("{3}", params={1},
                                     response_timeout=response_timeout)
         '''.format(description, name, ":param {0}: {1}".format(name, description), method)
 
@@ -213,7 +213,7 @@ def _add_rpc(target_object, schema):
                 """
                 {0}
                 """
-                return self.rpc_request("{1}", response_timeout=response_timeout)
+                return self.request("{1}", response_timeout=response_timeout)
             '''.format(description, method)
 
     d = {}
@@ -265,7 +265,7 @@ def _handle_param_oneof(target_object, param, method, description):
             {0}
             ":param: one of the params for the active type: {1}
             """
-            return self.rpc_request("{2}", params.for_json(),
+            return self.request("{2}", params.for_json(),
                                     response_timeout=response_timeout)
         '''.format(description, ', '.join(param_types), method)
 
@@ -276,7 +276,7 @@ def _add_commit(target_object, class_type, object_name):
         """Wrapper for returning the property.commit() function."""
         def commit(prop):
             """Update the property in the application."""
-            return target_object.rpc_request('set-' + os.path.basename(url), prop.as_dict())
+            return target_object.request('set-' + os.path.basename(url), prop.as_dict())
 
         return commit
 

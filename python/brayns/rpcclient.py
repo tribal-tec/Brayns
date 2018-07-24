@@ -57,13 +57,14 @@ class RpcClient(object):
 
     def url(self):
         """Returns the address of the remote running Brayns instance.
+
         :return: The address of the remote running Brayns instance.
         :rtype: str
         """
         return self._url
 
-    def rpc_request(self, method, params=None, response_timeout=5):  # pragma: no cover
-        """Invoke an RPC on the remote running Brayns instance.
+    def request(self, method, params=None, response_timeout=5):  # pragma: no cover
+        """Invoke an RPC on the remote running Brayns instance and wait for its reponse.
 
         :param str method: name of the method to invoke
         :param dict params: params for the method
@@ -111,7 +112,7 @@ class RpcClient(object):
 
         return result['result']
 
-    def rpc_notify(self, method, params=None):  # pragma: no cover
+    def notify(self, method, params=None):  # pragma: no cover
         """Invoke an RPC on the remote running Brayns instance without waiting for a response.
 
         :param str method: name of the method to invoke

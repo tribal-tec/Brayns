@@ -5,10 +5,11 @@
 load-plugins=pylint.extensions.docparams,pylint.extensions.docstyle
 
 [MESSAGES CONTROL]
-#C0103 -  Invalid name "%s" (should match %s) - matches too many things, like variables w/ single char names
+#C0103 - Invalid name "%s" (should match %s) - matches too many things, like variables w/ single char names
+#C0199 - First line empty in function docstring
 #C0325 - superfluous-parens
 #R0903 - Too Few public methods
-disable=C0103,C0325,R0903
+disable=C0103,C0199,C0325,R0903
 
 [FORMAT]
 # Maximum number of characters on a single line.

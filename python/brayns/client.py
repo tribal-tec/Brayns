@@ -22,9 +22,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""Client that connects to a remote running Brayns instance which provides the supported API to
-interact with Brayns.
-"""
+"""Client that connects to a remote running Brayns instance which provides the supported API."""
 
 import base64
 import io
@@ -39,15 +37,14 @@ from . import utils
 
 
 class Client(RpcClient):
-    """Client that connects to a remote running Brayns instance which provides the supported API to
-    interact with Brayns.
-    """
+    """Client that connects to a remote running Brayns instance which provides the supported API."""
+
     def __init__(self, url):
-        """Create a new client instance by connecting to the given URL.
+        """
+        Create a new client instance by connecting to the given URL.
 
         :param str url: a string 'hostname:port' to connect to a running brayns instance
         """
-
         super(Client, self).__init__(url)
         self._check_version()
         build_api(self, self.url())
@@ -56,6 +53,7 @@ class Client(RpcClient):
             self._add_widgets()  # pragma: no cover
 
     def __str__(self):
+        """Return a pretty-print on the currently connected Brayns instance."""
         # pylint: disable=E1101
         version = 'unknown'
         if self.version:
@@ -65,7 +63,8 @@ class Client(RpcClient):
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', quality=None, samples_per_pixel=None):
-        """Requests a snapshot from the application and returns a PIL image.
+        """
+        Requests a snapshot from the application and returns a PIL image.
 
         :param tuple size: (width,height) for the resulting image
         :param str format: image type as recognized by ImageMagick
@@ -92,7 +91,8 @@ class Client(RpcClient):
 
     def set_colormap(self, colormap='magma', colormap_size=256, intensity=1, opacity=1,
                      data_range=(0, 256)):
-        """Set a colormap to Brayns.
+        """
+        Set a colormap to Brayns.
 
         :param str colormap: color palette to use from matplotlib and seaborn
         :param int colormap_size: the number of colors to use to control precision

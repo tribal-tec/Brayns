@@ -54,7 +54,8 @@ class Status(object):
 
 # pylint: disable=R0912
 def http_request(method, url, command, body=None, query_params=None):  # pragma: no cover
-    """Perform http requests to the given URL and return the applications' response.
+    """
+    Perform http requests to the given URL and return the applications' response.
 
     :param str method: the type of HTTP request, PUT or GET are supported
     :param str url: the URL of the applications' http server
@@ -103,7 +104,8 @@ def http_request(method, url, command, body=None, query_params=None):  # pragma:
 
 
 def in_notebook():
-    """Check we are running in a notebook or not.
+    """
+    Check we are running in a notebook or not.
 
     :return: ``True`` if the module is running in IPython kernel, ``False`` if in IPython shell or
     other Python shell.
@@ -113,7 +115,8 @@ def in_notebook():
 
 
 def set_http_protocol(url):
-    """Set the http protocol to the url if it is not present.
+    """
+    Set the http protocol to the url if it is not present.
 
     :param str url: Url to be checked
     :return: url with protocol
@@ -125,7 +128,8 @@ def set_http_protocol(url):
 
 
 def set_ws_protocol(url):
-    """Set the WebSocket protocol according to the resource url.
+    """
+    Set the WebSocket protocol according to the resource url.
 
     :param str url:
     :return: ws for http, wss for https

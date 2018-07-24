@@ -3,6 +3,7 @@
 brayns.egg-info/
 .installed
 pycodestyle.txt
+pydocstyle.txt
 pylint.txt
 *.pyc
 dist/

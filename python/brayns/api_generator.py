@@ -22,8 +22,11 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""Provides functionality to dynamically add properties, types and functions to a given object,
-based on a registry and JSON-schema of exposed properties and RPCs.
+"""
+Provides functionality to dynamically add properties, types and functions to a given object.
+
+The information for the API generation is based on a registry and JSON-schema of exposed properties
+and RPCs.
 """
 
 import os
@@ -36,7 +39,10 @@ from . import utils
 
 
 def build_api(target_object, url):
-    """Fetches the registry from the remote running Brayns instance and adds all found properties,
+    """
+    Add the API (types, properties, methods) to the given object from the information found at url.
+
+    Fetches the registry from the remote running Brayns instance and adds all found properties,
     RPCs and types to the given target_object.
 
     :param object target_object: The target object where to add all generated properties, RPCs and
@@ -79,7 +85,8 @@ def build_api(target_object, url):
 
 
 def _create_rpc_object_parameter(param, method, description):
-    """Create an RPC where each property of the param object is a key-value argument.
+    """
+    Create an RPC where each property of the param object is a key-value argument.
 
     :param dict param: the parameter object from the RPC
     :param str method: the name of RPC
@@ -111,7 +118,8 @@ def _create_rpc_object_parameter(param, method, description):
 
 
 def _create_rpc_array_parameter(name, method, description):
-    """Create an RPC where the parameter is an array argument.
+    """
+    Create an RPC where the parameter is an array argument.
 
     :param str name: the name of the array argument
     :param str method: the name of RPC
@@ -131,7 +139,8 @@ def _create_rpc_array_parameter(name, method, description):
 
 
 def _add_enums(value, target_object):
-    """Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>
+    """
+    Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>
 
     :param dict value: don't know now
     :param object target_object: The target object where to add the enum to
@@ -156,7 +165,8 @@ def _add_enums(value, target_object):
 
 
 def _handle_rpc(target_object, url, object_name):
-    """Try to handle object_name as RPC
+    """
+    Try to handle object_name as RPC
 
     :param object target_object: The target object where to add the enum to
     :param str url: The address of the remote running Brayns instance.
@@ -177,7 +187,8 @@ def _handle_rpc(target_object, url, object_name):
 
 
 def _add_rpc(target_object, schema):
-    """Add a new function from the given schema that describes an RPC.
+    """
+    Add a new function from the given schema that describes an RPC.
 
     :param object target_object: The target object where to add the RPC to
     :param dict schema: schema containing name, description, params of the RPC
@@ -224,8 +235,8 @@ def _add_rpc(target_object, schema):
 
 
 def _handle_param_oneof(target_object, param, method, description):
-    """Create an RPC where the parameter is from the oneOf array and create a type for each oneOf
-    type.
+    """
+    Create an RPC where the parameter is from the oneOf array and create a type for each oneOf type.
 
     :param object target_object: The target object where to add the oneOf types to
     :param list param: the oneOf array

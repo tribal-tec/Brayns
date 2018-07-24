@@ -22,9 +22,10 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""The RpcClient class manages a websocket connection to handle incoming message from the remote
-Brayns instance in a thread, and provides methods to send notifications and requests in JSON-RPC
-format.
+"""
+The RpcClient manages a websocket connection to handle messaging with a remote Brayns instance.
+
+It runs in a thread and provides methods to send notifications and requests in JSON-RPC format.
 """
 
 import json
@@ -36,12 +37,17 @@ from .utils import set_http_protocol, set_ws_protocol, WS_PATH
 
 
 class RpcClient(object):
-    """The RpcClient class manages a websocket connection to handle incoming message from the remote
-    Brayns instance in a thread, and provides methods to send notifications and requests in JSON-RPC
-    format.
     """
+    The RpcClient manages a websocket connection to handle messaging with a remote Brayns instance.
+
+    It runs in a thread and provides methods to send notifications and requests in JSON-RPC format.
+    """
+
     def __init__(self, url):
-        """Convert to the URL to a proper format and initialize the state of the client. Does not
+        """
+        Initialize the RpcClient, but don't setup the websocket connection yet.
+
+        Convert to the URL to a proper format and initialize the state of the client. Does not
         establish the websocket connection yet. This will be postponed to either the first notify
         or request.
 
@@ -56,7 +62,8 @@ class RpcClient(object):
         self._ws_requests = {}
 
     def url(self):
-        """Returns the address of the remote running Brayns instance.
+        """
+        Returns the address of the remote running Brayns instance.
 
         :return: The address of the remote running Brayns instance.
         :rtype: str
@@ -64,7 +71,8 @@ class RpcClient(object):
         return self._url
 
     def request(self, method, params=None, response_timeout=5):  # pragma: no cover
-        """Invoke an RPC on the remote running Brayns instance and wait for its reponse.
+        """
+        Invoke an RPC on the remote running Brayns instance and wait for its reponse.
 
         :param str method: name of the method to invoke
         :param dict params: params for the method
@@ -83,7 +91,8 @@ class RpcClient(object):
         result = {'done': False, 'result': None}
 
         def callback(payload):
-            """The callback for the response.
+            """
+            The callback for the response.
 
             :param dict payload: the actual response data
             """
@@ -113,7 +122,8 @@ class RpcClient(object):
         return result['result']
 
     def notify(self, method, params=None):  # pragma: no cover
-        """Invoke an RPC on the remote running Brayns instance without waiting for a response.
+        """
+        Invoke an RPC on the remote running Brayns instance without waiting for a response.
 
         :param str method: name of the method to invoke
         :param str params: params for the method
@@ -128,8 +138,10 @@ class RpcClient(object):
         self._ws.send(json.dumps(data))
 
     def _setup_websocket(self):  # pragma: no cover
-        """Setups websocket with handling for binary (image) and text (all properties) messages. The
-        websocket app runs in a separate thread to unblock all notebook cells.
+        """
+        Setups websocket with handling for binary (image) and text (all properties) messages.
+
+        The websocket app runs in a separate thread to unblock all notebook cells.
         """
         if self._ws_connected:
             return
@@ -192,7 +204,8 @@ class RpcClient(object):
             conn_timeout -= 1
 
     def _handle_response(self, data):  # pragma: no cover
-        """Handle a potential JSON-RPC response message.
+        """
+        Handle a potential JSON-RPC response message.
 
         :param dict data: data of the reply
         :return: True if a request was handled, False otherwise

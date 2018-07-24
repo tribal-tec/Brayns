@@ -50,7 +50,10 @@ $(VENV_INSTALLED): $(VENV)
 	touch $@
 
 run_pycodestyle: $(VENV_INSTALLED)
-	$(VENV_BIN)/pycodestyle --config=pycodestylerc $(LINT_PYFILES) > pycodestyle.txt
+	$(VENV_BIN)/pycodestyle $(LINT_PYFILES) > pycodestyle.txt
+
+run_pydocstyle: $(VENV_INSTALLED)
+	$(VENV_BIN)/pydocstyle $(LINT_PYFILES) > pydocstyle.txt
 
 run_pylint: $(VENV_INSTALLED)
 	$(VENV_BIN)/pylint --rcfile=pylintrc --extension-pkg-whitelist=numpy $(LINT_PYFILES) > pylint.txt
@@ -62,7 +65,7 @@ run_tests_xunit: $(VENV_INSTALLED)
 	@mkdir -p $(ROOT_DIR)/test-reports
 	$(VENV_BIN)/nosetests brayns --with-coverage --cover-min-percentage=$(MIN_COV) --cover-inclusive --cover-erase --cover-package=brayns --with-xunit --xunit-file=test-reports/nosetests_brayns.xml
 
-lint: run_pycodestyle run_pylint
+lint: run_pycodestyle run_pydocstyle run_pylint
 
 test: lint run_tests
 
@@ -82,6 +85,7 @@ clean_doc:
 
 clean: clean_doc clean_test_venv
 	@rm -f pycodestyle.txt
+	@rm -f pydocstyle.txt
 	@rm -f pylint.txt
 	@rm -rf brayns/brayns.egg-info
 	@rm -f .coverage

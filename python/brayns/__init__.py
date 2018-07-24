@@ -22,7 +22,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-"""Enables remote control of a running Brayns instance using websockets and HTTP requests."""
+"""The Brayns python client library provides access to remote control a running Brayns instance."""
 
 __all__ = ['Client', 'RpcClient']
 from .client import Client

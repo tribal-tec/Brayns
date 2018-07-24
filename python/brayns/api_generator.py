@@ -50,43 +50,82 @@ def build_api(target_object, url):
     :param str url: The address of the remote running Brayns instance.
     """
     registry = _obtain_registry(url)
-    for object_name in registry.keys():
-        if _handle_rpc(target_object, url, object_name):
+    for registry_entry in registry.keys():
+        if _try_add_method(target_object, url, registry_entry):
             continue
 
-        schema, ret_code = _obtain_schema(url, object_name)
-        if ret_code != HTTP_STATUS_OK:
-            continue
-
-        classes = pjs.ObjectBuilder(schema).build_classes()
-        class_names = dir(classes)
-
-        # find the generated class name that matches our schema root title
-        for c in class_names:
-            if c.lower() == schema['title'].lower():
-                class_name = c
-                break
-
-        class_type = getattr(classes, class_name)
-
-        is_object = schema['type'] == 'object'
-        if is_object:
-            value = class_type()
-            _add_enums(value, target_object)
-            if HTTP_METHOD_PUT in registry[object_name]:
-                _add_commit(target_object, class_type, object_name)
-        else:  # array
-            value = class_type(())
-
-        # add member to Application
-        member = '_' + os.path.basename(object_name).replace('-', '_')
-        setattr(target_object, member, value)
-        _add_property(target_object, member, object_name, schema['type'])
+        writeable = HTTP_METHOD_PUT in registry[registry_entry]
+        _try_add_property(target_object, url, registry_entry, writeable)
 
 
-def _create_rpc_object_parameter(param, method, description):
+def _try_add_property(target_object, url, registry_entry, writeable):
     """
-    Create an RPC where each property of the param object is a key-value argument.
+    Try to add registry_entry as a property.
+
+    This will add a property with the name registry_entry which initializes itself with current
+    value from Brayns on first access. Furthermore, it add potential enum values as string constants
+    and adds a commit() function if the property is writeable.
+
+    :param object target_object: The target object where to add the property to
+    :param str url: The address of the remote running Brayns instance.
+    :param str registry_entry: registry endpoint, e.g. foo[/schema]
+    :param bool writeable: if the property is writeable or not
+    """
+    schema, ret_code = _obtain_schema(url, registry_entry)
+    if ret_code != HTTP_STATUS_OK:
+        return
+
+    classes = pjs.ObjectBuilder(schema).build_classes()
+    class_names = dir(classes)
+
+    # find the generated class name that matches our schema root title
+    for c in class_names:
+        if c.lower() == schema['title'].lower():
+            class_name = c
+            break
+
+    class_type = getattr(classes, class_name)
+
+    is_object = schema['type'] == 'object'
+    if is_object:
+        value = class_type()
+        _add_enums(value, target_object)
+        if writeable:
+            _add_commit(target_object, class_type, registry_entry)
+    else:  # array
+        value = class_type(())
+
+    # add member to Application
+    member = '_' + os.path.basename(registry_entry).replace('-', '_')
+    setattr(target_object, member, value)
+    _add_property(target_object, member, registry_entry, schema['type'])
+
+
+def _try_add_method(target_object, url, registry_entry):
+    """
+    Try to add registry_entry as a method to target_object if it is an RPC.
+
+    :param object target_object: The target object where to add the method to
+    :param str url: The address of the remote running Brayns instance.
+    :param str registry_entry: registry endpoint, e.g. foo[/schema]
+    :return: True if registry_entry was an RPC, False otherwise
+    :rtype: bool
+    """
+    if not registry_entry.endswith('/schema'):
+        return False
+
+    method = registry_entry[:-len('/schema')]
+    status = utils.http_request(HTTP_METHOD_GET, url, method)
+    schema, ret_code = _obtain_schema(url, method)
+    if status.code != HTTP_STATUS_OK and ret_code == HTTP_STATUS_OK:
+        _add_method(target_object, schema)
+        return True
+    return False
+
+
+def _create_method_with_object_parameter(param, method, description):
+    """
+    Create code for a method where each property of the param object is a key-value argument.
 
     :param dict param: the parameter object from the RPC
     :param str method: the name of RPC
@@ -117,9 +156,9 @@ def _create_rpc_object_parameter(param, method, description):
         '''.format(arg_list, description, method)
 
 
-def _create_rpc_array_parameter(name, method, description):
+def _create_method_with_array_parameter(name, method, description):
     """
-    Create an RPC where the parameter is an array argument.
+    Create code for a method where the parameter is an array argument.
 
     :param str name: the name of the array argument
     :param str method: the name of RPC
@@ -138,105 +177,11 @@ def _create_rpc_array_parameter(name, method, description):
         '''.format(description, name, ":param {0}: {1}".format(name, description), method)
 
 
-def _add_enums(value, target_object):
+def _create_method_with_oneof_parameter(target_object, param, method, description):
     """
-    Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>
+    Create code for a method where the parameter is from the oneOf array.
 
-    :param dict value: don't know now
-    :param object target_object: The target object where to add the enum to
-    """
-    for i in value.keys():
-        enum = None
-        if 'enum' in value.propinfo(i):
-            enum = value.propinfo(i)
-        if value.propinfo(i)['type'] == 'array':
-            if 'enum' in value.propinfo(i)['items']:
-                enum = value.propinfo(i)['items']
-        if not enum:
-            continue
-
-        enum_class = str(i).upper()
-        if 'title' in enum:
-            enum_class = str(inflection.underscore(enum['title'])).upper()
-        enum_class += "_"
-        for val in enum['enum']:
-            enum_value = enum_class + inflection.parameterize(val, '_').upper()
-            setattr(target_object, enum_value, val)
-
-
-def _handle_rpc(target_object, url, object_name):
-    """
-    Try to handle object_name as RPC
-
-    :param object target_object: The target object where to add the enum to
-    :param str url: The address of the remote running Brayns instance.
-    :param str object_name: registry endpoint, e.g. v1/foo[/schema]
-    :return: True if object_name was RPC, False otherwise
-    :rtype: bool
-    """
-    if not object_name.endswith('/schema'):
-        return False
-
-    method = object_name[:-len('/schema')]
-    status = utils.http_request(HTTP_METHOD_GET, url, method)
-    schema, ret_code = _obtain_schema(url, method)
-    if status.code != HTTP_STATUS_OK and ret_code == HTTP_STATUS_OK:
-        _add_rpc(target_object, schema)
-        return True
-    return False
-
-
-def _add_rpc(target_object, schema):
-    """
-    Add a new function from the given schema that describes an RPC.
-
-    :param object target_object: The target object where to add the RPC to
-    :param dict schema: schema containing name, description, params of the RPC
-    :raises Exception: if the param type of the RPC does not match oneOf, object or array
-    """
-    if schema['type'] != 'method':
-        return
-
-    method = schema['title']
-    func_name = str(os.path.basename(method).replace('-', '_'))
-
-    if 'params' in schema and len(schema['params']) > 1:
-        print("Multiple parameters for RPC '{0}' not supported".format(method))
-        return
-
-    description = schema['description']
-    if 'params' in schema and len(schema['params']) == 1:
-        params = schema['params'][0]
-        if 'oneOf' in params:
-            code = _handle_param_oneof(target_object, params['oneOf'], method, description)
-        # in the absence of multiple parameters support, create a function with multiple
-        # parameters from object properties
-        elif params['type'] == 'object':
-            code = _create_rpc_object_parameter(params, method, description)
-        elif params['type'] == 'array':
-            code = _create_rpc_array_parameter(params['name'], method, description)
-        else:
-            raise Exception('Invalid parameter type for method "{0}":'.format(method) +
-                            ' must be "object", "array" or "oneOf"')
-    else:
-        code = '''
-            def function(self, response_timeout=5):
-                """
-                {0}
-                """
-                return self.request("{1}", response_timeout=response_timeout)
-            '''.format(description, method)
-
-    d = {}
-    exec(code.strip(), d)  # pylint: disable=W0122
-    function = d['function']
-    function.__name__ = func_name
-    setattr(target_object.__class__, function.__name__, function)
-
-
-def _handle_param_oneof(target_object, param, method, description):
-    """
-    Create an RPC where the parameter is from the oneOf array and create a type for each oneOf type.
+    Also create a type for each oneOf type and add it to target_object.
 
     :param object target_object: The target object where to add the oneOf types to
     :param list param: the oneOf array
@@ -262,7 +207,7 @@ def _handle_param_oneof(target_object, param, method, description):
         pretty_class_name = inflection.camelize(pretty_class_name)
         pretty_class_name = class_name + pretty_class_name
 
-        # add type to application
+        # add type to target_object
         class_type = getattr(classes, class_name)
         setattr(target_object, pretty_class_name, class_type)
         param_types.append(pretty_class_name)
@@ -281,22 +226,97 @@ def _handle_param_oneof(target_object, param, method, description):
         '''.format(description, ', '.join(param_types), method)
 
 
-def _add_commit(target_object, class_type, object_name):
-    """Add commit() for given property."""
+def _add_enums(root_object, target_object):
+    """
+    Look for enums in the given object to create string constants <ENUM_CLASSNAME>_<ENUM_VALUE>.
+
+    :param dict root_object: the object which may contain enums
+    :param object target_object: The target object where to add the string constants to
+    """
+    for i in root_object.keys():
+        enum = None
+        if 'enum' in root_object.propinfo(i):
+            enum = root_object.propinfo(i)
+        if root_object.propinfo(i)['type'] == 'array':
+            if 'enum' in root_object.propinfo(i)['items']:
+                enum = root_object.propinfo(i)['items']
+        if not enum:
+            continue
+
+        enum_class = str(i).upper()
+        if 'title' in enum:
+            enum_class = str(inflection.underscore(enum['title'])).upper()
+        enum_class += "_"
+        for val in enum['enum']:
+            enum_value = enum_class + inflection.parameterize(val, '_').upper()
+            setattr(target_object, enum_value, val)
+
+
+def _add_method(target_object, schema):
+    """
+    Add a new method to target_object from the given schema that describes an RPC.
+
+    :param object target_object: The target object where to add the method to
+    :param dict schema: schema containing name, description, params of the RPC
+    :raises Exception: if the param type of the RPC does not match oneOf, object or array
+    """
+    if schema['type'] != 'method':
+        return
+
+    method = schema['title']
+    func_name = str(os.path.basename(method).replace('-', '_'))
+
+    if 'params' in schema and len(schema['params']) > 1:
+        print("Multiple parameters for RPC '{0}' not supported".format(method))
+        return
+
+    description = schema['description']
+    if 'params' in schema and len(schema['params']) == 1:
+        params = schema['params'][0]
+        if 'oneOf' in params:
+            code = _create_method_with_oneof_parameter(target_object, params['oneOf'], method,
+                                                       description)
+        # in the absence of multiple parameters support, create a function with multiple
+        # parameters from object properties
+        elif params['type'] == 'object':
+            code = _create_method_with_object_parameter(params, method, description)
+        elif params['type'] == 'array':
+            code = _create_method_with_array_parameter(params['name'], method, description)
+        else:
+            raise Exception('Invalid parameter type for method "{0}":'.format(method) +
+                            ' must be "object", "array" or "oneOf"')
+    else:
+        code = '''
+            def function(self, response_timeout=5):
+                """
+                {0}
+                """
+                return self.request("{1}", response_timeout=response_timeout)
+            '''.format(description, method)
+
+    d = {}
+    exec(code.strip(), d)  # pylint: disable=W0122
+    function = d['function']
+    function.__name__ = func_name
+    setattr(target_object.__class__, function.__name__, function)
+
+
+def _add_commit(rpc_client, property_type, object_name):
+    """Add commit() for given property type."""
     def commit_builder(url):
         """Wrapper for returning the property.commit() function."""
         def commit(prop):
             """Update the property in the application."""
-            return target_object.request('set-' + os.path.basename(url), prop.as_dict())
+            return rpc_client.request('set-' + os.path.basename(url), prop.as_dict())
 
         return commit
 
-    setattr(class_type, 'commit', commit_builder(object_name))
+    setattr(property_type, 'commit', commit_builder(object_name))
 
 
-def _add_property(target_object, member, object_name, property_type):
-    """Add property to Application for object."""
-    def getter_builder(member, object_name):
+def _add_property(target_object, member, property_name, property_type):
+    """Add property to target_object which initializes itself on first access."""
+    def getter_builder(member, property_name):
         """Wrapper for returning the property state."""
         def function(self):
             """Returns the current state for the property."""
@@ -308,7 +328,7 @@ def _add_property(target_object, member, object_name, property_type):
             else:
                 has_value = value.as_dict()
             if not has_value:
-                status = utils.http_request(HTTP_METHOD_GET, self.url(), object_name)
+                status = utils.http_request(HTTP_METHOD_GET, self.url(), property_name)
                 if status.code == HTTP_STATUS_OK:
                     if property_type == 'array':
                         value.__init__(status.contents)
@@ -321,10 +341,10 @@ def _add_property(target_object, member, object_name, property_type):
 
         return function
 
-    endpoint_name = os.path.basename(object_name)
+    endpoint_name = os.path.basename(property_name)
     snake_case_name = endpoint_name.replace('-', '_')
     setattr(type(target_object), snake_case_name,
-            property(fget=getter_builder(member, object_name),
+            property(fget=getter_builder(member, property_name),
                      doc='Access to the {0} property'.format(endpoint_name)))
 
 

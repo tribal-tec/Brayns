@@ -47,7 +47,7 @@ class RpcClient(object):
         """
         Initialize the RpcClient, but don't setup the websocket connection yet.
 
-        Convert to the URL to a proper format and initialize the state of the client. Does not
+        Convert the URL to a proper format and initialize the state of the client. Does not
         establish the websocket connection yet. This will be postponed to either the first notify
         or request.
 
@@ -139,7 +139,7 @@ class RpcClient(object):
 
     def _setup_websocket(self):  # pragma: no cover
         """
-        Setups websocket with handling for binary (image) and text (all properties) messages.
+        Setups websocket to handle binary (image) and text (all properties) messages.
 
         The websocket app runs in a separate thread to unblock all notebook cells.
         """

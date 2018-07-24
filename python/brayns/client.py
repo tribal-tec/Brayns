@@ -64,10 +64,10 @@ class Client(RpcClient):
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', quality=None, samples_per_pixel=None):
         """
-        Requests a snapshot from the application and returns a PIL image.
+        Request a snapshot from Brayns and return a PIL image.
 
-        :param tuple size: (width,height) for the resulting image
-        :param str format: image type as recognized by ImageMagick
+        :param tuple size: (width,height) of the resulting image
+        :param str format: image type as recognized by FreeImage
         :param int quality: compression quality between 1 (worst) and 100 (best)
         :param int samples_per_pixel: samples per pixel to increase render quality
         :return: the PIL image of the current rendering, None on error obtaining the image
@@ -135,18 +135,18 @@ class Client(RpcClient):
 
         import semver
         if semver.match(version, '<{0}'.format(minimal_version)):
-            raise Exception('Application does not satisfy minimal required version; '
+            raise Exception('Brayns does not satisfy minimal required version; '
                             'needed {0}, got {1}'.format(minimal_version, version))
 
     def _add_widgets(self):  # pragma: no cover
-        """Add functions to the visualizer to provide widgets for appropriate properties."""
+        """Add functions to the Brayns object to provide widgets for appropriate properties."""
         self._add_show_function()
         self._add_animation_slider()
 
     def _add_show_function(self):  # pragma: no cover
         """Add show() function for live streaming."""
         def function_builder():
-            """Wrapper for returning the visualizer.show() function."""
+            """Wrapper for returning the show() function."""
             def show():
                 """Show the live rendering of Brayns."""
                 self._setup_websocket()
@@ -174,7 +174,7 @@ class Client(RpcClient):
     def _add_animation_slider(self):  # pragma: no cover
         """Add animation_slider() function for animation_parameters control."""
         def function_builder():
-            """Wrapper for returning the visualizer.animation_slider() function."""
+            """Wrapper for returning the animation_slider() function."""
             def animation_slider():
                 """.Show slider to control animation"""
                 # pylint: disable=F0401,E1101

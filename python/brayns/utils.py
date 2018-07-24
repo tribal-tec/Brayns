@@ -98,7 +98,7 @@ def http_request(method, url, command, body=None, query_params=None):  # pragma:
         response = Status(request.status_code, js)
         request.close()
     except requests.exceptions.ConnectionError:
-        raise Exception('ERROR: Failed to connect to Application, did you start it with the '
+        raise Exception('ERROR: Failed to connect to Brayns, did you start it with the '
                         '--http-server command line option?')
     return response
 

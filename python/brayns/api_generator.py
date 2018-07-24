@@ -95,7 +95,7 @@ def _try_add_property(target_object, url, registry_entry, writeable):
     else:  # array
         value = class_type(())
 
-    # add member to Application
+    # add member and property to target_object
     member = '_' + os.path.basename(registry_entry).replace('-', '_')
     setattr(target_object, member, value)
     _add_property(target_object, member, registry_entry, schema['type'])
@@ -306,7 +306,7 @@ def _add_commit(rpc_client, property_type, object_name):
     def commit_builder(url):
         """Wrapper for returning the property.commit() function."""
         def commit(prop):
-            """Update the property in the application."""
+            """Update the property in the remote side."""
             return rpc_client.request('set-' + os.path.basename(url), prop.as_dict())
 
         return commit

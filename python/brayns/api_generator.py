@@ -327,7 +327,7 @@ def _add_property(target_object, member, property_name, property_type):
                 has_value = value.data
             else:
                 has_value = value.as_dict()
-            if not has_value:
+            if not has_value or not target_object.connected():
                 status = utils.http_request(HTTP_METHOD_GET, self.url(), property_name)
                 if status.code == HTTP_STATUS_OK:
                     if property_type == 'array':

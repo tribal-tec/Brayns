@@ -70,6 +70,10 @@ class RpcClient(object):
         """
         return self._url
 
+    def connected(self):
+        """Returns true if the websocket is connected to the remote Brayns instance."""
+        return self._ws_connected
+
     def request(self, method, params=None, response_timeout=5):  # pragma: no cover
         """
         Invoke an RPC on the remote running Brayns instance and wait for its reponse.

@@ -177,6 +177,8 @@ class Client(RpcClient):
             """Wrapper for returning the animation_slider() function."""
             def animation_slider():
                 """.Show slider to control animation"""
+                self._setup_websocket()
+
                 # pylint: disable=F0401,E1101
                 import ipywidgets as widgets
                 from IPython.display import display

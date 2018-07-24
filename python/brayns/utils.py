@@ -68,7 +68,7 @@ def http_request(method, url, command, body=None, query_params=None):  # pragma:
     """
     full_url = url
     request = None
-    full_url = full_url + command
+    full_url += command
     try:
         if method == HTTP_METHOD_POST:
             if body == '':

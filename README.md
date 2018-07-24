@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/tribal-tec/Brayns.svg?branch=pypi)](https://travis-ci.org/tribal-tec/Brayns)
+[![Documentation Status](https://readthedocs.org/projects/brayns/badge/?version=latest)](http://brayns.readthedocs.io/en/latest/?badge=latest)
+
 # Brayns
 
 ![Brayns](doc/images/Brayns.jpg)

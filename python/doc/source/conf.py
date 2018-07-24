@@ -22,7 +22,7 @@ exec(open('../../brayns/version.py').read())
 # -- Project information -----------------------------------------------------
 
 project = u'Brayns'
-copyright = u'2018, Daniel Nachbaur'
+copyright = u'2018, BBP EPFL'
 author = u'Daniel Nachbaur'
 
 # The short X.Y version
@@ -42,9 +42,8 @@ release = VERSION
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.coverage',
-    'sphinx.ext.imgmath',
-    'sphinx.ext.viewcode',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.viewcode'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -54,7 +53,7 @@ templates_path = ['_templates']
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.md'
+source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'index'
@@ -162,3 +161,7 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+
+autosummary_generate = True
+autodoc_default_flags = ['show-inheritance']
+autoclass_content = 'both'

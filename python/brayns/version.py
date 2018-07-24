@@ -23,5 +23,9 @@
 # All rights reserved. Do not distribute without further notice.
 
 """The version of the brayns package"""
+from pkg_resources import get_distribution, DistributionNotFound
 
-VERSION = "0.7.0.dev0"
+try:
+    VERSION = get_distribution('brayns').version  # pylint: disable=no-member
+except DistributionNotFound:  # pragma: no cover
+    VERSION = 'brayns-local'

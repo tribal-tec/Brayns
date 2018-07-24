@@ -24,6 +24,8 @@
 
 """The Brayns python client library provides access to remote control a running Brayns instance."""
 
-__all__ = ['Client', 'RpcClient']
 from .client import Client
 from .rpcclient import RpcClient
+from .version import VERSION as __version__
+
+__all__ = ['Client', 'RpcClient']

@@ -24,8 +24,8 @@
 
 """setup.py"""
 import os
-
 from setuptools import setup
+
 try: # for pip >= 10
     from pip._internal.req import parse_requirements
     from pip._internal.download import PipSession
@@ -48,14 +48,12 @@ def parse_reqs(reqs_file):
 
 REQS = parse_reqs(os.path.join(BASEDIR, "requirements.txt"))
 
-# read the contents of your README.md
+# read the contents of README.md
 this_directory = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(this_directory, 'README.md')) as f:
     long_description = f.read()
 
-exec(open('brayns/version.py').read())
 setup(
-    version=VERSION,
     packages=['brayns'],
     install_requires=REQS,
     long_description=long_description,

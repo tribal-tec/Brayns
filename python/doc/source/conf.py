@@ -14,9 +14,8 @@
 #
 import os
 import sys
+from brayns import __version__ as VERSION
 sys.path.insert(0, os.path.abspath('../..'))
-
-exec(open('../../brayns/version.py').read())
 
 
 # -- Project information -----------------------------------------------------
@@ -43,7 +42,8 @@ release = VERSION
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.viewcode'
+    'sphinx.ext.viewcode',
+    'RunNotebook.notebook_sphinxext'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -68,7 +68,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = []
+exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -165,3 +165,6 @@ texinfo_documents = [
 autosummary_generate = True
 autodoc_default_flags = ['show-inheritance']
 autoclass_content = 'both'
+
+run_notebook_export_template = 'basic'
+run_notebook_display_source_links = False

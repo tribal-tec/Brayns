@@ -15,6 +15,7 @@ It provides a generated API from the current running Brayns instance.
    :maxdepth: 3
 
    api
+   examples
 
 
 Indices and tables

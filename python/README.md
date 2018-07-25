@@ -42,14 +42,17 @@ This installs `Brayns` into your `virtualenv` in "editable" mode. That means cha
 made to the source code are seen by the installation. To install in read-only mode, omit
 the `-e`.
 
-## Get started
-
-Simple connect:
+## Connect to running Brayns instance
 
 ```python
 >>> from brayns import Client
 
->>> brayns = brayns.Client('localhost:8200')
+>>> brayns = Client('localhost:8200')
 >>> print(brayns)
 Brayns version 0.7.0.c52dd4b running on http://localhost:8200/
 ```
+
+## Examples
+
+Please find some examples how to interact with Brayns from python on
+[`Read the Docs`](https://brayns.readthedocs.io/en/latest/examples.html).

@@ -338,9 +338,9 @@ public:
                              std::function<const T&()>(
                                  [&obj]() -> const T& { return obj; }));
         _handleSchema(rpcEndpoint,
-                      buildJsonRpcSchema(rpcEndpoint,
-                                         "Get the current state of " +
-                                             endpoint));
+                      buildJsonRpcSchema(
+                          {rpcEndpoint,
+                           "Get the current state of " + endpoint}));
     }
 
     template <class T>
@@ -389,10 +389,10 @@ public:
             }
             return rockets::jsonrpc::Response::invalidParams();
         });
-        RpcDocumentation doc{"Set the new state of " + endpoint, "param",
-                             endpoint};
-        _handleSchema(rpcEndpoint,
-                      buildJsonRpcSchema<T>(rpcEndpoint, doc, obj));
+        const RpcDescription desc{rpcEndpoint,
+                                  "Set the new state of " + endpoint, "param",
+                                  endpoint};
+        _handleSchema(rpcEndpoint, buildJsonRpcSchema<T>(desc, obj));
     }
 
     template <class T>
@@ -403,42 +403,39 @@ public:
     }
 
     template <class P, class R>
-    void _handleRPC(const std::string& method, const RpcDocumentation& doc,
-                    std::function<R(P)> action)
+    void _handleRPC(const RpcDescription& desc, std::function<R(P)> action)
     {
-        _jsonrpcServer->bind<P, R>(method, action);
-        _handleSchema(method, buildJsonRpcSchema<P, R>(method, doc));
+        _jsonrpcServer->bind<P, R>(desc.methodName, action);
+        _handleSchema(desc.methodName, buildJsonRpcSchema<P, R>(desc));
     }
 
     template <class P>
-    void _handleRPC(const std::string& method, const RpcDocumentation& doc,
-                    std::function<void(P)> action)
+    void _handleRPC(const RpcDescription& desc, std::function<void(P)> action)
     {
-        _jsonrpcServer->connect<P>(method, action);
-        _handleSchema(method, buildJsonRpcSchema<P>(method, doc));
+        _jsonrpcServer->connect<P>(desc.methodName, action);
+        _handleSchema(desc.methodName, buildJsonRpcSchema<P>(desc));
     }
 
-    void _handleRPC(const std::string& method, const std::string& description,
-                    std::function<void()> action)
+    void _handleRPC(const RpcDescription& desc, std::function<void()> action)
     {
-        _jsonrpcServer->connect(method, action);
-        _handleSchema(method, buildJsonRpcSchema(method, description));
+        _jsonrpcServer->connect(desc.methodName, action);
+        _handleSchema(desc.methodName, buildJsonRpcSchema(desc));
     }
 
     template <class P, class R>
-    void _handleAsyncRPC(const std::string& method, const RpcDocumentation& doc,
+    void _handleAsyncRPC(const RpcDescription& desc,
                          std::function<rockets::jsonrpc::CancelRequestCallback(
                              P, uintptr_t, rockets::jsonrpc::AsyncResponse,
                              rockets::jsonrpc::ProgressUpdateCallback)>
                              action)
     {
-        _jsonrpcServer->bindAsync<P>(method, action);
-        _handleSchema(method, buildJsonRpcSchema<P, R>(method, doc));
+        _jsonrpcServer->bindAsync<P>(desc.methodName, action);
+        _handleSchema(desc.methodName, buildJsonRpcSchema<P, R>(desc));
     }
 
     template <class P, class R>
     void _handleTask(
-        const std::string& method, const RpcDocumentation& doc,
+        const RpcDescription& desc,
         std::function<std::shared_ptr<Task<R>>(P, uintptr_t)> createTask)
     {
         // define the action that is executed on every incoming request from the
@@ -563,7 +560,7 @@ public:
             }
             return rockets::jsonrpc::CancelRequestCallback();
         };
-        _handleAsyncRPC<P, R>(method, doc, action);
+        _handleAsyncRPC<P, R>(desc, action);
     }
 
     template <class T>
@@ -674,9 +671,9 @@ public:
                                          .getJpegCompression());
                              }));
         _handleSchema(METHOD_IMAGE_JPEG,
-                      buildJsonRpcSchema(METHOD_IMAGE_JPEG,
-                                         "Get the current state of " +
-                                             METHOD_IMAGE_JPEG));
+                      buildJsonRpcSchema(
+                          {METHOD_IMAGE_JPEG,
+                           "Get the current state of " + METHOD_IMAGE_JPEG}));
 
         _wsBroadcastOperations[METHOD_IMAGE_JPEG] = [this] {
             if (_engine->getFrameBuffer().isModified())
@@ -802,8 +799,9 @@ public:
 
     void _handleSchemaRPC()
     {
-        RpcDocumentation doc{"Get the schema of the given endpoint", "endpoint",
-                             "name of the endpoint to get its schema"};
+        RpcDescription doc{METHOD_SCHEMA,
+                           "Get the schema of the given endpoint", "endpoint",
+                           "name of the endpoint to get its schema"};
 
         _jsonrpcServer->bind(METHOD_SCHEMA, [& schemas = _schemas](
                                                 const auto& request) {
@@ -820,34 +818,37 @@ public:
             return Response::invalidParams();
         });
 
-        _handleSchema(
-            METHOD_SCHEMA,
-            buildJsonRpcSchema<SchemaParam, std::string>(METHOD_SCHEMA, doc));
+        _handleSchema(METHOD_SCHEMA,
+                      buildJsonRpcSchema<SchemaParam, std::string>(doc));
     }
 
     void _handleInspect()
     {
         using Position = std::array<float, 2>;
-        RpcDocumentation doc{"Inspect the scene at x-y position", "position",
-                             "x-y position in normalized coordinates"};
+        const RpcDescription desc{METHOD_INSPECT,
+                                  "Inspect the scene at x-y position",
+                                  "position",
+                                  "x-y position in normalized coordinates"};
         _handleRPC<Position, Renderer::PickResult>(
-            METHOD_INSPECT, doc, [engine = _engine](const auto& position) {
+            desc, [engine = _engine](const auto& position) {
                 return engine->getRenderer().pick({position[0], position[1]});
             });
     }
 
     void _handleQuit()
     {
-        _handleRPC(METHOD_QUIT, "Quit the application", [engine = _engine] {
-            engine->setKeepRunning(false);
-            engine->triggerRender();
-        });
+        _handleRPC({METHOD_QUIT, "Quit the application"},
+                   [engine = _engine] {
+                       engine->setKeepRunning(false);
+                       engine->triggerRender();
+                   });
     }
 
     void _handleResetCamera()
     {
-        _handleRPC(METHOD_RESET_CAMERA,
-                   "Resets the camera to its initial values", [this] {
+        _handleRPC({METHOD_RESET_CAMERA,
+                    "Resets the camera to its initial values"},
+                   [this] {
                        _engine->setDefaultCamera();
                        _jsonrpcServer->notify(getNotificationEndpointName(
                                                   ENDPOINT_CAMERA),
@@ -858,8 +859,10 @@ public:
 
     void _handleSnapshot()
     {
-        RpcDocumentation doc{"Make a snapshot of the current view", "settings",
-                             "Snapshot settings for quality and size"};
+        const RpcDescription desc{METHOD_SNAPSHOT,
+                                  "Make a snapshot of the current view",
+                                  "settings",
+                                  "Snapshot settings for quality and size"};
         auto func =
             [ engine = _engine,
               &imageGenerator = _imageGenerator ](auto&& params, const auto)
@@ -868,14 +871,13 @@ public:
             return std::make_shared<SnapshotTask>(
                 SnapshotFunctor{*engine, std::move(params), imageGenerator});
         };
-        _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(
-            METHOD_SNAPSHOT, doc, func);
+        _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(desc, func);
     }
 
     void _handleStreamTo()
     {
-        RpcDocumentation doc{"Stream to a displawall", "param",
-                             "Stream parameters"};
+        const RpcDescription desc{METHOD_STREAM_TO, "Stream to a displawall",
+                                  "param", "Stream parameters"};
 
         _jsonrpcServer->bind(METHOD_STREAM_TO, [
             engine = _engine, &server = _rocketsServer
@@ -897,38 +899,39 @@ public:
         });
 
         _handleSchema(METHOD_STREAM_TO,
-                      buildJsonRpcSchema<StreamParameters>(METHOD_STREAM_TO,
-                                                           doc));
+                      buildJsonRpcSchema<StreamParameters>(desc));
     }
 
     void _handleRequestModelUpload()
     {
-        RpcDocumentation doc{
+        const RpcDescription desc{
+            METHOD_REQUEST_MODEL_UPLOAD,
             "Request upload of blob to trigger adding of model after blob has "
             "been received; returns model descriptor on success",
             "param", "size, type, name, transformation, etc."};
 
         _handleTask<BinaryParam, ModelDescriptorPtr>(
-            METHOD_REQUEST_MODEL_UPLOAD, doc,
+            desc,
             std::bind(&BinaryRequests::createTask, std::ref(_binaryRequests),
                       std::placeholders::_1, std::placeholders::_2, _engine));
     }
 
     void _handleChunk()
     {
-        RpcDocumentation doc{
+        const RpcDescription desc{
+            METHOD_CHUNK,
             "Indicate sending of a binary chunk after this message", "chunk",
             "object with an ID of the chunk"};
 
-        _handleRPC<Chunk>(METHOD_CHUNK, doc,
-                          [& req = _binaryRequests](const auto& chunk) {
-                              req.setNextChunkID(chunk.id);
-                          });
+        _handleRPC<Chunk>(desc, [& req = _binaryRequests](const auto& chunk) {
+            req.setNextChunkID(chunk.id);
+        });
     }
 
     void _handleAddModel()
     {
-        RpcDocumentation doc{
+        const RpcDescription desc{
+            METHOD_ADD_MODEL,
             "Add model from remote path; returns model descriptor on success",
             "model_param",
             "Model parameters including name, path, transformation, etc."};
@@ -937,22 +940,21 @@ public:
         {
             return std::make_shared<AddModelTask>(modelParam, engine);
         };
-        _handleTask<ModelParams, ModelDescriptorPtr>(METHOD_ADD_MODEL, doc,
-                                                     func);
+        _handleTask<ModelParams, ModelDescriptorPtr>(desc, func);
     }
 
     void _handleRemoveModel()
     {
-        RpcDocumentation doc{
+        const RpcDescription desc{
+            METHOD_REMOVE_MODEL,
             "Remove the model(s) with the given ID(s) from the scene", "ids",
             "Array of model IDs"};
-        _handleRPC<size_ts, bool>(METHOD_REMOVE_MODEL, doc,
-                                  [engine = _engine](const size_ts& ids) {
-                                      for (const auto id : ids)
-                                          engine->getScene().removeModel(id);
-                                      engine->triggerRender();
-                                      return true;
-                                  });
+        _handleRPC<size_ts, bool>(desc, [engine = _engine](const size_ts& ids) {
+            for (const auto id : ids)
+                engine->getScene().removeModel(id);
+            engine->triggerRender();
+            return true;
+        });
     }
 
     void _handleUpdateModel()
@@ -977,19 +979,19 @@ public:
                 engine->triggerRender();
                 return Response{to_json(true)};
             });
-        RpcDocumentation doc{"Update the model with the given values", "model",
-                             "Model descriptor"};
+        const RpcDescription desc{METHOD_UPDATE_MODEL,
+                                  "Update the model with the given values",
+                                  "model", "Model descriptor"};
         _handleSchema(METHOD_UPDATE_MODEL,
-                      buildJsonRpcSchema<ModelDescriptor, bool>(
-                          METHOD_UPDATE_MODEL, doc));
+                      buildJsonRpcSchema<ModelDescriptor, bool>(desc));
     }
 
     void _handleGetInstances()
     {
-        RpcDocumentation doc{"Get instances", "id, range",
-                             "ModelID and result range"};
+        const RpcDescription desc{METHOD_GET_INSTANCES, "Get instances",
+                                  "id, range", "ModelID and result range"};
         _handleRPC<GetInstances, ModelInstances>(
-            METHOD_GET_INSTANCES, doc,
+            desc,
             [engine = _engine](const GetInstances& param)->ModelInstances {
                 auto id = param.modelID;
                 auto& scene = engine->getScene();
@@ -1034,11 +1036,11 @@ public:
                 engine->triggerRender();
                 return Response{to_json(true)};
             });
-        RpcDocumentation doc{"Update the instance with the given values",
-                             "model_instance", "Model instance"};
+        const RpcDescription desc{METHOD_UPDATE_INSTANCE,
+                                  "Update the instance with the given values",
+                                  "model_instance", "Model instance"};
         _handleSchema(METHOD_UPDATE_INSTANCE,
-                      buildJsonRpcSchema<ModelInstance, bool>(
-                          METHOD_UPDATE_INSTANCE, doc));
+                      buildJsonRpcSchema<ModelInstance, bool>(desc));
     }
 
     void _handlePropertyObject(PropertyObject& object,
@@ -1080,16 +1082,16 @@ public:
         // get-<object>-params RPC schema
         _handleSchema(requestEndpoint,
                       buildJsonRpcSchemaGetProperties(
-                          requestEndpoint,
-                          "Get the params of the current " + objectName,
+                          {requestEndpoint,
+                           "Get the params of the current " + objectName},
                           props));
 
         // set-<object>-params RPC schema
-        RpcDocumentation doc{"Set the params on the current " + objectName,
-                             "params", "new " + objectName + " params"};
+        const RpcDescription desc{notifyEndpoint,
+                                  "Set the params on the current " + objectName,
+                                  "params", "new " + objectName + " params"};
         _handleSchema(notifyEndpoint,
-                      buildJsonRpcSchemaSetProperties(notifyEndpoint, doc,
-                                                      props));
+                      buildJsonRpcSchemaSetProperties(desc, props));
 
         // <object>-params object schema
         _handleSchema(endpoint,
@@ -1140,6 +1142,78 @@ void RocketsPlugin::postRender()
 void RocketsPlugin::postSceneLoading()
 {
     _impl->postSceneLoading();
+}
+
+void RocketsPlugin::_registerNotification(
+    const RpcDescription& desc, const PropertyMap& input,
+    const std::function<void(PropertyMap)>& action)
+{
+    _impl->_jsonrpcServer->connect(desc.methodName, [
+        name = desc.methodName, input, action, engine = _impl->_engine
+    ](const auto& request) {
+        PropertyMap params = input;
+        if (::from_json(params, request.message))
+        {
+            action(params);
+            engine->triggerRender();
+            return;
+        }
+        BRAYNS_ERROR << "from_json for " << name << " failed" << std::endl;
+    });
+
+    _impl->_handleSchema(desc.methodName,
+                         buildJsonRpcSchemaSetProperties(desc, input));
+}
+
+void RocketsPlugin::_registerNotification(const RpcDescription& desc,
+                                          const std::function<void()>& action)
+{
+    _impl->_jsonrpcServer->connect(desc.methodName, [
+        name = desc.methodName, action, engine = _impl->_engine
+    ](const auto& /*request*/) {
+        action();
+        engine->triggerRender();
+    });
+
+    _impl->_handleSchema(desc.methodName,
+                         buildJsonRpcSchemaSetProperties(desc));
+}
+
+void RocketsPlugin::_registerRequest(
+    const RpcDescription& desc, const PropertyMap& input,
+    const PropertyMap& output,
+    const std::function<PropertyMap(PropertyMap)>& action)
+{
+    _impl->_jsonrpcServer->bind(desc.methodName, [
+        name = desc.methodName, input, action, engine = _impl->_engine
+    ](const auto& request) {
+        PropertyMap params = input;
+        if (::from_json(params, request.message))
+        {
+            engine->triggerRender();
+            return Response{to_json(action(params))};
+        }
+        return Response{
+            Response::Error{"from_json for " + name + " failed", -42}};
+    });
+
+    _impl->_handleSchema(desc.methodName,
+                         buildJsonRpcSchemaGetProperties(desc, input, output));
+}
+
+void RocketsPlugin::_registerRequest(const RpcDescription& desc,
+                                     const PropertyMap& output,
+                                     const std::function<PropertyMap()>& action)
+{
+    _impl->_jsonrpcServer->bind(desc.methodName, [
+        name = desc.methodName, action, engine = _impl->_engine
+    ](const auto&) {
+        engine->triggerRender();
+        return Response{to_json(action())};
+    });
+
+    _impl->_handleSchema(desc.methodName,
+                         buildJsonRpcSchemaGetProperties(desc, output));
 }
 
 void RocketsPlugin::_registerRequest(const std::string& name,

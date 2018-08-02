@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <brayns/common/types.h>
+
 #include <functional>
 #include <string>
 
@@ -46,6 +48,36 @@ class ActionInterface
 {
 public:
     virtual ~ActionInterface() = default;
+
+    /** Register an action with no parameter and no return value. */
+    void registerNotification(const RpcDescription& desc,
+                              const std::function<void()>& action)
+    {
+        _registerNotification(desc, action);
+    }
+
+    /** Register an action with a parameter and no return value. */
+    void registerNotification(const RpcDescription& desc,
+                              const PropertyMap& input,
+                              const std::function<void(PropertyMap)>& action)
+    {
+        _registerNotification(desc, input, action);
+    }
+
+    /** Register an action with a parameter and no return value. */
+    void registerRequest(const RpcDescription& desc, const PropertyMap& input,
+                         const PropertyMap& output,
+                         const std::function<PropertyMap(PropertyMap)>& action)
+    {
+        _registerRequest(desc, input, output, action);
+    }
+
+    /** Register an action with no parameter and a return value. */
+    void registerRequest(const RpcDescription& desc, const PropertyMap& output,
+                         const std::function<PropertyMap()>& action)
+    {
+        _registerRequest(desc, output, action);
+    }
 
     /** Register an action with no parameter and no return value. */
     void registerNotification(const std::string& name,
@@ -95,6 +127,28 @@ protected:
     using VoidFunc = std::function<void()>;
 
 private:
+    virtual void _registerNotification(const RpcDescription&,
+                                       const PropertyMap&,
+                                       const std::function<void(PropertyMap)>&)
+    {
+    }
+
+    virtual void _registerNotification(const RpcDescription&,
+                                       const std::function<void()>&)
+    {
+    }
+
+    virtual void _registerRequest(
+        const RpcDescription&, const PropertyMap&, const PropertyMap&,
+        const std::function<PropertyMap(PropertyMap)>&)
+    {
+    }
+
+    virtual void _registerRequest(const RpcDescription&, const PropertyMap&,
+                                  const std::function<PropertyMap()>&)
+    {
+    }
+
     virtual void _registerRequest(const std::string&, const RetParamFunc&) {}
     virtual void _registerRequest(const std::string&, const RetFunc&) {}
     virtual void _registerNotification(const std::string&, const ParamFunc&) {}

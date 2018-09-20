@@ -24,5 +24,4 @@ python-jsonschema-objects~=0.3.3
 requests~=2.11.1
 scipy~=0.19.1
 seaborn~=0.8.1
-websocket-client~=0.48.0
 semver~=2.7.9

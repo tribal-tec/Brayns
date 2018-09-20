@@ -24,13 +24,15 @@
 
 """Client that connects to a remote running Brayns instance which provides the supported API."""
 
+import asyncio
 import base64
 import io
 
+import rockets
+
 from PIL import Image
 from .api_generator import build_api
-from .rpcclient import RpcClient
-from .utils import in_notebook, HTTP_METHOD_GET, HTTP_STATUS_OK, SCHEMA_ENDPOINT
+from .utils import in_notebook, set_http_protocol, HTTP_METHOD_GET, HTTP_STATUS_OK, SCHEMA_ENDPOINT
 from .version import MINIMAL_VERSION
 from . import utils
 
@@ -43,7 +45,7 @@ def _obtain_registry(url):
     return status.contents
 
 
-class Client(RpcClient):
+class Client(rockets.Client):
     """Client that connects to a remote running Brayns instance which provides the supported API."""
 
     def __init__(self, url):
@@ -52,12 +54,16 @@ class Client(RpcClient):
 
         :param str url: a string 'hostname:port' to connect to a running brayns instance
         """
+        self._http_url = set_http_protocol(url) + '/'
         super(Client, self).__init__(url)
         self._check_version()
-        self._build_api()
+        asyncio.ensure_future(self._build_api())
 
         if in_notebook():
             self._add_widgets()  # pragma: no cover
+
+    def http_url(self):
+        return self._http_url
 
     def __str__(self):
         """Return a pretty-print on the currently connected Brayns instance."""
@@ -66,7 +72,7 @@ class Client(RpcClient):
         if self.version:
             version = '.'.join(str(x) for x in [self.version.major, self.version.minor,
                                                 self.version.patch])
-        return "Brayns version {0} running on {1}".format(version, self.url())
+        return "Brayns version {0} running on {1}".format(version, self.http_url())
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
@@ -131,12 +137,12 @@ class Client(RpcClient):
     def open_ui(self):
         """Open the Brayns UI in a new page of the default system browser."""
         import webbrowser
-        url = 'https://bbp-brayns.epfl.ch?host=' + self.url()
+        url = 'https://bbp-brayns.epfl.ch?host=' + self.http_url()
         webbrowser.open(url)
 
     def _check_version(self):
         """Check if the Brayns' version is sufficient enough."""
-        status = utils.http_request(HTTP_METHOD_GET, self.url(), 'version')
+        status = utils.http_request(HTTP_METHOD_GET, self.http_url(), 'version')
         if status.code != HTTP_STATUS_OK:
             raise Exception('Cannot obtain version from Brayns')
 
@@ -148,9 +154,9 @@ class Client(RpcClient):
             raise Exception('Brayns does not satisfy minimal required version; '
                             'needed {0}, got {1}'.format(MINIMAL_VERSION, version))
 
-    def _build_api(self):
+    async def _build_api(self):
         """Fetch the registry and all schemas from the remote running Brayns to build the API."""
-        registry = _obtain_registry(self.url())
+        registry = _obtain_registry(self.http_url())
         endpoints = {x.replace(SCHEMA_ENDPOINT, '') for x in registry}
 
         # batch request all schemas from all endpoints
@@ -158,7 +164,7 @@ class Client(RpcClient):
         for endpoint in endpoints:
             params.append({'endpoint': endpoint})
         methods = ['schema']*len(params)
-        schemas = self.batch_request(methods, params)
+        schemas = await self.async_batch_request(methods, params)
 
         schemas_dict = dict()
         for param, schema in zip(params, schemas):

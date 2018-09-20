@@ -37,8 +37,6 @@ HTTP_STATUS_OK = 200
 
 HTTP_PREFIX = 'http://'
 HTTPS_PREFIX = 'https://'
-WS_PREFIX = 'ws://'
-WSS_PREFIX = 'wss://'
 
 WS_PATH = '/ws'
 
@@ -127,21 +125,6 @@ def set_http_protocol(url):
     if url.find(HTTP_PREFIX) == -1 and url.find(HTTPS_PREFIX) == -1:
         return HTTP_PREFIX + url
     return url
-
-
-def set_ws_protocol(url):
-    """
-    Set the WebSocket protocol according to the resource url.
-
-    :param str url: Url to be checked
-    :return: Url preprend with ws for http, wss for https
-    :rtype: str
-    """
-    if url.find(HTTPS_PREFIX) != -1:
-        return WSS_PREFIX + url[len(HTTPS_PREFIX):]
-    if url.find(HTTP_PREFIX) != -1:
-        return WS_PREFIX + url[len(HTTP_PREFIX):]
-    return WS_PREFIX + url
 
 
 def underscorize(word):

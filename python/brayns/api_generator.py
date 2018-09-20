@@ -29,6 +29,7 @@ The information for the API generation is based on a registry and JSON-schema of
 and RPCs.
 """
 
+import asyncio
 import os
 import python_jsonschema_objects as pjs
 import inflection
@@ -272,7 +273,8 @@ def _add_method(target_object, schema):
                 """
                 {0}
                 """
-                return self.request("{1}", response_timeout=response_timeout)
+                import asyncio
+                asyncio.ensure_future(self.async_notify("{1}", None))
             '''.format(description, method)
 
     d = {}
@@ -309,7 +311,7 @@ def _add_property(target_object, member, property_name, property_type):
             else:
                 has_value = value.as_dict()
             if not has_value or not target_object.connected():
-                status = utils.http_request(HTTP_METHOD_GET, self.url(), property_name)
+                status = utils.http_request(HTTP_METHOD_GET, self.http_url(), property_name)
                 if status.code == HTTP_STATUS_OK:
                     if property_type == 'array':
                         value.__init__(status.contents)

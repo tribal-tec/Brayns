@@ -78,7 +78,7 @@ class Client(rockets.Client):
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
-              renderer=None, samples_per_pixel=None):
+              renderer=None, samples_per_pixel=None, async=True):
         """
         Request a snapshot from Brayns and return a PIL image.
 
@@ -94,7 +94,58 @@ class Client(rockets.Client):
         """
         args = locals()
         del args['self']
-        result = self.snapshot(response_timeout=None, **{k: v for k, v in args.items() if v})
+        del args['async']
+        result = self.snapshot(async=async, response_timeout=None,
+                               **{k: v for k, v in args.items() if v})
+
+        if async:
+            from ipywidgets import FloatProgress, Label, HBox, VBox, Button
+            from IPython.display import display
+
+            progress = FloatProgress(min=0, max=1, value=0)
+            label = Label(value='')
+            button = Button(description='Cancel')
+            box = VBox([label, HBox([progress, button])])
+            display(box)
+
+            def _on_progress(value):
+                progress.value = value.amount
+                label.value = value.operation
+
+            def show_image(data):
+                if not data:
+                    return
+                if data and 'data' in data:
+                    data=data['data']
+                missing_padding = len(data) % 4
+                if missing_padding != 0:
+                    data += b'=' * (4 - missing_padding)
+                from IPython.display import display
+                import ipywidgets as widgets
+                image = widgets.Image(format='jpg')
+                image.value = base64.b64decode(data)
+                display(image)
+
+            def _on_done(task):
+                try:
+                    show_image(task.result())
+                except rockets.RequestError as e:
+                    print("Error",e.code,e.message)
+                except ConnectionRefusedError as e:
+                    print(e)
+                except Exception as e:
+                    print(e)
+                finally:
+                    box.close()
+
+            result.add_progress_callback(_on_progress)
+            result.add_done_callback(_on_done)
+
+            def _on_cancel(b):
+                result.cancel()
+            button.on_click(_on_cancel)
+
+            return
 
         # error case: invalid request/parameters
         if 'code' in result:

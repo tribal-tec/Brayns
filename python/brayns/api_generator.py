@@ -126,14 +126,16 @@ def _create_method_with_object_parameter(param, method, description):
         arg_list += ', '
     arg_list += ', '.join(filter(None, optional))
     return '''
-        def function(self, {0}, response_timeout=5):
+        def function(self, {0}, async=False, response_timeout=5):
             """
             {1}
             """
             args = locals()
             del args['self']
+            del args['async']
             del args['response_timeout']
-            return self.request("{2}", params={{k:v for k,v in args.items()
+            func = self.async_request if async else self.request
+            return func("{2}", params={{k:v for k,v in args.items()
                                              if v is not None}},
                                              response_timeout=response_timeout)
         '''.format(arg_list, description, method)
@@ -150,12 +152,13 @@ def _create_method_with_array_parameter(name, method, description):
     :rtype: str
     """
     return '''
-        def function(self, {1}, response_timeout=5):
+        def function(self, {1}, async=False, response_timeout=5):
             """
             {0}
             {2}
             """
-            return self.request("{3}", params={1},
+            func = self.async_request if async else self.request
+            return func("{3}", params={1},
                                     response_timeout=response_timeout)
         '''.format(description, name, ":param {0}: {1}".format(name, description), method)
 
@@ -199,12 +202,13 @@ def _create_method_with_oneof_parameter(target_object, param, method, descriptio
         _add_enums(class_type(), class_type)
 
     return '''
-        def function(self, params, response_timeout=5):
+        def function(self, params, async=False, response_timeout=5):
             """
             {0}
             ":param: one of the params for the active type: {1}
             """
-            return self.request("{2}", params.for_json(),
+            func = self.async_request if async else self.request
+            return func("{2}", params.for_json(),
                                     response_timeout=response_timeout)
         '''.format(description, ', '.join(param_types), method)
 
@@ -268,11 +272,12 @@ def _add_method(target_object, schema):
                             ' must be "object", "array" or "oneOf"')
     else:
         code = '''
-            def function(self, response_timeout=5):
+            def function(self, async=False, response_timeout=5):
                 """
                 {0}
                 """
-                return self.request("{1}", response_timeout=response_timeout)
+                func = self.async_request if async else self.request
+                return func("{1}", response_timeout=response_timeout)
             '''.format(description, method)
 
     d = {}

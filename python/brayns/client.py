@@ -24,13 +24,13 @@
 
 """Client that connects to a remote running Brayns instance which provides the supported API."""
 
-import asyncio
+# import asyncio
 import base64
 import io
 
+from PIL import Image
 import rockets
 
-from PIL import Image
 from .api_generator import build_api
 from .utils import in_notebook, set_http_protocol, HTTP_METHOD_GET, HTTP_STATUS_OK, SCHEMA_ENDPOINT
 from .version import MINIMAL_VERSION
@@ -57,12 +57,14 @@ class Client(rockets.Client):
         self._http_url = set_http_protocol(url) + '/'
         super(Client, self).__init__(url)
         self._check_version()
-        asyncio.ensure_future(self._build_api())
+        # asyncio.ensure_future(self._build_api())
+        self._build_api()
 
         if in_notebook():
             self._add_widgets()  # pragma: no cover
 
     def http_url(self):
+        """Return the HTTP URL"""
         return self._http_url
 
     def __str__(self):
@@ -154,7 +156,7 @@ class Client(rockets.Client):
             raise Exception('Brayns does not satisfy minimal required version; '
                             'needed {0}, got {1}'.format(MINIMAL_VERSION, version))
 
-    async def _build_api(self):
+    def _build_api(self):
         """Fetch the registry and all schemas from the remote running Brayns to build the API."""
         registry = _obtain_registry(self.http_url())
         endpoints = {x.replace(SCHEMA_ENDPOINT, '') for x in registry}
@@ -164,7 +166,7 @@ class Client(rockets.Client):
         for endpoint in endpoints:
             params.append({'endpoint': endpoint})
         methods = ['schema']*len(params)
-        schemas = await self.async_batch_request(methods, params)
+        schemas = self.batch_request(methods, params, None)
 
         schemas_dict = dict()
         for param, schema in zip(params, schemas):
@@ -182,8 +184,6 @@ class Client(rockets.Client):
             """Wrapper for returning the show() function."""
             def show():
                 """Show the live rendering of Brayns."""
-                self._setup_websocket()
-
                 # pylint: disable=F0401,E1101
                 from IPython.display import display
                 import ipywidgets as widgets
@@ -210,8 +210,6 @@ class Client(rockets.Client):
             """Wrapper for returning the animation_slider() function."""
             def animation_slider():
                 """.Show slider to control animation"""
-                self._setup_websocket()
-
                 # pylint: disable=F0401,E1101
                 import ipywidgets as widgets
                 from IPython.display import display

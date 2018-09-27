@@ -310,6 +310,9 @@ def mock_rpc_request_object_commit(self, method, params=None, response_timeout=5
     assert_equal(obj, params)
     return True
 
+def mock_connected(self):
+    return True
+
 
 def mock_snapshot(format, size, animation_parameters=None, camera=None, name=None, quality=None,
                   renderer=None, samples_per_pixel=None, response_timeout=None):
@@ -407,9 +410,9 @@ def test_object_replace():
 def test_object_commit():
     with patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch_request', new=mock_batch_request), \
-         patch('rockets.Client.request', new=mock_rpc_request_object_commit):
+         patch('rockets.Client.request', new=mock_rpc_request_object_commit), \
+         patch('rockets.Client.connected', new=mock_connected):
         app = brayns.Client('localhost:8200')
-        app._ws_connected = True
         app.test_object.integer = 42
         app.test_object.commit()
 

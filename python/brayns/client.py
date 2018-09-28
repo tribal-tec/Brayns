@@ -24,7 +24,6 @@
 
 """Client that connects to a remote running Brayns instance which provides the supported API."""
 
-# import asyncio
 import base64
 import io
 
@@ -57,7 +56,6 @@ class Client(rockets.Client):
         self._http_url = set_http_protocol(url) + '/'
         super(Client, self).__init__(url)
         self._check_version()
-        # asyncio.ensure_future(self._build_api())
         self._build_api()
 
         if in_notebook():

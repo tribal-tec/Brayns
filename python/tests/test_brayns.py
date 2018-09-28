@@ -494,14 +494,6 @@ def test_rpc_invalid_type():
         assert_false(hasattr(app, 'test-rpc-invalid-type'))
 
 
-# def test_encoder():
-#     from brayns.rpcclient import Encoder
-#     import json
-#     a = json.dumps([1, 2], cls=Encoder)
-#     b = json.dumps(numpy.array([1, 2]), cls=Encoder)
-#     assert(a == b)
-
-
 @raises(Exception)
 def test_rpc_invalid_param():
     with patch('brayns.utils.http_request', new=mock_http_request_invalid_rpc_param), \

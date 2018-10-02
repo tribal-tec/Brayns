@@ -76,7 +76,7 @@ class Client(rockets.Client):
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
-              renderer=None, samples_per_pixel=None, async=True):
+              renderer=None, samples_per_pixel=None, async=False):
         """
         Request a snapshot from Brayns and return a PIL image.
 
@@ -92,8 +92,7 @@ class Client(rockets.Client):
         """
         args = locals()
         del args['self']
-        del args['async']
-        result = self.snapshot(async=async, response_timeout=None,
+        result = self.snapshot(response_timeout=None,
                                **{k: v for k, v in args.items() if v})
 
         if async:
@@ -211,15 +210,14 @@ class Client(rockets.Client):
         endpoints = {x.replace(SCHEMA_ENDPOINT, '') for x in registry}
 
         # batch request all schemas from all endpoints
-        params = list()
+        requests = list()
         for endpoint in endpoints:
-            params.append({'endpoint': endpoint})
-        methods = ['schema']*len(params)
-        schemas = self.batch_request(methods, params, None)
+            requests.append(rockets.Request('schema', {'endpoint': endpoint}))
+        schemas = self.batch(requests)
 
         schemas_dict = dict()
-        for param, schema in zip(params, schemas):
-            schemas_dict[param['endpoint']] = schema
+        for request, schema in zip(requests, schemas):
+            schemas_dict[request.params['endpoint']] = schema
         build_api(self, registry, schemas_dict)
 
     def _add_widgets(self):  # pragma: no cover

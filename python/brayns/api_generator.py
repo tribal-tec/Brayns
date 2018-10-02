@@ -133,11 +133,11 @@ def _create_method_with_object_parameter(param, method, description):
             args = locals()
             del args['self']
             del args['async']
-            del args['response_timeout']
+            if async:
+                del args['response_timeout']
             func = self.async_request if async else self.request
             return func("{2}", params={{k:v for k,v in args.items()
-                                             if v is not None}},
-                                             response_timeout=response_timeout)
+                                             if v is not None}})
         '''.format(arg_list, description, method)
 
 
@@ -158,8 +158,7 @@ def _create_method_with_array_parameter(name, method, description):
             {2}
             """
             func = self.async_request if async else self.request
-            return func("{3}", params={1},
-                                    response_timeout=response_timeout)
+            return func("{3}", params={1})
         '''.format(description, name, ":param {0}: {1}".format(name, description), method)
 
 
@@ -208,8 +207,7 @@ def _create_method_with_oneof_parameter(target_object, param, method, descriptio
             ":param: one of the params for the active type: {1}
             """
             func = self.async_request if async else self.request
-            return func("{2}", params.for_json(),
-                                    response_timeout=response_timeout)
+            return func("{2}", params.for_json())
         '''.format(description, ', '.join(param_types), method)
 
 
@@ -277,7 +275,7 @@ def _add_method(target_object, schema):
                 {0}
                 """
                 func = self.async_request if async else self.request
-                return func("{1}", response_timeout=response_timeout)
+                return func("{1}")
             '''.format(description, method)
 
     d = {}

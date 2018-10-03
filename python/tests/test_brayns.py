@@ -250,10 +250,6 @@ def mock_batch(self, requests, response_timeout=5):
 
 
 def mock_http_request(method, url, command, body=None, query_params=None):
-    if command == 'test-object':
-        return brayns.utils.Status(200, TEST_OBJECT)
-    if command == 'test-array':
-        return brayns.utils.Status(200, TEST_ARRAY)
     if command == 'version':
         return brayns.utils.Status(200, TEST_VERSION)
     if command == 'registry':
@@ -299,16 +295,19 @@ def mock_batch_invalid_rpc_param(self, methods, params, response_timeout=5):
 
 
 def mock_rpc_request(self, method, params=None, response_timeout=5):
-    return True
-
-
-def mock_rpc_request_object_commit(self, method, params=None, response_timeout=5):
-    assert_equal(method, 'set-test-object')
-    import copy
-    obj = copy.deepcopy(TEST_OBJECT)
-    obj['integer'] = 42
-    assert_equal(obj, params)
-    return True
+    if method == 'get-test-object':
+        return TEST_OBJECT
+    if method == 'get-test-array':
+        return TEST_ARRAY
+    if method == 'get-version':
+        return TEST_VERSION
+    if method == 'set-test-object':
+        import copy
+        obj = copy.deepcopy(TEST_OBJECT)
+        obj['integer'] = 42
+        assert_equal(obj, params)
+        return True
+    return {'code': -42, 'message': 'Unknown object for request'}
 
 def mock_connected(self):
     return True
@@ -328,6 +327,7 @@ def mock_snapshot(format, size, animation_parameters=None, camera=None, name=Non
 
 def test_init():
     with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.url(), 'ws://localhost:8200')
@@ -355,6 +355,7 @@ def test_init_no_registry():
 
 def test_object_properties():
     with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.integer, TEST_OBJECT['integer'])
@@ -365,6 +366,7 @@ def test_object_properties():
 
 def test_object_properties_enum():
     with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.enum, TEST_OBJECT['enum'])
@@ -374,6 +376,7 @@ def test_object_properties_enum():
 
 def test_object_properties_enum_with_title():
     with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.enum_title, TEST_OBJECT['enum_title'])
@@ -383,6 +386,7 @@ def test_object_properties_enum_with_title():
 
 def test_object_properties_enum_array():
     with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.enum_array, TEST_OBJECT['enum_array'])
@@ -393,7 +397,9 @@ def test_object_properties_enum_array():
 
 
 def test_object_properties_array():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.test_object.array, TEST_OBJECT['array'])
@@ -401,7 +407,8 @@ def test_object_properties_array():
 
 @raises(AttributeError)
 def test_object_replace():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         app.test_object = [1,2,3]
@@ -410,24 +417,27 @@ def test_object_replace():
 def test_object_commit():
     with patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-         patch('rockets.Client.request', new=mock_rpc_request_object_commit), \
-         patch('rockets.Client.connected', new=mock_connected):
+         patch('rockets.Client.request', new=mock_rpc_request), \
+         patch('rockets.AsyncClient.connected', new=mock_connected):
         app = brayns.Client('localhost:8200')
         app.test_object.integer = 42
         app.test_object.commit()
 
 
 def test_array():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         assert_equal(app.test_array, TEST_ARRAY)
 
 
 def test_rpc_one_parameter():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-            patch('rockets.Client.request', new=mock_rpc_request):
+         patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc), TEST_RPC_ONE_PARAMETER['description'])
@@ -435,7 +445,8 @@ def test_rpc_one_parameter():
 
 
 def test_rpc_one_of_parameter():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
          patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
@@ -448,7 +459,8 @@ def test_rpc_one_of_parameter():
 
 
 def test_rpc_one_of_parameter_weird_casings():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
          patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
@@ -459,9 +471,10 @@ def test_rpc_one_of_parameter_weird_casings():
 
 
 def test_rpc_array_parameter():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-            patch('rockets.Client.request', new=mock_rpc_request):
+         patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.inspect).startswith(TEST_RPC_ARRAY_PARAMETER['description']))
@@ -469,7 +482,8 @@ def test_rpc_array_parameter():
 
 
 def test_rpc_two_parameters():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
          patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
@@ -477,7 +491,8 @@ def test_rpc_two_parameters():
 
 
 def test_rpc_only_return():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
          patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
@@ -487,22 +502,25 @@ def test_rpc_only_return():
 
 
 def test_rpc_invalid_type():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-            patch('rockets.Client.request', new=mock_rpc_request):
+         patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         assert_false(hasattr(app, 'test-rpc-invalid-type'))
 
 
 @raises(Exception)
 def test_rpc_invalid_param():
-    with patch('brayns.utils.http_request', new=mock_http_request_invalid_rpc_param), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request_invalid_rpc_param), \
          patch('rockets.Client.batch', new=mock_batch_request_invalid_rpc_param):
         brayns.Client('localhost:8200')
 
 
 def test_image():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         setattr(app, 'snapshot', mock_snapshot)
@@ -510,7 +528,8 @@ def test_image():
 
 
 def test_image_wrong_format():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         setattr(app, 'snapshot', mock_snapshot)
@@ -519,7 +538,8 @@ def test_image_wrong_format():
 
 @raises(TypeError)
 def test_image_not_base64():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         setattr(app, 'snapshot', mock_snapshot)
@@ -540,7 +560,8 @@ class MockTransferFunction(object):
 
 
 def test_set_colormap():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         setattr(app, 'transfer_function', MockTransferFunction())
@@ -554,7 +575,8 @@ def test_set_colormap():
 
 @raises(ValueError)
 def test_set_colormap_unknown_colormap():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
         setattr(app, 'transfer_function', MockTransferFunction())
@@ -568,7 +590,8 @@ def mock_webbrowser_open(url):
 
 
 def test_open_ui():
-    with patch('brayns.utils.http_request', new=mock_http_request), \
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
             patch('webbrowser.open', new=mock_webbrowser_open):
         app = brayns.Client('localhost:8200')

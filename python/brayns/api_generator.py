@@ -312,12 +312,12 @@ def _add_property(target_object, member, property_name, property_type):
             else:
                 has_value = value.as_dict()
             if not has_value or not target_object.connected():
-                status = utils.http_request(HTTP_METHOD_GET, self.http_url(), property_name)
-                if status.code == HTTP_STATUS_OK:
+                new_value = target_object.request('get-'+property_name)
+                if not 'code' in new_value:
                     if property_type == 'array':
-                        value.__init__(status.contents)
+                        value.__init__(new_value)
                     else:
-                        value.__init__(**status.contents)
+                        value.__init__(**new_value)
 
             if property_type == 'array':
                 return value.data

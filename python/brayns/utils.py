@@ -26,6 +26,7 @@
 
 import sys
 from collections import OrderedDict
+from functools import wraps
 import requests
 
 
@@ -136,3 +137,24 @@ def underscorize(word):
     :rtype: str
     """
     return word.replace('-', '_')
+
+
+def add_method(cls, name, description):
+    """
+    Decorator that adds the decorated function with the given name and docstring to cls.
+
+    :param object cls: the python class to the decorated function to
+    :param str name: the name of the function
+    :param str description: the docstring of the function
+    :return: the decorator
+    :rtype: decorator
+    """
+    def _decorator(func):
+        func.__doc__ = description
+
+        @wraps(func)
+        def _wrapper(self, *args, **kwargs):
+            return func(self, *args, **kwargs)
+        setattr(cls, name, _wrapper)
+        return func
+    return _decorator

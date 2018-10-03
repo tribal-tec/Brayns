@@ -33,9 +33,7 @@ import os
 import python_jsonschema_objects as pjs
 import inflection
 
-from .utils import HTTP_METHOD_GET, HTTP_METHOD_PUT, HTTP_STATUS_OK, SCHEMA_ENDPOINT
-
-from . import utils
+from .utils import HTTP_METHOD_PUT, SCHEMA_ENDPOINT, add_method, underscorize
 
 
 def build_api(target_object, registry, schemas):
@@ -101,20 +99,20 @@ def _try_add_property(target_object, registry_entry, schema, writeable):
         value = class_type(())
 
     # add member and property to target_object
-    member = '_' + utils.underscorize(os.path.basename(registry_entry))
+    member = '_' + underscorize(os.path.basename(registry_entry))
     setattr(target_object, member, value)
     _add_property(target_object, member, registry_entry, schema['type'])
 
 
-def _create_method_with_object_parameter(param, method, description):
+def _add_method_with_object_arg(cls, param, method, description, is_async, is_request):
     """
-    Create code for a method where each property of the param object is a key-value argument.
+    Add a method to cls where each property of the param object is a key-value argument.
 
     :param dict param: the parameter object from the RPC
     :param str method: the name of RPC
     :param str description: the description of RPC
-    :return: the code of the function
-    :rtype: str
+    :param bool is_async: if the RPC is processed asynchronously or not
+    :param bool is_request: if the RPC is a request with a response or a notification only
     """
     required = param['required'] if 'required' in param else list()
     optional = list()
@@ -125,46 +123,76 @@ def _create_method_with_object_parameter(param, method, description):
     if optional and required:
         arg_list += ', '
     arg_list += ', '.join(filter(None, optional))
-    return '''
-        def function(self, {0}, async=False, response_timeout=5):
-            """
-            {1}
-            """
-            args = locals()
-            del args['self']
-            del args['async']
-            if async:
-                del args['response_timeout']
-            func = self.async_request if async else self.request
-            return func("{2}", params={{k:v for k,v in args.items()
-                                             if v is not None}})
-        '''.format(arg_list, description, method)
+
+    func_name = str(underscorize(os.path.basename(method)))
+    if is_request:
+        if is_async:
+            code = '''
+                def function(self, {0}, call_async=True):
+                    args = locals()
+                    del args['self']
+                    del args['call_async']
+                    params = {{k:v for k,v in args.items() if v is not None}}
+                    if call_async:
+                        return self.async_request("{1}", params)
+                    return self.request("{1}", params)
+                '''.format(arg_list, method)
+        else:
+            code = '''
+                def function(self, {0}, response_timeout=None):
+                    args = locals()
+                    del args['self']
+                    params = {{k:v for k,v in args.items() if v is not None}}
+                    return self.request("{1}", params)
+                '''.format(arg_list, method)
+    else:
+        code = '''
+            def function(self, {0}):
+                args = locals()
+                del args['self']
+                return self.notify("{1}", params={{k:v for k,v in args.items()
+                                                if v is not None}})
+            '''.format(arg_list, method)
+
+    d = {}
+    exec(code.strip(), d)  # pylint: disable=W0122
+    function = d['function']
+    add_method(cls, func_name, description)(function)
 
 
-def _create_method_with_array_parameter(name, method, description):
+def _add_method_with_array_arg(cls, param, method, description, is_async, is_request):
     """
-    Create code for a method where the parameter is an array argument.
+    Add a method to cls where the argument is an array.
 
-    :param str name: the name of the array argument
+    :param dict param: the parameter object from the RPC
     :param str method: the name of RPC
     :param str description: the description of RPC
-    :return: the code of the function
-    :rtype: str
+    :param bool is_async: if the RPC is processed asynchronously or not
+    :param bool is_request: if the RPC is a request with a response or a notification only
     """
-    return '''
-        def function(self, {1}, async=False, response_timeout=5):
-            """
-            {0}
-            {2}
-            """
-            func = self.async_request if async else self.request
-            return func("{3}", params={1})
-        '''.format(description, name, ":param {0}: {1}".format(name, description), method)
+    if 'description' in param:
+        description += '\n:param {0}: {1}'.format(param['name'], param['description'])
+    func_name = str(underscorize(os.path.basename(method)))
+    if is_request:
+        if is_async:
+            @add_method(cls, func_name, description)
+            def function(self, array, call_async=True):  # pylint: disable=C0111,W0612
+                if call_async:
+                    return self.async_request(method, array)
+                return self.request(method, array)
+        else:
+            @add_method(cls, func_name, description)
+            def function(self, array, response_timeout=None):  # pylint: disable=C0111
+                return self.request(method, array, response_timeout=response_timeout)
+    else:
+        @add_method(cls, func_name, description)
+        def function(self, array):  # pylint: disable=C0111
+            self.notify(method, array)
 
 
-def _create_method_with_oneof_parameter(target_object, param, method, description):
+def _add_method_with_oneof_arg(target_object, param, method, description, is_async, is_request):
     """
-    Create code for a method where the parameter is from the oneOf array.
+    Add a method to cls where the argument is from a oneOf array.
 
     Also create a type for each oneOf type and add it to target_object.
 
@@ -172,8 +200,8 @@ def _create_method_with_oneof_parameter(target_object, param, method, descriptio
     :param list param: the oneOf array
     :param str method: name of RPC
     :param str description: description of RPC
-    :return: the code of the function
-    :rtype: str
+    :param bool is_async: if the RPC is processed asynchronously or not
+    :param bool is_request: if the RPC is a request with a response or a notification only
     """
     param_types = list()
     for o in param:
@@ -188,7 +216,7 @@ def _create_method_with_oneof_parameter(target_object, param, method, descriptio
                 break
 
         # create class name <Type><Method w/o set->, e.g. Perspective+CameraParams
-        pretty_class_name = utils.underscorize(method[4:])
+        pretty_class_name = underscorize(method[4:])
         pretty_class_name = inflection.camelize(pretty_class_name)
         pretty_class_name = class_name + pretty_class_name
 
@@ -200,15 +228,50 @@ def _create_method_with_oneof_parameter(target_object, param, method, descriptio
         # create and add potential enums to type
         _add_enums(class_type(), class_type)
 
-    return '''
-        def function(self, params, async=False, response_timeout=5):
-            """
-            {0}
-            ":param: one of the params for the active type: {1}
-            """
-            func = self.async_request if async else self.request
-            return func("{2}", params.for_json())
-        '''.format(description, ', '.join(param_types), method)
+    func_name = str(underscorize(os.path.basename(method)))
+    cls = target_object.__class__
+    if is_request:
+        if is_async:
+            @add_method(cls, func_name, description)
+            def function(self, params, call_async=True):  # pylint: disable=C0111,W0612
+                if call_async:
+                    return self.async_request(method, params.for_json())
+                return self.request(method, params.for_json())
+        else:
+            @add_method(cls, func_name, description)
+            def function(self, params, response_timeout=None):  # pylint: disable=C0111
+                return self.request(method, params.for_json(), response_timeout=response_timeout)
+    else:
+        @add_method(cls, func_name, description)
+        def function(self, params):  # pylint: disable=C0111
+            self.notify(method, params.for_json())
+
+
+def _add_method_with_no_args(cls, method, description, is_async, is_request):
+    """
+    Add a method to cls which has no argument.
+
+    :param str method: name of RPC
+    :param str description: description of RPC
+    :param bool is_async: if the RPC is processed asynchronously or not
+    :param bool is_request: if the RPC is a request with a response or a notification only
+    """
+    func_name = str(underscorize(os.path.basename(method)))
+    if is_request:
+        if is_async:
+            @add_method(cls, func_name, description)
+            def function(self, call_async=True):  # pylint: disable=C0111,W0612
+                if call_async:
+                    return self.async_request(method)
+                return self.request(method)
+        else:
+            @add_method(cls, func_name, description)
+            def function(self, response_timeout=None):  # pylint: disable=C0111
+                return self.request(method, response_timeout=response_timeout)
+    else:
+        @add_method(cls, func_name, description)
+        def function(self):  # pylint: disable=C0111
+            self.notify(method)
 
 
 def _add_enums(root_object, target_object):
@@ -247,42 +310,33 @@ def _add_method(target_object, schema):
     :raises Exception: if the param type of the RPC does not match oneOf, object or array
     """
     method = schema['title']
-    func_name = str(utils.underscorize(os.path.basename(method)))
 
     if 'params' in schema and len(schema['params']) > 1:
-        print("Multiple parameters for RPC '{0}' not supported".format(method))
+        print("Multiple arguments for RPC '{0}' not supported".format(method))
         return
 
     description = schema['description']
+    is_async = schema['async']
+    is_request = 'returns' in schema and schema['returns']
+
     if 'params' in schema and len(schema['params']) == 1:
         params = schema['params'][0]
         if 'oneOf' in params:
-            code = _create_method_with_oneof_parameter(target_object, params['oneOf'], method,
-                                                       description)
-        # in the absence of multiple parameters support, create a function with multiple
-        # parameters from object properties
+            _add_method_with_oneof_arg(target_object, params['oneOf'], method, description,
+                                       is_async, is_request)
+        # in the absence of multiple argument support, create a function with multiple arguments
+        # from object properties
         elif params['type'] == 'object':
-            code = _create_method_with_object_parameter(params, method, description)
+            _add_method_with_object_arg(target_object.__class__, params, method, description,
+                                        is_async, is_request)
         elif params['type'] == 'array':
-            code = _create_method_with_array_parameter(params['name'], method, description)
+            _add_method_with_array_arg(target_object.__class__, params, method, description,
+                                       is_async, is_request)
         else:
-            raise Exception('Invalid parameter type for method "{0}":'.format(method) +
-                            ' must be "object", "array" or "oneOf"')
+            raise Exception('Invalid argument type for method "{0}": '.format(method) +
+                            'must be "object", "array" or "oneOf"')
     else:
-        code = '''
-            def function(self, async=False, response_timeout=5):
-                """
-                {0}
-                """
-                func = self.async_request if async else self.request
-                return func("{1}")
-            '''.format(description, method)
-
-    d = {}
-    exec(code.strip(), d)  # pylint: disable=W0122
-    function = d['function']
-    function.__name__ = func_name
-    setattr(target_object.__class__, function.__name__, function)
+        _add_method_with_no_args(target_object.__class__, method, description, is_async, is_request)
 
 
 def _add_commit(rpc_client, property_type, object_name):
@@ -313,7 +367,7 @@ def _add_property(target_object, member, property_name, property_type):
                 has_value = value.as_dict()
             if not has_value or not target_object.connected():
                 new_value = target_object.request('get-'+property_name)
-                if not 'code' in new_value:
+                if 'code' not in new_value:
                     if property_type == 'array':
                         value.__init__(new_value)
                     else:
@@ -326,7 +380,7 @@ def _add_property(target_object, member, property_name, property_type):
         return function
 
     endpoint_name = os.path.basename(property_name)
-    snake_case_name = utils.underscorize(endpoint_name)
+    snake_case_name = underscorize(endpoint_name)
     setattr(type(target_object), snake_case_name,
             property(fget=getter_builder(member, property_name),
                      doc='Access to the {0} property'.format(endpoint_name)))

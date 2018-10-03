@@ -29,7 +29,7 @@ import brayns
 
 TEST_VERSION = {
     'major': 0,
-    'minor': 7,
+    'minor': 8,
     'patch': 0,
     'revision': 12345
 }
@@ -37,6 +37,7 @@ TEST_VERSION = {
 TEST_RPC_ONE_PARAMETER = {
     'title': 'test-rpc',
     'description': 'Pass on parameter to brayns',
+    'async': False,
     'type': 'method',
     'returns': {
         'anyOf': [{
@@ -65,12 +66,14 @@ TEST_RPC_ONE_PARAMETER = {
 TEST_RPC_INVALID_TYPE = {
     'title': 'test-rpc-invalid-type',
     'description': 'Should be method, not object',
+    'async': False,
     'type': 'object'
 }
 
 TEST_RPC_INVALID_PARAM = {
     'title': 'test-rpc-invalid-param',
     'description': 'Only objects for params, no single values',
+    'async': False,
     'type': 'method',
     'params': [{'type': 'string'}]
 }
@@ -78,6 +81,7 @@ TEST_RPC_INVALID_PARAM = {
 TEST_RPC_TWO_PARAMETERS = {
     'title': 'test-rpc-two-params',
     'description': 'Pass on two parameters to brayns',
+    'async': False,
     'type': 'method',
     'params': [{
         'type': 'object',
@@ -93,6 +97,7 @@ TEST_RPC_TWO_PARAMETERS = {
 TEST_RPC_ONLY_RETURN = {
     'title': 'test-rpc-return',
     'description': 'Only returns something, no parameter',
+    'async': False,
     'type': 'method',
     'returns': {
         'type': 'boolean'
@@ -102,6 +107,7 @@ TEST_RPC_ONLY_RETURN = {
 TEST_RPC_ONEOF_PARAMETER = {
     'title': 'set-camera',
     'description': 'Pass on oneOf parameter to brayns',
+    'async': False,
     'type': 'method',
     'params': [{
         'oneOf': [{
@@ -119,6 +125,7 @@ TEST_RPC_ONEOF_PARAMETER = {
 TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING = {
     'title': 'set-mode',
     'description': 'Check different casings work with created types',
+    'async': False,
     'type': 'method',
     'params': [{
         'oneOf': [{
@@ -144,11 +151,15 @@ TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING = {
 TEST_RPC_ARRAY_PARAMETER = {
     'title': 'inspect',
     'description': 'Pass on array parameter to brayns',
+    'async': False,
     'type': 'method',
     'params': [{
         'type': 'array',
         'name': 'xy',
-    }]
+    }],
+    'returns': {
+        'type': 'boolean'
+    }
 }
 
 TEST_OBJECT_SCHEMA = {
@@ -294,7 +305,7 @@ def mock_batch_invalid_rpc_param(self, methods, params, response_timeout=5):
     return results
 
 
-def mock_rpc_request(self, method, params=None, response_timeout=5):
+def mock_rpc_request(self, method, params=None, response_timeout=None):
     if method == 'get-test-object':
         return TEST_OBJECT
     if method == 'get-test-array':
@@ -309,12 +320,16 @@ def mock_rpc_request(self, method, params=None, response_timeout=5):
         return True
     return {'code': -42, 'message': 'Unknown object for request'}
 
+
+def mock_rpc_notify(self, method, params=None, response_timeout=None):
+    pass
+
 def mock_connected(self):
     return True
 
 
 def mock_snapshot(format, size, animation_parameters=None, camera=None, name=None, quality=None,
-                  renderer=None, samples_per_pixel=None, response_timeout=None, async=False):
+                  renderer=None, samples_per_pixel=None, response_timeout=None, call_async=False):
     if format == 'png':
         return {'data': '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'}
     if format == 'jpg':
@@ -332,7 +347,7 @@ def test_init():
         app = brayns.Client('localhost:8200')
         assert_equal(app.url(), 'ws://localhost:8200')
         assert_equal(app.version.as_dict(), TEST_VERSION)
-        assert_equal(str(app), 'Brayns version 0.7.0 running on http://localhost:8200/')
+        assert_equal(str(app), 'Brayns version 0.8.0 running on http://localhost:8200/')
 
 
 @raises(Exception)
@@ -448,14 +463,14 @@ def test_rpc_one_of_parameter():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-         patch('rockets.Client.request', new=mock_rpc_request):
+         patch('rockets.Client.notify', new=mock_rpc_notify):
         app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
         assert_true(hasattr(app, 'PerspectiveCamera'))
         param = app.PerspectiveCamera()
         param.fov = 10.2
-        assert_true(app.set_camera(param))
+        app.set_camera(param)
 
 
 def test_rpc_one_of_parameter_weird_casings():
@@ -478,7 +493,7 @@ def test_rpc_array_parameter():
         app = brayns.Client('localhost:8200')
         import inspect
         assert_true(inspect.getdoc(app.inspect).startswith(TEST_RPC_ARRAY_PARAMETER['description']))
-        assert_true(app.inspect(xy=[1,2]))
+        assert_true(app.inspect(array=[1,2]))
 
 
 def test_rpc_two_parameters():

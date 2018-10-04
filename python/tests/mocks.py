@@ -34,7 +34,7 @@ TEST_VERSION = {
 }
 
 TEST_RPC_ONE_PARAMETER = {
-    'title': 'test-rpc',
+    'title': 'test-request-single-arg',
     'description': 'Pass on parameter to brayns',
     'async': False,
     'type': 'method',
@@ -42,10 +42,31 @@ TEST_RPC_ONE_PARAMETER = {
         'anyOf': [{
                 'type': 'null'
             }, {
-                'type': 'object'
+                'type': 'string'
             }
         ]
     },
+    'params': [{
+        'type': 'object',
+        'name': 'model_param',
+        'description': 'bla',
+        'properties': {
+            'doit': {
+                'type':'boolean'
+            },
+            'name': {
+                'type: string'
+            }
+        },
+        'required': ['name']
+    }]
+}
+
+TEST_RPC_ONE_PARAMETER_NO_RETURN = {
+    'title': 'test-notify-single-arg',
+    'description': 'Pass on parameter to brayns',
+    'async': False,
+    'type': 'method',
     'params': [{
         'type': 'object',
         'name': 'model_param',
@@ -221,7 +242,8 @@ VERSION_SCHEMA = {
 }
 
 TEST_REGISTRY = {
-    'test-rpc/schema': ['GET'],
+    'test-request-single-arg/schema': ['GET'],
+    'test-notify-single-arg/schema': ['GET'],
     'set-camera/schema': ['GET'],
     'set-mode/schema': ['GET'],
     'inspect/schema': ['GET'],
@@ -236,10 +258,10 @@ TEST_REGISTRY = {
     'version': ['GET']
 }
 
-def mock_batch(self, requests, response_timeout=5):
-    results = list()
+def mock_batch(self, requests, response_timeout=None, make_async=False):
     mapping = {
-        'test-rpc': TEST_RPC_ONE_PARAMETER,
+        'test-request-single-arg': TEST_RPC_ONE_PARAMETER,
+        'test-notify-single-arg': TEST_RPC_ONE_PARAMETER_NO_RETURN,
         'set-camera': TEST_RPC_ONEOF_PARAMETER,
         'set-mode': TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING,
         'inspect': TEST_RPC_ARRAY_PARAMETER,
@@ -250,6 +272,11 @@ def mock_batch(self, requests, response_timeout=5):
         'test-array': TEST_ARRAY_SCHEMA,
         'version': VERSION_SCHEMA
     }
+    if make_async:
+        for i in mapping.values():
+            if 'async' in i:
+                i['async'] = True
+    results = list()
     for request in requests:
         schema = request.params['endpoint']
         if schema in mapping:
@@ -257,6 +284,10 @@ def mock_batch(self, requests, response_timeout=5):
         else:
             results.append({'code': -42, 'message': 'Invalid stuff'})
     return results
+
+
+def mock_batch_async(self, requests, response_timeout=None):
+    return mock_batch(self, requests, response_timeout, True)
 
 
 def mock_http_request(method, url, command, body=None, query_params=None):
@@ -294,7 +325,7 @@ def mock_http_request_invalid_rpc_param(method, url, command, body=None, query_p
     return brayns.utils.Status(404, None)
 
 
-def mock_batch_invalid_rpc_param(self, methods, params, response_timeout=5):
+def mock_batch_invalid_rpc_param(self, methods, params, response_timeout=None):
     results = list()
     for param in params:
         if param['endpoint'] == 'test-rpc-invalid-param':
@@ -317,7 +348,18 @@ def mock_rpc_request(self, method, params=None, response_timeout=None):
         obj['integer'] = 42
         assert_equal(obj, params)
         return True
+    if method == 'test-request-single-arg':
+        if params['doit']:
+            return params['name']
+        return None
     return {'code': -42, 'message': 'Unknown object for request'}
+
+
+async def mock_rpc_async_request(self, method, params=None):
+    import asyncio
+    future = asyncio.get_event_loop().create_future()
+    future.set_result(mock_rpc_request(self, method, params))
+    return future.result()
 
 
 def mock_rpc_notify(self, method, params=None, response_timeout=None):

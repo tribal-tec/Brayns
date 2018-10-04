@@ -139,6 +139,27 @@ TEST_RPC_ONEOF_PARAMETER = {
             'title': 'panoramic',
             'properties': {}
         }]
+    }],
+    'returns': {
+        'type': 'number'
+    }
+}
+
+TEST_RPC_ONEOF_PARAMETER_NO_RETURN = {
+    'title': 'set-camera-no-return',
+    'description': 'Pass on oneOf parameter to brayns',
+    'async': False,
+    'type': 'method',
+    'params': [{
+        'oneOf': [{
+            'type': 'object',
+            'title': 'perspective',
+            'properties': { 'fov': { 'type': 'number' }}
+        }, {
+            'type': 'object',
+            'title': 'panoramic',
+            'properties': {}
+        }]
     }]
 }
 
@@ -258,6 +279,7 @@ TEST_REGISTRY = {
     'test-request-single-arg/schema': ['GET'],
     'test-notify-single-arg/schema': ['GET'],
     'set-camera/schema': ['GET'],
+    'set-camera-no-return/schema': ['GET'],
     'set-mode/schema': ['GET'],
     'inspect/schema': ['GET'],
     'inspect-notify/schema': ['GET'],
@@ -277,6 +299,7 @@ def mock_batch(self, requests, response_timeout=None, make_async=False):
         'test-request-single-arg': TEST_RPC_ONE_PARAMETER,
         'test-notify-single-arg': TEST_RPC_ONE_PARAMETER_NO_RETURN,
         'set-camera': TEST_RPC_ONEOF_PARAMETER,
+        'set-camera-no-return': TEST_RPC_ONEOF_PARAMETER_NO_RETURN,
         'set-mode': TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING,
         'inspect': TEST_RPC_ARRAY_PARAMETER,
         'inspect-notify': TEST_RPC_ARRAY_PARAMETER_NO_RETURN,
@@ -373,6 +396,10 @@ def mock_rpc_request(self, method, params=None, response_timeout=None):
         return params == [1,2]
     if method == 'test-rpc-return':
         return 42
+    if method == 'set-camera':
+        if 'fov' in params:
+            return params['fov']
+        return 0
     return None
 
 

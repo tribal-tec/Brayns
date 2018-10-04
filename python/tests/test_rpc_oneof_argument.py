@@ -22,28 +22,84 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_true
-from mock import patch
+import asyncio
 import brayns
+import rockets
 
+from nose.tools import assert_true, assert_false
+from mock import patch
 from .mocks import *
 
 
-def test_rpc_one_of_parameter():
+def test_synchronous_request():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch), \
+         patch('rockets.Client.request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
+        import inspect
+        assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
+        assert_true(hasattr(app, 'PerspectiveCamera'))
+        perspective = app.PerspectiveCamera()
+        perspective.fov = 10.2
+        assert_equal(app.set_camera(perspective), perspective.fov)
+
+        assert_true(hasattr(app, 'PanoramicCamera'))
+        panoramic = app.PanoramicCamera()
+        assert_equal(app.set_camera(panoramic), 0)
+
+
+def test_asynchronous_request():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = brayns.Client('localhost:8200')
+
+        perspective = app.PerspectiveCamera()
+        perspective.fov = 10.2
+        task = app.set_camera(perspective)
+        assert_true(isinstance(task, rockets.RequestTask))
+        result = asyncio.get_event_loop().run_until_complete(task)
+        assert_true(perspective.fov)
+
+        panoramic = app.PanoramicCamera()
+        task = app.set_camera(panoramic)
+        assert_true(isinstance(task, rockets.RequestTask))
+        result = asyncio.get_event_loop().run_until_complete(task)
+        assert_false(0)
+
+
+def test_asynchronous_request_call_sync():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = brayns.Client('localhost:8200')
+        perspective = app.PerspectiveCamera()
+        perspective.fov = 10.2
+        assert_equal(app.set_camera(perspective, call_async=False), perspective.fov)
+
+        panoramic = app.PanoramicCamera()
+        assert_equal(app.set_camera(panoramic, call_async=False), 0)
+
+
+def test_notification():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
          patch('rockets.Client.notify', new=mock_rpc_notify):
         app = brayns.Client('localhost:8200')
-        import inspect
-        assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
-        assert_true(hasattr(app, 'PerspectiveCamera'))
-        param = app.PerspectiveCamera()
-        param.fov = 10.2
-        app.set_camera(param)
+        perspective = app.PerspectiveCamera()
+        perspective.fov = 10.2
+        app.set_camera_no_return(perspective)
+
+        assert_true(hasattr(app, 'PanoramicCamera'))
+        panoramic = app.PanoramicCamera()
+        app.set_camera_no_return(panoramic)
 
 
-def test_rpc_one_of_parameter_weird_casings():
+def test_weird_casings():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \

@@ -22,22 +22,63 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_true
-from mock import patch
+import asyncio
 import brayns
+import rockets
 
+from nose.tools import assert_true, assert_false
+from mock import patch
 from .mocks import *
 
 
-def test_rpc_array_parameter():
+def test_synchronous_request():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
          patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
         import inspect
-        assert_true(inspect.getdoc(app.inspect).startswith(TEST_RPC_ARRAY_PARAMETER['description']))
+        doc = inspect.getdoc(app.inspect)
+        assert_true(doc.startswith(TEST_RPC_ARRAY_PARAMETER['description']))
+        assert_true(doc.find(TEST_RPC_ARRAY_PARAMETER['params'][0]['description']) != -1)
         assert_true(app.inspect(array=[1,2]))
+        assert_false(app.inspect(array=[3,4]))
+
+
+def test_asynchronous_request():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = brayns.Client('localhost:8200')
+        task = app.inspect(array=[1,2])
+        assert_true(isinstance(task, rockets.RequestTask))
+        result = asyncio.get_event_loop().run_until_complete(task)
+        assert_true(result)
+
+        task = app.inspect(array=[3,4])
+        assert_true(isinstance(task, rockets.RequestTask))
+        result = asyncio.get_event_loop().run_until_complete(task)
+        assert_false(result)
+
+
+def test_asynchronous_request_call_sync():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = brayns.Client('localhost:8200')
+        assert_true(app.inspect(array=[1,2], call_async=False))
+        assert_false(app.inspect(array=[3,4], call_async=False))
+
+
+def test_notification():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch), \
+         patch('rockets.Client.notify', new=mock_rpc_notify):
+        app = brayns.Client('localhost:8200')
+        app.inspect_notify(array=[1,2])
 
 
 if __name__ == '__main__':

@@ -120,7 +120,7 @@ TEST_RPC_ONLY_RETURN = {
     'async': False,
     'type': 'method',
     'returns': {
-        'type': 'boolean'
+        'type': 'integer'
     }
 }
 
@@ -176,10 +176,23 @@ TEST_RPC_ARRAY_PARAMETER = {
     'params': [{
         'type': 'array',
         'name': 'xy',
+        'description': 'nice xy position'
     }],
     'returns': {
         'type': 'boolean'
     }
+}
+
+TEST_RPC_ARRAY_PARAMETER_NO_RETURN = {
+    'title': 'inspect-notify',
+    'description': 'Pass on array parameter to brayns',
+    'async': False,
+    'type': 'method',
+    'params': [{
+        'type': 'array',
+        'name': 'xy',
+        'description': 'nice xy position'
+    }]
 }
 
 TEST_OBJECT_SCHEMA = {
@@ -247,6 +260,7 @@ TEST_REGISTRY = {
     'set-camera/schema': ['GET'],
     'set-mode/schema': ['GET'],
     'inspect/schema': ['GET'],
+    'inspect-notify/schema': ['GET'],
     'test-rpc-invalid-type/schema': ['GET'],
     'test-rpc-invalid-param/schema': ['GET'],
     'test-rpc-return/schema': ['GET'],
@@ -265,6 +279,7 @@ def mock_batch(self, requests, response_timeout=None, make_async=False):
         'set-camera': TEST_RPC_ONEOF_PARAMETER,
         'set-mode': TEST_RPC_ONEOF_PARAMETER_WEIRD_CASING,
         'inspect': TEST_RPC_ARRAY_PARAMETER,
+        'inspect-notify': TEST_RPC_ARRAY_PARAMETER_NO_RETURN,
         'test-rpc-invalid-type': TEST_RPC_INVALID_TYPE,
         'test-rpc-two-params': TEST_RPC_TWO_PARAMETERS,
         'test-rpc-return': TEST_RPC_ONLY_RETURN,
@@ -273,6 +288,8 @@ def mock_batch(self, requests, response_timeout=None, make_async=False):
         'version': VERSION_SCHEMA
     }
     if make_async:
+        import copy
+        mapping = copy.deepcopy(mapping)
         for i in mapping.values():
             if 'async' in i:
                 i['async'] = True
@@ -352,7 +369,11 @@ def mock_rpc_request(self, method, params=None, response_timeout=None):
         if params['doit']:
             return params['name']
         return None
-    return {'code': -42, 'message': 'Unknown object for request'}
+    if method == 'inspect':
+        return params == [1,2]
+    if method == 'test-rpc-return':
+        return 42
+    return None
 
 
 async def mock_rpc_async_request(self, method, params=None):

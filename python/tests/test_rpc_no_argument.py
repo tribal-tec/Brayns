@@ -22,7 +22,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_true, assert_equal
+from nose.tools import assert_equal
 from mock import patch
 import brayns
 
@@ -37,7 +37,7 @@ def test_rpc_only_return():
         app = brayns.Client('localhost:8200')
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc_return), TEST_RPC_ONLY_RETURN['description'])
-        assert_true(app.test_rpc_return())
+        assert_equal(app.test_rpc_return(), 42)
 
 
 if __name__ == '__main__':

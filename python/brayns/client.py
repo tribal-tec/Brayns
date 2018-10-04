@@ -47,14 +47,14 @@ def _obtain_registry(url):
 class Client(rockets.Client):
     """Client that connects to a remote running Brayns instance which provides the supported API."""
 
-    def __init__(self, url):
+    def __init__(self, url, loop=None):
         """
         Create a new client instance by connecting to the given URL.
 
         :param str url: a string 'hostname:port' to connect to a running brayns instance
         """
         self._http_url = set_http_protocol(url) + '/'
-        super(Client, self).__init__(url)
+        super(Client, self).__init__(url, subprotocols=['rockets'], loop=loop)
         self._check_version()
         self._build_api()
 

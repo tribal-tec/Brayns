@@ -22,24 +22,39 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_equal
+from nose.tools import assert_true, assert_false, raises
 from mock import patch
 import brayns
 
 from .mocks import *
 
 
-def mock_webbrowser_open(url):
-    assert_equal(url, 'https://bbp-brayns.epfl.ch?host=http://localhost:8200/')
-
-
-def test_open_ui():
+def test_image():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('rockets.Client.batch', new=mock_batch), \
-         patch('webbrowser.open', new=mock_webbrowser_open):
+         patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
-        app.open_ui()
+        setattr(app, 'snapshot', mock_snapshot)
+        assert_true(app.image(size=[50,50], format='png'))
+
+
+def test_image_wrong_format():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch):
+        app = brayns.Client('localhost:8200')
+        setattr(app, 'snapshot', mock_snapshot)
+        assert_false(app.image(size=[50,50], format='foo'))
+
+
+@raises(TypeError)
+def test_image_not_base64():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch):
+        app = brayns.Client('localhost:8200')
+        setattr(app, 'snapshot', mock_snapshot)
+        app.image(size=[50, 50], format='jpg')
 
 
 if __name__ == '__main__':

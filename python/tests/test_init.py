@@ -22,24 +22,39 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, raises
 from mock import patch
 import brayns
 
 from .mocks import *
 
 
-def mock_webbrowser_open(url):
-    assert_equal(url, 'https://bbp-brayns.epfl.ch?host=http://localhost:8200/')
-
-
-def test_open_ui():
-    with patch('rockets.AsyncClient.connected', new=mock_connected), \
-         patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('rockets.Client.batch', new=mock_batch), \
-         patch('webbrowser.open', new=mock_webbrowser_open):
+def test_init():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.request', new=mock_rpc_request), \
+         patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
-        app.open_ui()
+        assert_equal(app.url(), 'ws://localhost:8200')
+        assert_equal(app.version.as_dict(), TEST_VERSION)
+        assert_equal(str(app), 'Brayns version 0.8.0 running on http://localhost:8200/')
+
+
+@raises(Exception)
+def test_init_no_version():
+    with patch('brayns.utils.http_request', new=mock_http_request_no_version):
+        brayns.Client('localhost:8200')
+
+
+@raises(Exception)
+def test_init_wrong_version():
+    with patch('brayns.utils.http_request', new=mock_http_request_wrong_version):
+        brayns.Client('localhost:8200')
+
+
+@raises(Exception)
+def test_init_no_registry():
+    with patch('brayns.utils.http_request', new=mock_http_request_no_registry):
+        brayns.Client('localhost:8200')
 
 
 if __name__ == '__main__':

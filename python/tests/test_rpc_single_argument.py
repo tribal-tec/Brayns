@@ -22,24 +22,22 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_equal
+from nose.tools import assert_true, assert_equal
 from mock import patch
 import brayns
 
 from .mocks import *
 
 
-def mock_webbrowser_open(url):
-    assert_equal(url, 'https://bbp-brayns.epfl.ch?host=http://localhost:8200/')
-
-
-def test_open_ui():
+def test_rpc_one_parameter():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-         patch('webbrowser.open', new=mock_webbrowser_open):
+         patch('rockets.Client.request', new=mock_rpc_request):
         app = brayns.Client('localhost:8200')
-        app.open_ui()
+        import inspect
+        assert_equal(inspect.getdoc(app.test_rpc), TEST_RPC_ONE_PARAMETER['description'])
+        assert_true(app.test_rpc(doit=False, name='foo'))
 
 
 if __name__ == '__main__':

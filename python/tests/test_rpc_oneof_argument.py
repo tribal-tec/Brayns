@@ -22,24 +22,37 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_equal
+from nose.tools import assert_true
 from mock import patch
 import brayns
 
 from .mocks import *
 
 
-def mock_webbrowser_open(url):
-    assert_equal(url, 'https://bbp-brayns.epfl.ch?host=http://localhost:8200/')
-
-
-def test_open_ui():
+def test_rpc_one_of_parameter():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
-         patch('webbrowser.open', new=mock_webbrowser_open):
+         patch('rockets.Client.notify', new=mock_rpc_notify):
         app = brayns.Client('localhost:8200')
-        app.open_ui()
+        import inspect
+        assert_true(inspect.getdoc(app.set_camera).startswith(TEST_RPC_ONEOF_PARAMETER['description']))
+        assert_true(hasattr(app, 'PerspectiveCamera'))
+        param = app.PerspectiveCamera()
+        param.fov = 10.2
+        app.set_camera(param)
+
+
+def test_rpc_one_of_parameter_weird_casings():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch), \
+         patch('rockets.Client.request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
+        assert_true(hasattr(app, 'StereofullMode'))
+        assert_true(hasattr(app, 'MonoFullMode'))
+        assert_true(hasattr(app, 'TruthfulMode'))
+        assert_true(hasattr(app, 'MeaningFulMode'))
 
 
 if __name__ == '__main__':

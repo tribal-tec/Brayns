@@ -22,24 +22,48 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_equal
+from nose.tools import assert_true, assert_equal, raises
 from mock import patch
 import brayns
 
 from .mocks import *
 
 
-def mock_webbrowser_open(url):
-    assert_equal(url, 'https://bbp-brayns.epfl.ch?host=http://localhost:8200/')
+class MockTransferFunction(object):
+    def __init__(self):
+        self.contribution = []
+        self.diffuse = []
+        self.emission = []
+        self.range = (0,1)
+        self.commit_called = False
+
+    def commit(self):
+        self.commit_called = True
 
 
-def test_open_ui():
+
+def test_set_colormap():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('rockets.Client.batch', new=mock_batch), \
-         patch('webbrowser.open', new=mock_webbrowser_open):
+         patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
-        app.open_ui()
+        setattr(app, 'transfer_function', MockTransferFunction())
+        app.set_colormap(colormap_size=123, data_range=(0, 42))
+        assert_equal(len(app.transfer_function.contribution), 123)
+        assert_equal(len(app.transfer_function.diffuse), 123)
+        assert_equal(len(app.transfer_function.emission), 0)
+        assert_equal(app.transfer_function.range, (0,42))
+        assert_true(app.transfer_function.commit_called)
+
+
+@raises(ValueError)
+def test_set_colormap_unknown_colormap():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch):
+        app = brayns.Client('localhost:8200')
+        setattr(app, 'transfer_function', MockTransferFunction())
+        app.set_colormap(colormap='foo')
 
 
 if __name__ == '__main__':

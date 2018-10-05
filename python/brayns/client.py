@@ -231,7 +231,6 @@ class Client(rockets.Client):
             """Wrapper for returning the show() function."""
             def show():
                 """Show the live rendering of Brayns."""
-                # pylint: disable=F0401,E1101
                 from IPython.display import display
                 import ipywidgets as widgets
                 from rx import Observer
@@ -273,47 +272,61 @@ class Client(rockets.Client):
             """Wrapper for returning the animation_slider() function."""
             def animation_slider():
                 """.Show slider to control animation"""
-                # pylint: disable=F0401,E1101
-                import ipywidgets as widgets
                 from IPython.display import display
+                import ipywidgets as widgets
+                from rx import Observer
+                import base64
 
-                button = widgets.ToggleButton(value=self.animation_parameters.delta != 0,
-                                              icon='play' if self.animation_parameters.delta == 0
-                                              else 'pause')
-                button.layout = widgets.Layout(width='40px')
+                brayns = self
 
-                def on_button_change(change):
-                    """Callback after play/pause button update to send delta for animation."""
-                    button.icon = 'pause' if change['new'] else 'play'
-                    self.set_animation_parameters(delta=1 if change['new'] else 0)
+                class StreamObserver(Observer):
+                    def __init__(self):
+                        self.button = widgets.ToggleButton(value=brayns.animation_parameters.delta != 0,
+                                                        icon='play' if brayns.animation_parameters.delta == 0
+                                                                    else 'pause')
+                        self.button.layout = widgets.Layout(width='40px')
 
-                button.observe(on_button_change, names='value')
+                        def on_button_change(change):
+                            """Callback after play/pause button update to send delta for animation."""
+                            self.button.icon = 'pause' if change['new'] else 'play'
+                            brayns.set_animation_parameters(delta=1 if change['new'] else 0)
 
-                slider = widgets.IntSlider(min=self.animation_parameters.start,
-                                           max=self.animation_parameters.end,
-                                           value=self.animation_parameters.current)
+                        self.button.observe(on_button_change, names='value')
 
-                def on_value_change(change):
-                    """Callback after slider update to send current for animation."""
-                    self.set_animation_parameters(current=change['new'])
+                        self.slider = widgets.IntSlider(min=brayns.animation_parameters.start,
+                                                        max=brayns.animation_parameters.end,
+                                                        value=brayns.animation_parameters.current)
 
-                slider.observe(on_value_change, names='value')
+                        def on_value_change(change):
+                            """Callback after slider update to send current for animation."""
+                            brayns.set_animation_parameters(current=change['new'])
 
-                w = widgets.HBox([button, slider])
-                display(w)
+                        self.value_change = on_value_change
 
-                def slider_update(data=None, close=False):
-                    """Update callback on update or when the websocket was closed."""
-                    if close:
-                        w.close()
-                    elif data is not None:
-                        slider.unobserve(on_value_change, names='value')
-                        slider.min = data.start
-                        slider.max = data.end
-                        slider.value = data.current
-                        slider.observe(on_value_change, names='value')
+                        self.slider.observe(self.value_change, names='value')
 
-                self._update_callback['set-animation-parameters'] = slider_update
+                        self.box = widgets.HBox([self.button, self.slider])
+                        display(self.box)
+
+                    def on_next(self, value):
+                        self.slider.unobserve(self.value_change, names='value')
+                        params = value['params']
+                        self.slider.min = params['start']
+                        self.slider.max = params['end']
+                        self.slider.value = params['current']
+                        self.slider.observe(self.value_change, names='value')
+
+                    def on_completed(self):
+                        self.box.close()
+
+                    def on_error(self, error):
+                        print("Error Occurred: {0}".format(error))
+                        self.box.close()
+
+                def _animation_filter(value):
+                    return 'method' in value and value['method'] == 'set-animation-parameters'
+                brayns.json_stream().filter(_animation_filter) \
+                    .subscribe(StreamObserver())
 
             return animation_slider
 

@@ -90,6 +90,12 @@ TEST_RPC_INVALID_TYPE = {
     'type': 'object'
 }
 
+TEST_RPC_NO_TYPE = {
+    'title': 'test-rpc-no-type',
+    'description': 'Must have a type',
+    'async': False
+}
+
 TEST_RPC_INVALID_PARAM = {
     'title': 'test-rpc-invalid-param',
     'description': 'Only objects for params, no single values',
@@ -122,6 +128,13 @@ TEST_RPC_ONLY_RETURN = {
     'returns': {
         'type': 'integer'
     }
+}
+
+TEST_RPC_NOTIFICATION = {
+    'title': 'test-notification',
+    'description': 'Just does something, return nothing',
+    'async': False,
+    'type': 'method'
 }
 
 TEST_RPC_ONEOF_PARAMETER = {
@@ -284,8 +297,9 @@ TEST_REGISTRY = {
     'inspect/schema': ['GET'],
     'inspect-notify/schema': ['GET'],
     'test-rpc-invalid-type/schema': ['GET'],
-    'test-rpc-invalid-param/schema': ['GET'],
+    'test-rpc-no-type/schema': ['GET'],
     'test-rpc-return/schema': ['GET'],
+    'test-notification/schema': ['GET'],
     'test-rpc-two-params/schema': ['GET'],
     'test-array': ['GET', 'PUT'],
     'test-array/schema': ['GET'],
@@ -304,8 +318,10 @@ def mock_batch(self, requests, response_timeout=None, make_async=False):
         'inspect': TEST_RPC_ARRAY_PARAMETER,
         'inspect-notify': TEST_RPC_ARRAY_PARAMETER_NO_RETURN,
         'test-rpc-invalid-type': TEST_RPC_INVALID_TYPE,
+        'test-rpc-no-type': TEST_RPC_NO_TYPE,
         'test-rpc-two-params': TEST_RPC_TWO_PARAMETERS,
         'test-rpc-return': TEST_RPC_ONLY_RETURN,
+        'test-notification': TEST_RPC_NOTIFICATION,
         'test-object': TEST_OBJECT_SCHEMA,
         'test-array': TEST_ARRAY_SCHEMA,
         'version': VERSION_SCHEMA
@@ -323,6 +339,15 @@ def mock_batch(self, requests, response_timeout=None, make_async=False):
             results.append(mapping[schema])
         else:
             results.append({'code': -42, 'message': 'Invalid stuff'})
+    return results
+
+
+def mock_batch_request_invalid_rpc_param(self, requests, response_timeout=None, make_async=False):
+    results = list()
+    for request in requests:
+        schema = request.params['endpoint']
+        if schema == 'test-rpc-invalid-param':
+            results.append(TEST_RPC_INVALID_PARAM)
     return results
 
 
@@ -361,18 +386,8 @@ def mock_http_request_invalid_rpc_param(method, url, command, body=None, query_p
     if command == 'version':
         return brayns.utils.Status(200, TEST_VERSION)
     if command == 'registry':
-        return brayns.utils.Status(200, TEST_REGISTRY)
+        return brayns.utils.Status(200, {'test-rpc-invalid-param/schema': ['GET']})
     return brayns.utils.Status(404, None)
-
-
-def mock_batch_invalid_rpc_param(self, methods, params, response_timeout=None):
-    results = list()
-    for param in params:
-        if param['endpoint'] == 'test-rpc-invalid-param':
-            results.append(TEST_RPC_INVALID_PARAM)
-        else:
-            results.append({'code': -42, 'message': 'Invalid stuff'})
-    return results
 
 
 def mock_rpc_request(self, method, params=None, response_timeout=None):

@@ -47,6 +47,15 @@ def test_rpc_invalid_type():
         assert_false(hasattr(app, 'test-rpc-invalid-type'))
 
 
+def test_rpc_no_type():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch), \
+         patch('rockets.Client.request', new=mock_rpc_request):
+        app = brayns.Client('localhost:8200')
+        assert_false(hasattr(app, 'test-rpc-no-type'))
+
+
 @raises(Exception)
 def test_rpc_invalid_param():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \

@@ -22,14 +22,16 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 # All rights reserved. Do not distribute without further notice.
 
-from nose.tools import assert_equal
-from mock import patch
+import asyncio
 import brayns
+import rockets
 
+from nose.tools import assert_true, assert_equal
+from mock import patch
 from .mocks import *
 
 
-def test_rpc_only_return():
+def test_synchronous_request():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.batch', new=mock_batch), \
@@ -38,6 +40,36 @@ def test_rpc_only_return():
         import inspect
         assert_equal(inspect.getdoc(app.test_rpc_return), TEST_RPC_ONLY_RETURN['description'])
         assert_equal(app.test_rpc_return(), 42)
+
+
+def test_asynchronous_request():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = brayns.Client('localhost:8200')
+        task = app.test_rpc_return()
+        assert_true(isinstance(task, rockets.RequestTask))
+        result = asyncio.get_event_loop().run_until_complete(task)
+        assert_equal(result, 42)
+
+
+def test_asynchronous_request_call_sync():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = brayns.Client('localhost:8200')
+        assert_equal(app.test_rpc_return(call_async=False), 42)
+
+
+def test_notification():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.Client.batch', new=mock_batch), \
+         patch('rockets.Client.notify', new=mock_rpc_notify):
+        app = brayns.Client('localhost:8200')
+        app.test_notification()
 
 
 if __name__ == '__main__':

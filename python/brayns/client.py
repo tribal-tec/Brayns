@@ -90,7 +90,7 @@ class Client(rockets.Client):
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
-              renderer=None, samples_per_pixel=None, call_async=False):
+              renderer=None, samples_per_pixel=None, call_async=True):
         """
         Request a snapshot from Brayns and return a PIL image.
 
@@ -106,69 +106,40 @@ class Client(rockets.Client):
         """
         args = locals()
         del args['self']
-        result = self.snapshot(response_timeout=None,
-                               **{k: v for k, v in args.items() if v})
+        del args['call_async']
+        result = self.snapshot(**{k: v for k, v in args.items() if v}, call_async=call_async)
 
-        if call_async:
-            from ipywidgets import FloatProgress, Label, HBox, VBox, Button
-            from IPython.display import display
+        def _show_image(result):
+            if not result:
+                return
+            # error case: invalid request/parameters
+            if 'code' in result:
+                print(result['message'])
+                return
 
-            progress = FloatProgress(min=0, max=1, value=0)
-            label = Label(value='')
-            button = Button(description='Cancel')
-            box = VBox([label, HBox([progress, button])])
-            display(box)
+            # https://stackoverflow.com/a/9807138
+            data = result['data']
+            missing_padding = len(data) % 4
+            if missing_padding != 0:
+                data += b'=' * (4 - missing_padding)
+            return Image.open(io.BytesIO(base64.b64decode(data)))
 
-            def _on_progress(value):
-                progress.value = value.amount
-                label.value = value.operation
+        if not call_async:
+            return _show_image(result)
 
-            def show_image(data):
-                if not data:
-                    return
-                if data and 'data' in data:
-                    data = data['data']
-                missing_padding = len(data) % 4
-                if missing_padding != 0:
-                    data += b'=' * (4 - missing_padding)
+        def _on_done(task):
+            try:
                 from IPython.display import display
-                import ipywidgets as widgets
-                image = widgets.Image(format='jpg')
-                image.value = base64.b64decode(data)
-                display(image)
+                display(_show_image(task.result()))
+            except rockets.RequestError as e:
+                print("Error", e.code, e.message)
+            except ConnectionRefusedError as e:
+                print(e)
+            except Exception as e:
+                print(e)
 
-            def _on_done(task):
-                try:
-                    show_image(task.result())
-                except rockets.RequestError as e:
-                    print("Error", e.code, e.message)
-                except ConnectionRefusedError as e:
-                    print(e)
-                except Exception as e:
-                    print(e)
-                finally:
-                    box.close()
-
-            result.add_progress_callback(_on_progress)
-            result.add_done_callback(_on_done)
-
-            def _on_cancel(b):
-                result.cancel()
-            button.on_click(_on_cancel)
-
-            return
-
-        # error case: invalid request/parameters
-        if 'code' in result:
-            print(result['message'])
-            return None
-
-        # https://stackoverflow.com/a/9807138
-        data = result['data']
-        missing_padding = len(data) % 4
-        if missing_padding != 0:
-            data += b'=' * (4 - missing_padding)
-        return Image.open(io.BytesIO(base64.b64decode(data)))
+        result.add_done_callback(_on_done)
+        return
 
     def set_colormap(self, colormap='magma', colormap_size=256, intensity=1, opacity=1,
                      data_range=(0, 256)):

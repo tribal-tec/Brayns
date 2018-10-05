@@ -234,18 +234,34 @@ class Client(rockets.Client):
                 # pylint: disable=F0401,E1101
                 from IPython.display import display
                 import ipywidgets as widgets
-                image = widgets.Image(format='jpg')
-                image.value = base64.b64decode(self.image_jpeg()['data'])
-                display(image)
+                from rx import Observer
+                import base64
 
-                def image_update(data=None, close=False):
-                    """Update callback on new image or when the websocket was closed."""
-                    if close:
-                        image.close()
-                    elif data is not None:
-                        image.value = data
+                brayns = self
 
-                self._update_callback['image-jpeg'] = image_update
+                class StreamObserver(Observer):
+                    def __init__(self):
+                        self.image = widgets.Image(format='jpg')
+                        task = brayns.async_request('image-jpeg')
+
+                        def _on_done(value):
+                            self.image.value = base64.b64decode(value.result()['data'])
+                            display(self.image)
+                        task.add_done_callback(_on_done)
+
+                    def on_next(self, value):
+                        self.image.value = value
+
+                    def on_completed(self):
+                        self.image.close()
+
+                    def on_error(self, error):
+                        print("Error Occurred: {0}".format(error))
+                        self.image.close()
+
+                brayns.as_observable() \
+                    .filter(lambda value: isinstance(value, (bytes, bytearray, memoryview))) \
+                    .subscribe(StreamObserver())
 
             return show
 

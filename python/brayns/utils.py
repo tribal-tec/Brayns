@@ -161,7 +161,14 @@ def add_method(cls, name, description):
     return _decorator
 
 
-def add_progress_cancel_widget(func):
+def add_progress_cancel_widget(func):  # pragma: no cover
+    """
+    Decorator that adds progress widget and cancel button to func that returns a RequestTask.
+
+    :param funcion func: the async function to decorate
+    :return: the decorator
+    :rtype: decorator
+    """
     def _wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
 
@@ -175,7 +182,7 @@ def add_progress_cancel_widget(func):
             box = VBox([label, HBox([progress, button])])
             display(box)
 
-            def _on_cancel(b):
+            def _on_cancel():
                 result.cancel()
 
             def _on_progress(value):

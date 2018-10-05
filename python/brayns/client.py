@@ -58,7 +58,6 @@ class Client(rockets.Client):
         self._check_version()
         self._build_api()
 
-        #### Subscribe to notifications
         # if not data['method'].startswith('set-'):
         #     return
 
@@ -70,7 +69,6 @@ class Client(rockets.Client):
         #     return
 
         # prop.__init__(**data['params'])
-        ####
 
         if in_notebook():
             self._add_widgets()  # pragma: no cover
@@ -90,7 +88,7 @@ class Client(rockets.Client):
 
     # pylint: disable=W0613,W0622,E1101
     def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
-              renderer=None, samples_per_pixel=None, call_async=True):
+              renderer=None, samples_per_pixel=None, call_async=False):
         """
         Request a snapshot from Brayns and return a PIL image.
 
@@ -110,8 +108,6 @@ class Client(rockets.Client):
         result = self.snapshot(**{k: v for k, v in args.items() if v}, call_async=call_async)
 
         def _show_image(result):
-            if not result:
-                return
             # error case: invalid request/parameters
             if 'code' in result:
                 print(result['message'])
@@ -124,22 +120,24 @@ class Client(rockets.Client):
                 data += b'=' * (4 - missing_padding)
             return Image.open(io.BytesIO(base64.b64decode(data)))
 
-        if not call_async:
+        if not call_async or not in_notebook():
             return _show_image(result)
+        else:  # pragma: no cover
+            def _on_done(task):
+                try:
+                    from IPython.display import display
+                    result = task.result()
+                    if result:
+                        display(_show_image(result))
+                except rockets.RequestError as e:
+                    print("Error", e.code, e.message)
+                except ConnectionRefusedError as e:
+                    print(e)
+                except Exception as e:
+                    print(e)
 
-        def _on_done(task):
-            try:
-                from IPython.display import display
-                display(_show_image(task.result()))
-            except rockets.RequestError as e:
-                print("Error", e.code, e.message)
-            except ConnectionRefusedError as e:
-                print(e)
-            except Exception as e:
-                print(e)
-
-        result.add_done_callback(_on_done)
-        return
+            result.add_done_callback(_on_done)
+            return
 
     def set_colormap(self, colormap='magma', colormap_size=256, intensity=1, opacity=1,
                      data_range=(0, 256)):
@@ -266,27 +264,26 @@ class Client(rockets.Client):
 
                 class StreamObserver(Observer):
                     def __init__(self):
-                        self.button = widgets.ToggleButton(value=brayns.animation_parameters.delta != 0,
-                                                        icon='play' if brayns.animation_parameters.delta == 0
-                                                                    else 'pause')
+                        anim_params = brayns.animation_parameters
+                        self.button = widgets.ToggleButton(value=anim_params.delta != 0,
+                                                           icon='play' if anim_params.delta == 0
+                                                           else 'pause')
                         self.button.layout = widgets.Layout(width='40px')
 
-                        def on_button_change(change):
-                            """Callback after play/pause button update to send delta for animation."""
+                        def _on_button_change(change):
                             self.button.icon = 'pause' if change['new'] else 'play'
                             brayns.set_animation_parameters(delta=1 if change['new'] else 0)
 
-                        self.button.observe(on_button_change, names='value')
+                        self.button.observe(_on_button_change, names='value')
 
-                        self.slider = widgets.IntSlider(min=brayns.animation_parameters.start,
-                                                        max=brayns.animation_parameters.end,
-                                                        value=brayns.animation_parameters.current)
+                        self.slider = widgets.IntSlider(min=anim_params.start,
+                                                        max=anim_params.end,
+                                                        value=anim_params.current)
 
-                        def on_value_change(change):
-                            """Callback after slider update to send current for animation."""
+                        def _on_value_change(change):
                             brayns.set_animation_parameters(current=change['new'])
 
-                        self.value_change = on_value_change
+                        self.value_change = _on_value_change
 
                         self.slider.observe(self.value_change, names='value')
 

@@ -33,7 +33,8 @@ import os
 import python_jsonschema_objects as pjs
 import inflection
 
-from .utils import HTTP_METHOD_PUT, SCHEMA_ENDPOINT, add_method, add_progress_cancel_widget, underscorize
+from .utils import HTTP_METHOD_PUT, SCHEMA_ENDPOINT, add_method, add_progress_cancel_widget, \
+                   underscorize
 
 
 def build_api(target_object, registry, schemas):

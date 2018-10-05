@@ -33,7 +33,7 @@ import os
 import python_jsonschema_objects as pjs
 import inflection
 
-from .utils import HTTP_METHOD_PUT, SCHEMA_ENDPOINT, add_method, underscorize
+from .utils import HTTP_METHOD_PUT, SCHEMA_ENDPOINT, add_method, add_progress_cancel_widget, underscorize
 
 
 def build_api(target_object, registry, schemas):
@@ -157,7 +157,7 @@ def _add_method_with_object_arg(cls, param, method, description, is_async, is_re
     d = {}
     exec(code.strip(), d)  # pylint: disable=W0122
     function = d['function']
-    add_method(cls, func_name, description)(function)
+    add_method(cls, func_name, description)(add_progress_cancel_widget(function))
 
 
 def _add_method_with_array_arg(cls, param, method, description, is_async, is_request):
@@ -176,6 +176,7 @@ def _add_method_with_array_arg(cls, param, method, description, is_async, is_req
     if is_request:
         if is_async:
             @add_method(cls, func_name, description)
+            @add_progress_cancel_widget
             def function(self, array, call_async=True):  # pylint: disable=C0111,W0612
                 if call_async:
                     return self.async_request(method, array)
@@ -233,6 +234,7 @@ def _add_method_with_oneof_arg(target_object, param, method, description, is_asy
     if is_request:
         if is_async:
             @add_method(cls, func_name, description)
+            @add_progress_cancel_widget
             def function(self, params, call_async=True):  # pylint: disable=C0111,W0612
                 if call_async:
                     return self.async_request(method, params.for_json())
@@ -260,6 +262,7 @@ def _add_method_with_no_args(cls, method, description, is_async, is_request):
     if is_request:
         if is_async:
             @add_method(cls, func_name, description)
+            @add_progress_cancel_widget
             def function(self, call_async=True):  # pylint: disable=C0111,W0612
                 if call_async:
                     return self.async_request(method)

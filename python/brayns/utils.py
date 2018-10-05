@@ -28,6 +28,7 @@ import sys
 from collections import OrderedDict
 from functools import wraps
 import requests
+import rockets
 
 
 HTTP_METHOD_PUT = 'PUT'
@@ -158,3 +159,35 @@ def add_method(cls, name, description):
         setattr(cls, name, _wrapper)
         return func
     return _decorator
+
+
+def add_progress_cancel_widget(func):
+    def _wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+
+        if isinstance(result, rockets.RequestTask) and in_notebook():
+            from ipywidgets import FloatProgress, Label, HBox, VBox, Button
+            from IPython.display import display
+
+            progress = FloatProgress(min=0, max=1, value=0)
+            label = Label(value='')
+            button = Button(description='Cancel')
+            box = VBox([label, HBox([progress, button])])
+            display(box)
+
+            def _on_cancel(b):
+                result.cancel()
+
+            def _on_progress(value):
+                progress.value = value.amount
+                label.value = value.operation
+
+            def _on_done(task):
+                box.close()
+
+            button.on_click(_on_cancel)
+            result.add_progress_callback(_on_progress)
+            result.add_done_callback(_on_done)
+
+        return result
+    return _wrapper

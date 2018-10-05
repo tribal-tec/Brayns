@@ -58,6 +58,20 @@ class Client(rockets.Client):
         self._check_version()
         self._build_api()
 
+        #### Subscribe to notifications
+        # if not data['method'].startswith('set-'):
+        #     return
+
+        # # remove the 'set-' part of the data method to find the property to update its
+        # # content
+        # prop_name = underscorize(data['method'][4:])
+        # prop = getattr(self, '_' + prop_name, None)
+        # if prop is None:
+        #     return
+
+        # prop.__init__(**data['params'])
+        ####
+
         if in_notebook():
             self._add_widgets()  # pragma: no cover
 

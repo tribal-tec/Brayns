@@ -24,17 +24,29 @@
 
 """Client that connects to a remote running Brayns instance which provides the supported API."""
 
+import asyncio
 import rockets
 
 from .api_generator import build_api
 from .base import BaseClient
 from .utils import obtain_registry, convert_snapshot_response_to_PIL, SCHEMA_ENDPOINT
+from . import utils
 
 
-class Client(BaseClient):
+class aobject(object):
+    """Inheriting from this class allows to define an async __init__."""
+
+    async def __new__(cls, *a, **kw):
+        """Allow to create objects by calling `await MyClass(params)`"""
+        instance = super().__new__(cls)
+        await instance.__init__(*a, **kw)
+        return instance
+
+
+class AsyncClient(BaseClient, aobject):
     """Client that connects to a remote running Brayns instance which provides the supported API."""
 
-    def __init__(self, url, loop=None):
+    async def __init__(self, url, loop=None):
         """
         Create a new client instance by connecting to the given URL.
 
@@ -43,12 +55,12 @@ class Client(BaseClient):
         """
         super().__init__(url)
 
-        self.rockets_client = rockets.Client(url, subprotocols=['rockets'], loop=loop)
-        self._build_api()
+        self.rockets_client = rockets.AsyncClient(url, subprotocols=['rockets'], loop=loop)
+        await self._build_api()
 
         super()._setup_notifications()
 
-    def _build_api(self):
+    async def _build_api(self):
         """Fetch the registry and all schemas from the remote running Brayns to build the API."""
         registry = obtain_registry(self.http_url)
         endpoints = {x.replace(SCHEMA_ENDPOINT, '') for x in registry}
@@ -57,7 +69,7 @@ class Client(BaseClient):
         requests = list()
         for endpoint in endpoints:
             requests.append(rockets.Request('schema', {'endpoint': endpoint}))
-        schemas = self.rockets_client.batch(requests)
+        schemas = await self.rockets_client.batch(requests)
 
         schemas_dict = dict()
         for request in requests:
@@ -69,8 +81,8 @@ class Client(BaseClient):
         build_api(self, registry, schemas_dict)
 
     # pylint: disable=W0613,W0622,E1101
-    def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
-              renderer=None, samples_per_pixel=None):
+    async def image(self, size, format='jpg', animation_parameters=None, camera=None, quality=None,
+                    renderer=None, samples_per_pixel=None):
         """
         Request a snapshot from Brayns and return a PIL image.
 
@@ -87,4 +99,27 @@ class Client(BaseClient):
         args = locals()
         del args['self']
         result = self.snapshot(**{k: v for k, v in args.items() if v})
-        return convert_snapshot_response_to_PIL(result)
+
+        future = asyncio.get_event_loop().create_future()
+
+        def _on_done(task):
+            try:
+                if task.exception():  # pragma: no cover
+                    print("image() failed:", task.exception())
+                else:
+                    image = convert_snapshot_response_to_PIL(task.result())
+                    if utils.in_notebook():  # pragma: no cover
+                        if image:
+                            from IPython.display import display
+                            display(image)
+                    else:
+                        future.set_result(image)
+            except rockets.RequestError as e:  # pragma: no cover
+                print("Error", e.code, e.message)
+            except ConnectionRefusedError as e:  # pragma: no cover
+                print(e)
+
+        result.add_done_callback(_on_done)
+        if utils.in_notebook():  # pragma: no cover
+            return None
+        return future

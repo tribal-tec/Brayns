@@ -24,9 +24,12 @@
 
 """Utils module for http request and notebook stuff."""
 
+import base64
+import io
 import sys
 from collections import OrderedDict
 from functools import wraps
+from PIL import Image
 import requests
 import rockets
 
@@ -169,7 +172,7 @@ def add_progress_cancel_widget(func):  # pragma: no cover
     :return: the decorator
     :rtype: decorator
     """
-    def _wrapper(self, *args, **kwargs):
+    def _wrapper(self, *args, **kwargs):  # pylint: disable=too-many-locals
         result = func(self, *args, **kwargs)
 
         if isinstance(result, rockets.RequestTask) and in_notebook():
@@ -182,14 +185,14 @@ def add_progress_cancel_widget(func):  # pragma: no cover
             box = VBox([label, HBox([progress, button])])
             display(box)
 
-            def _on_cancel():
+            def _on_cancel(value):  # pylint: disable=unused-argument
                 result.cancel()
 
             def _on_progress(value):
                 progress.value = value.amount
                 label.value = value.operation
 
-            def _on_done(task):
+            def _on_done(task):  # pylint: disable=unused-argument
                 box.close()
 
             button.on_click(_on_cancel)
@@ -198,3 +201,32 @@ def add_progress_cancel_widget(func):  # pragma: no cover
 
         return result
     return _wrapper
+
+
+def obtain_registry(url):
+    """Obtain the registry of exposed objects and RPCs from Brayns."""
+    status = http_request(HTTP_METHOD_GET, url, 'registry')
+    if status.code != HTTP_STATUS_OK:
+        raise Exception('Failed to obtain registry from Brayns')
+    return status.contents
+
+
+def convert_snapshot_response_to_PIL(response):
+    """Convert the snapshot response from Brayns to a PIL image"""
+    if not response:  # pragma: no cover
+        return None
+
+    # error case: invalid request/parameters
+    if 'code' in response:
+        print(response['message'])
+        return None
+    return Image.open(io.BytesIO(base64decode(response['data'])))
+
+
+def base64decode(data):
+    """Properly decode the given base64 string"""
+    # https://stackoverflow.com/a/9807138
+    missing_padding = len(data) % 4
+    if missing_padding != 0:
+        data += b'=' * (4 - missing_padding)
+    return base64.b64decode(data)

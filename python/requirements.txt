@@ -22,6 +22,5 @@
 Pillow~=4.2.1
 python-jsonschema-objects~=0.3.3
 requests~=2.19.1
-scipy~=0.19.1
 seaborn~=0.8.1
 semver~=2.7.9

@@ -24,6 +24,7 @@
 
 from nose.tools import assert_equal, raises
 from mock import patch
+import asyncio
 import brayns
 
 from .mocks import *
@@ -34,7 +35,17 @@ def test_init():
          patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):
         app = brayns.Client('localhost:8200')
-        assert_equal(app.url(), 'ws://localhost:8200')
+        assert_equal(app.http_url, 'http://localhost:8200/')
+        assert_equal(app.version.as_dict(), TEST_VERSION)
+        assert_equal(str(app), 'Brayns version 0.8.0 running on http://localhost:8200/')
+
+
+def test_async_init():
+    with patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.AsyncClient.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
+        app = asyncio.get_event_loop().run_until_complete(brayns.AsyncClient('localhost:8200'))
+        assert_equal(app.http_url, 'http://localhost:8200/')
         assert_equal(app.version.as_dict(), TEST_VERSION)
         assert_equal(str(app), 'Brayns version 0.8.0 running on http://localhost:8200/')
 

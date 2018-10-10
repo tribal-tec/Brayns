@@ -24,7 +24,8 @@
 
 """The Brayns python client library provides access to remote control a running Brayns instance."""
 
+from .async_client import AsyncClient
 from .client import Client
 from .version import VERSION as __version__
 
-__all__ = ['Client']
+__all__ = ['AsyncClient', 'Client']

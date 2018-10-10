@@ -43,12 +43,12 @@ def test_synchronous_request():
         assert_equal(app.test_request_single_arg(doit=True, name='foo'), 'foo')
 
 
-def test_asynchronous_request():
+def test_asynchronous_request_task():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.batch', new=mock_batch_async), \
          patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
-        app = brayns.Client('localhost:8200')
+        app = asyncio.get_event_loop().run_until_complete(brayns.AsyncClient('localhost:8200'))
         task = app.test_request_single_arg(doit=False, name='foo')
         assert_true(isinstance(task, rockets.RequestTask))
         result = asyncio.get_event_loop().run_until_complete(task)
@@ -60,14 +60,17 @@ def test_asynchronous_request():
         assert_equal(result, 'foo')
 
 
-def test_asynchronous_request_call_sync():
+def test_asynchronous_request():
     with patch('rockets.AsyncClient.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
-         patch('rockets.Client.batch', new=mock_batch_async), \
+         patch('rockets.AsyncClient.batch', new=mock_batch_async_with_sync_methods), \
          patch('rockets.AsyncClient.request', new=mock_rpc_async_request):
-        app = brayns.Client('localhost:8200')
-        assert_equal(app.test_request_single_arg(doit=False, name='foo', call_async=False), None)
-        assert_equal(app.test_request_single_arg(doit=True, name='foo', call_async=False), 'foo')
+        async def test():
+            app = await brayns.AsyncClient('localhost:8200')
+            assert_equal(await app.test_request_single_arg(doit=False, name='foo'), None)
+            assert_equal(await app.test_request_single_arg(doit=True, name='foo'), 'foo')
+
+        asyncio.get_event_loop().run_until_complete(test())
 
 
 def test_notification():
@@ -78,6 +81,17 @@ def test_notification():
         app = brayns.Client('localhost:8200')
         app.test_notify_single_arg(doit=False, name='foo')
 
+
+def test_asynchronous_notification():
+    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+         patch('brayns.utils.http_request', new=mock_http_request), \
+         patch('rockets.AsyncClient.batch', new=mock_batch_async_with_sync_methods), \
+         patch('rockets.AsyncClient.notify', new=mock_rpc_async_notify):
+        async def test():
+            app = await brayns.AsyncClient('localhost:8200')
+            await app.test_notify_single_arg(doit=False, name='foo')
+
+        asyncio.get_event_loop().run_until_complete(test())
 
 
 if __name__ == '__main__':

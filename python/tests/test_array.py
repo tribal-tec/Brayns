@@ -30,7 +30,7 @@ from .mocks import *
 
 
 def test_array():
-    with patch('rockets.AsyncClient.connected', new=mock_connected), \
+    with patch('rockets.Client.connected', new=mock_connected), \
          patch('brayns.utils.http_request', new=mock_http_request), \
          patch('rockets.Client.request', new=mock_rpc_request), \
          patch('rockets.Client.batch', new=mock_batch):

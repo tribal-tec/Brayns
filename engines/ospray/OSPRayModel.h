@@ -24,9 +24,28 @@
 #include <brayns/parameters/VolumeParameters.h>
 
 #include <ospray.h>
+#include <ospray/SDK/common/OSPCommon.h>
 
 namespace brayns
 {
+namespace
+{
+template <typename VecT>
+OSPData allocateVectorData(const std::vector<VecT>& vec,
+                        const OSPDataType ospType,
+                        const size_t memoryManagementFlags)
+{
+    const size_t totBytes = vec.size() * sizeof(VecT);
+
+    if (totBytes >= INT_MAX)
+        BRAYNS_INFO << "Buffer allocation (" << std::to_string(totBytes)
+                    << " bytes) exceeds ispc 32-bit address space."
+                    << std::endl;
+
+    return ospNewData(totBytes / ospray::sizeOf(ospType), ospType, vec.data(),
+                    memoryManagementFlags);
+}
+}
 class OSPRayModel : public Model
 {
 public:
@@ -69,6 +88,30 @@ private:
     bool _commitTransferFunction();
     bool _commitSimulationData();
 
+    using GeometryMap = std::map<size_t, OSPGeometry>;
+    template<typename T>
+    OSPGeometry _createPrimitive(const size_t materialId, const char* name, GeometryMap& ospContainer, const T& container)
+    {
+        auto it = ospContainer.find(materialId);
+        if (it != ospContainer.end())
+        {
+            ospRemoveGeometry(_model, it->second);
+            ospRelease(it->second);
+        }
+        else
+            it = ospContainer.insert({materialId, ospNewGeometry(name)}).first;
+
+        auto& ospPrimitive = it->second;
+
+        auto primitivData = allocateVectorData(container.at(materialId), OSP_FLOAT,
+                                            _memoryManagementFlags);
+
+        ospSetObject(ospPrimitive, name, primitivData);
+        ospRelease(primitivData);
+        return ospPrimitive;
+    }
+    void _addPrimitive(const size_t materialId, OSPGeometry primitive);
+
     AnimationParameters& _animationParameters;
     VolumeParameters& _volumeParameters;
 
@@ -88,14 +131,12 @@ private:
     OSPTransferFunction _ospTransferFunction{nullptr};
 
     // OSPRay data
-    std::map<size_t, OSPGeometry> _ospSpheres;
-    std::map<size_t, OSPGeometry> _ospCylinders;
-    std::map<size_t, OSPGeometry> _ospCones;
-    std::map<size_t, OSPGeometry> _ospMeshes;
-    std::map<size_t, OSPGeometry> _ospStreamlines;
-
-    std::map<size_t, OSPGeometry> _ospSDFGeometryRefs;
-    std::map<size_t, OSPData> _ospSDFGeometryRefsData;
+    GeometryMap _ospSpheres;
+    GeometryMap _ospCylinders;
+    GeometryMap _ospCones;
+    GeometryMap _ospMeshes;
+    GeometryMap _ospStreamlines;
+    GeometryMap _ospSDFGeometryRefs;
 
     size_t _memoryManagementFlags{OSP_DATA_SHARED_BUFFER};
 };

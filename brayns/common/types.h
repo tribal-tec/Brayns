@@ -288,9 +288,12 @@ using Planes = std::vector<Plane>;
 struct RenderInput
 {
     Vector2i windowSize;
+    Matrix4f modelview;
+    Matrix4f projection;
 
     Vector3d position;
-    Quaterniond orientation;
+    Vector3d target;
+    Vector3d up;
 };
 
 struct RenderOutput

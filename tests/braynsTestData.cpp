@@ -105,10 +105,7 @@ BOOST_AUTO_TEST_CASE(render_circuit_with_color_and_compare)
     auto& camera = brayns.getEngine().getCamera();
     const auto camPos = camera.getPosition();
 
-    std::cout << "Rot Center: " << rotCenter << std::endl;
-    std::cout << "Cam Pos: " << camPos << std::endl;
-
-    camera.setOrientation(brayns::Quaterniond(0.0, 0.0, 0.0, 1.0));
+    camera.setTarget(rotCenter);
     camera.setPosition(camPos + 0.9 * (rotCenter - camPos));
 
     auto& tf = model->getModel().getTransferFunction();
@@ -170,7 +167,7 @@ BOOST_AUTO_TEST_CASE(render_sdf_circuit_and_compare)
     auto& camera = brayns.getEngine().getCamera();
     const auto camPos = camera.getPosition();
 
-    camera.setOrientation(brayns::Quaterniond(0.0, 0.0, 0.0, 1.0));
+    camera.setTarget(rotCenter);
     camera.setPosition(camPos + 0.92 * (rotCenter - camPos));
 
     brayns.commitAndRender();

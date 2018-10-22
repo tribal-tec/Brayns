@@ -26,9 +26,8 @@
 namespace brayns
 {
 InspectCenterManipulator::InspectCenterManipulator(Camera& camera,
-                                                   KeyboardHandler& handler,
-                                                   const Boxd& boundingBox)
-    : AbstractManipulator{camera, handler, boundingBox}
+                                                   KeyboardHandler& handler)
+    : AbstractManipulator{camera, handler}
 {
     _keyboardHandler.registerKeyboardShortcut(
         'a', "Rotate left",
@@ -55,8 +54,6 @@ InspectCenterManipulator::InspectCenterManipulator(Camera& camera,
     _keyboardHandler.registerSpecialKey(
         SpecialKey::DOWN, "Turn down",
         std::bind(&InspectCenterManipulator::_turnDown, this));
-
-    _target = boundingBox.getCenter();
 }
 
 InspectCenterManipulator::~InspectCenterManipulator()
@@ -77,15 +74,15 @@ void InspectCenterManipulator::dragLeft(const Vector2i& to,
 {
     const float du = (to.x() - from.x()) * getRotationSpeed();
     const float dv = (to.y() - from.y()) * getRotationSpeed();
-    rotate(_target, du, dv, AxisMode::localY);
+    rotate(_camera.getTarget(), du, dv, false);
 }
 
 void InspectCenterManipulator::dragRight(const Vector2i& to,
                                          const Vector2i& from)
 {
     const float distance = -(to.y() - from.y()) * getMotionSpeed();
-    if (distance < (_target - _camera.getPosition()).length())
-        translate(Vector3f::forward() * distance);
+    if (distance < (_camera.getTarget() - _camera.getPosition()).length())
+        translate(Vector3f::forward() * distance, false);
 }
 
 void InspectCenterManipulator::dragMiddle(const Vector2i& to,
@@ -93,53 +90,53 @@ void InspectCenterManipulator::dragMiddle(const Vector2i& to,
 {
     const float x = (to.x() - from.x()) * getMotionSpeed();
     const float y = (to.y() - from.y()) * getMotionSpeed();
-    translate({-x, y, 0.f});
+    translate({-x, y, 0.f}, true);
 }
 
 void InspectCenterManipulator::wheel(const Vector2i& /*position*/, float delta)
 {
     delta *= getWheelSpeed();
-    if (delta < (_target - _camera.getPosition()).length())
-        translate(Vector3f::forward() * delta);
+    if (delta < (_camera.getTarget() - _camera.getPosition()).length())
+        translate(Vector3f::forward() * delta, false);
 }
 
 void InspectCenterManipulator::_rotateLeft()
 {
-    rotate(_target, -getRotationSpeed(), 0, AxisMode::localY);
+    rotate(_camera.getTarget(), -getRotationSpeed(), 0, false);
 }
 
 void InspectCenterManipulator::_rotateRight()
 {
-    rotate(_target, getRotationSpeed(), 0, AxisMode::localY);
+    rotate(_camera.getTarget(), getRotationSpeed(), 0, false);
 }
 
 void InspectCenterManipulator::_rotateUp()
 {
-    rotate(_target, 0, -getRotationSpeed(), AxisMode::localY);
+    rotate(_camera.getTarget(), 0, -getRotationSpeed(), false);
 }
 
 void InspectCenterManipulator::_rotateDown()
 {
-    rotate(_target, 0, getRotationSpeed(), AxisMode::localY);
+    rotate(_camera.getTarget(), 0, getRotationSpeed(), false);
 }
 
 void InspectCenterManipulator::_turnLeft()
 {
-    rotate(_target, getRotationSpeed(), 0, AxisMode::localY);
+    rotate(_camera.getPosition(), getRotationSpeed(), 0, true);
 }
 
 void InspectCenterManipulator::_turnRight()
 {
-    rotate(_target, -getRotationSpeed(), 0, AxisMode::localY);
+    rotate(_camera.getPosition(), -getRotationSpeed(), 0, true);
 }
 
 void InspectCenterManipulator::_turnUp()
 {
-    rotate(_target, 0, getRotationSpeed(), AxisMode::localY);
+    rotate(_camera.getPosition(), 0, getRotationSpeed(), true);
 }
 
 void InspectCenterManipulator::_turnDown()
 {
-    rotate(_target, 0, -getRotationSpeed(), AxisMode::localY);
+    rotate(_camera.getPosition(), 0, -getRotationSpeed(), true);
 }
 }

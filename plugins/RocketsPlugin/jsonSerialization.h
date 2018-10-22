@@ -236,12 +236,12 @@ inline void init(brayns::Renderer::PickResult* p, ObjectHandler* h)
 
 inline void init(brayns::Camera* c, ObjectHandler* h)
 {
-    h->add_property("orientation", toArray(c->_orientation),
-                    Flags::Optional);
-    h->add_property("position", toArray(c->_position), Flags::Optional);
+    h->add_property("look_at", toArray(c->_target), Flags::Optional);
+    h->add_property("origin", toArray(c->_position), Flags::Optional);
     h->add_property("current", &c->_currentType, Flags::Optional);
     static auto types = c->getTypes();
     h->add_property("types", &types, Flags::IgnoreRead | Flags::Optional);
+    h->add_property("up", toArray(c->_up), Flags::Optional);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

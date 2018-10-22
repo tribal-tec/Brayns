@@ -78,6 +78,11 @@ public:
     void reshape(const Vector2ui& frameSize);
 
     /**
+       Sets initial camera position for the scene handled by the engine
+    */
+    void setDefaultCamera();
+
+    /**
        Initializes materials for the current scene
        @param colorMap Predefined color map
     */

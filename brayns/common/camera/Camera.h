@@ -34,7 +34,7 @@ namespace brayns
    Camera object
 
    This object in an abstract interface to a camera which is defined by a
-   position and a quaternion
+   position, target and up vector
 */
 class Camera : public PropertyObject
 {
@@ -46,16 +46,19 @@ public:
     BRAYNS_API Camera& operator=(const Camera& rhs);
 
     /**
-       Sets position, and quaternion
+       Sets position, target and up vector
        @param position The x, y, z coordinates of the camera position
-       @param quat The x, y, z, w values of the quaternion describing
-              the camera orientation
+       @param target The x, y, z coordinates of the camera target: the point the
+              camera is "looking at" or focused on
+       @param up the x, y, z coordinates of the up vector's end point
     */
-    BRAYNS_API void set(const Vector3d& position,
-                        const Quaterniond& orientation);
+    BRAYNS_API void set(const Vector3d& position, const Vector3d& target,
+                        const Vector3d& up);
 
     BRAYNS_API void setInitialState(const Vector3d& position,
-                                    const Quaterniond& orientation);
+                                    const Vector3d& target, const Vector3d& up);
+
+    BRAYNS_API void setInitialState(const Boxd& boundingBox);
 
     /**
        Sets camera position
@@ -65,25 +68,39 @@ public:
     {
         _updateValue(_position, position);
     }
+
     /**
        Gets camera position
        @return The x, y, z coordinates of the camera position
     */
     const Vector3d& getPosition() const { return _position; }
     /**
-       Sets camera orientation quaternion.
-       @param quat The orientation quaternion
+       Sets camera target
+       @param target The x, y, z coordinates of the camera target: the point the
+              camera is "looking at" or focused on
     */
-    void setOrientation(Quaterniond orientation)
-    {
-        orientation.normalize();
-        _updateValue(_orientation, orientation);
-    }
+    void setTarget(const Vector3d& target) { _updateValue(_target, target); }
     /**
-       Gets the camera orientation quaternion
-       @return the orientation quaternion
+       Gets camera target
+       @return The x, y, z coordinates of the camera target: the point the
+               camera is "looking at" or focused on
     */
-    const Quaterniond& getOrientation() const { return _orientation; }
+    const Vector3d& getTarget() const { return _target; }
+    /**
+       Sets camera up vector
+       @param up the x, y, z coordinates of the up vector's end point
+    */
+    void setUp(const Vector3d& up) { _updateValue(_up, up); }
+    /**
+       Gets camera up vector
+       @return the x, y, z coordinates of the up vector's end point
+    */
+    const Vector3d& getUp() const { return _up; }
+    /**
+       Gets the camera rotation matrix
+       @return the rotation matrix from the original *target* and *up* vectors
+    */
+    Matrix4f& getRotationMatrix() { return _matrix; }
     /**
        Commits the changes held by the camera object so that
        attributes become available to the underlying rendering engine
@@ -100,10 +117,15 @@ public:
     virtual bool isSideBySideStereo() const { return false; }
 private:
     Vector3d _position;
-    Quaterniond _orientation;
+    Vector3d _target;
+    Vector3d _up;
 
     Vector3d _initialPosition;
-    Quaterniond _initialOrientation;
+    Vector3d _initialTarget;
+    Vector3d _initialUp;
+
+    /*! rotation matrice along x and y axis */
+    Matrix4f _matrix;
 
     SERIALIZATION_FRIEND(Camera)
 };

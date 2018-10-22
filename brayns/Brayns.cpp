@@ -98,13 +98,12 @@ struct Brayns::Impl : public PluginAPI
         _parametersManager.parse(argc, argv);
         _parametersManager.print();
 
-        createEngine();
-        _engine->getScene().commit();
         _registerKeyboardShortcuts();
-        _setupCameraManipulator(CameraMode::inspect);
-        const auto frameSize = Vector2d(_engine->getFrameBuffer().getSize());
-        _engine->getCamera().updateProperty("aspect",
-                                            frameSize.x() / frameSize.y());
+
+        createEngine();
+
+        _engine->getScene().commit();
+        _engine->setDefaultCamera();
     }
 
     void addPlugins()
@@ -222,8 +221,7 @@ struct Brayns::Impl : public PluginAPI
             auto sun = std::dynamic_pointer_cast<DirectionalLight>(sunLight);
             if (sun && (camera.isModified() || rp.isModified()))
             {
-                sun->setDirection(camera.getOrientation().rotate(
-                    Vector3f(0.0f, 0.0f, -1.0f)));
+                sun->setDirection(camera.getTarget() - camera.getPosition());
                 scene.commitLights();
             }
         }
@@ -291,6 +289,8 @@ struct Brayns::Impl : public PluginAPI
                 _parametersManager.getApplicationParameters().getEngineAsString(
                     engineName));
 
+        _setupCameraManipulator(CameraMode::inspect);
+
         // Default sun light
         DirectionalLightPtr sunLight(
             new DirectionalLight(DEFAULT_SUN_DIRECTION, DEFAULT_SUN_COLOR,
@@ -304,7 +304,8 @@ struct Brayns::Impl : public PluginAPI
 
     bool commit(const RenderInput& renderInput)
     {
-        _engine->getCamera().set(renderInput.position, renderInput.orientation);
+        _engine->getCamera().set(renderInput.position, renderInput.target,
+                                 renderInput.up);
         _parametersManager.getApplicationParameters().setWindowSize(
             renderInput.windowSize);
 
@@ -426,14 +427,12 @@ private:
         case CameraMode::flying:
             _cameraManipulator.reset(
                 new FlyingModeManipulator(_engine->getCamera(),
-                                          _keyboardHandler,
-                                          _engine->getScene().getBounds()));
+                                          _keyboardHandler));
             break;
         case CameraMode::inspect:
             _cameraManipulator.reset(
                 new InspectCenterManipulator(_engine->getCamera(),
-                                             _keyboardHandler,
-                                             _engine->getScene().getBounds()));
+                                             _keyboardHandler));
             break;
         };
     }

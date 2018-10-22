@@ -40,8 +40,9 @@ void OSPRayCamera::commit()
         createOSPCamera();
 
     const auto& position = getPosition();
-    const auto& dir = getOrientation().rotate(Vector3f(0.0f, 0.0f, -1.0f));
-    const auto& up = getOrientation().rotate(Vector3f(0.0f, 1.0f, 0.0f));
+    const auto& target = getTarget();
+    const auto dir = normalize(target - position);
+    const auto& up = getUp();
 
     ospSet3f(_camera, "pos", position.x(), position.y(), position.z());
     ospSet3f(_camera, "dir", dir.x(), dir.y(), dir.z());

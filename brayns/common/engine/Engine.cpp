@@ -87,4 +87,11 @@ void Engine::_writeFrameToFile()
     FrameBuffer& frameBuffer = getFrameBuffer();
     ImageManager::exportFrameBufferToFile(frameBuffer, filename);
 }
+
+void Engine::setDefaultCamera()
+{
+    const auto frameSize = Vector2d(_frameBuffer->getSize());
+    _camera->setInitialState(_scene->getBounds());
+    _camera->updateProperty("aspect", frameSize.x() / frameSize.y());
+}
 }

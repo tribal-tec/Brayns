@@ -190,7 +190,17 @@ struct Brayns::Impl : public PluginAPI
     {
         std::unique_lock<std::mutex> lock{_renderMutex, std::defer_lock};
         if (!lock.try_lock())
-            return false;
+        {
+            //std::cout << "HELO" << std::endl;
+            //if(_engine->getFrameBuffer().numAccumFrames() > 1)
+            {
+                _engine->cancelRender();
+                lock.lock();
+                //return false;
+            }
+            // else
+            //     return false;
+        }
 
         _extensionPluginFactory.preRender();
 

@@ -55,6 +55,7 @@ public:
      */
     virtual void commit();
 
+    void cancelRender();
     /** Renders the current scene and populates the frame buffer accordingly */
     void render();
     /** Executes engine specific pre-render operations */

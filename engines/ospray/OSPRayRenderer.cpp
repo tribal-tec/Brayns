@@ -43,17 +43,29 @@ OSPRayRenderer::~OSPRayRenderer()
     ospRelease(_renderer);
 }
 
+void OSPRayRenderer::cancelRender()
+{
+    std::cout << "DO CANCEL" << std::endl;
+    _cancelRender = true;
+}
+
 void OSPRayRenderer::render(FrameBufferPtr frameBuffer)
 {
     auto osprayFrameBuffer =
         std::static_pointer_cast<OSPRayFrameBuffer>(frameBuffer);
     auto lock = osprayFrameBuffer->getScopeLock();
 
-    _variance = ospRenderFrame(osprayFrameBuffer->impl(), _renderer,
-                               OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+    if(_renderProgress < 1.f)
+    {
+        ospSetProgressFunc(&OSPRayRenderer::_progressCallbackWrapper, this);
+        _variance = ospRenderFrame(osprayFrameBuffer->impl(), _renderer,
+                                OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+        ospSetProgressFunc(nullptr, nullptr);
 
-    osprayFrameBuffer->incrementAccumFrames();
+        osprayFrameBuffer->incrementAccumFrames();
+    }
     osprayFrameBuffer->markModified();
+    _cancelRender = false;
 }
 
 void OSPRayRenderer::commit()
@@ -161,10 +173,24 @@ void OSPRayRenderer::createOSPRenderer()
     if (!newRenderer)
         throw std::runtime_error(getCurrentType() +
                                  " is not a registered renderer");
-    if (_renderer)
-        ospRelease(_renderer);
+    ospRelease(_renderer);
     _renderer = newRenderer;
     _currentOSPRenderer = getCurrentType();
     markModified();
+}
+
+int OSPRayRenderer::progressCallback(const float progress)
+{
+    _renderProgress = progress;
+    //const auto doCancel = !_cancelRender.exchange(false);
+    const bool doCancel = _cancelRender;
+    if(doCancel)
+        std::cout << _renderProgress << " " << doCancel << std::endl;
+    return !doCancel;
+}
+
+int OSPRayRenderer::_progressCallbackWrapper(void * ptr, const float progress)
+{
+    return ((OSPRayRenderer*)ptr)->progressCallback(progress);
 }
 }

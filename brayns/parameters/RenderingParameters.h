@@ -56,8 +56,8 @@ public:
     const std::string& getCameraType() const { return _cameraType; }
     const auto& getCameras() const { return _cameraTypeNames; }
     /** Number of samples per pixel */
-    int getSamplesPerPixel() const { return _spp; }
-    void setSamplesPerPixel(const int value) { _updateValue(_spp, value); }
+    size_t getSamplesPerPixel() const { return _spp; }
+    void setSamplesPerPixel(const size_t value) { _updateValue(_spp, value); }
     const Vector3d& getBackgroundColor() const { return _backgroundColor; }
     void setBackgroundColor(const Vector3d& value)
     {
@@ -103,7 +103,7 @@ protected:
     std::deque<std::string> _renderers;
     std::string _cameraType{"perspective"};
     std::deque<std::string> _cameraTypeNames;
-    int _spp{1};
+    size_t _spp{1};
     bool _accumulation{true};
     Vector3d _backgroundColor{0., 0., 0.};
     bool _headLight{true};

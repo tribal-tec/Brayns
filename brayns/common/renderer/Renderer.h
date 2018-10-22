@@ -34,6 +34,7 @@ public:
     BRAYNS_API Renderer(const AnimationParameters& animationParameters,
                         const RenderingParameters& renderingParameters);
     virtual ~Renderer() = default;
+    virtual void cancelRender() {}
     virtual void render(FrameBufferPtr frameBuffer) = 0;
 
     /** @return the variance from the previous render(). */

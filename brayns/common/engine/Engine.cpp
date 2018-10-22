@@ -51,6 +51,11 @@ void Engine::commit()
     _renderer->commit();
 }
 
+void Engine::cancelRender()
+{
+    _renderer->cancelRender();
+}
+
 void Engine::render()
 {
     _renderer->render(_frameBuffer);

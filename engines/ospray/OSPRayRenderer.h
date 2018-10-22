@@ -37,6 +37,7 @@ public:
                    const RenderingParameters& renderingParameters);
     ~OSPRayRenderer();
 
+    void cancelRender() final;
     void render(FrameBufferPtr frameBuffer) final;
     void commit() final;
     float getVariance() const final { return _variance; }
@@ -46,11 +47,17 @@ public:
 
     void createOSPRenderer();
 
+    int progressCallback(const float progress);
+
 private:
     OSPRayCamera* _camera{nullptr};
     OSPRenderer _renderer{nullptr};
     std::atomic<float> _variance{std::numeric_limits<float>::max()};
     std::string _currentOSPRenderer;
+    std::atomic_bool _cancelRender{false};
+    std::atomic<float> _renderProgress{0};
+
+    static int _progressCallbackWrapper(void * ptr, const float progress);
 };
 }
 

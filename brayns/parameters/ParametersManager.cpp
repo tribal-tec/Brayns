@@ -113,7 +113,6 @@ ParametersManager::ParametersManager()
     registerParameters(&_geometryParameters);
     registerParameters(&_renderingParameters);
     registerParameters(&_sceneParameters);
-    registerParameters(&_streamParameters);
     registerParameters(&_volumeParameters);
 
     for (auto parameters : _parameterSets)
@@ -226,11 +225,6 @@ GeometryParameters& ParametersManager::getGeometryParameters()
 SceneParameters& ParametersManager::getSceneParameters()
 {
     return _sceneParameters;
-}
-
-StreamParameters& ParametersManager::getStreamParameters()
-{
-    return _streamParameters;
 }
 
 VolumeParameters& ParametersManager::getVolumeParameters()

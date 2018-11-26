@@ -43,13 +43,11 @@ namespace brayns
         break;                                                   \
     }
 
-void setOSPRayProperties(const PropertyObject& object, OSPObject ospObject)
+void setOSPRayProperties(const PropertyMap& object, OSPObject ospObject)
 {
-    if (!object.hasProperties())
-        return;
     try
     {
-        for (const auto& prop : object.getPropertyMap().getProperties())
+        for (const auto& prop : object.getProperties())
         {
             switch (prop->type)
             {
@@ -78,9 +76,15 @@ void setOSPRayProperties(const PropertyObject& object, OSPObject ospObject)
     }
     catch (const std::exception& e)
     {
-        BRAYNS_ERROR << "Failed to apply properties for ospObject "
-                     << object.getCurrentType() << std::endl;
+        BRAYNS_ERROR << "Failed to apply properties for ospObject" << std::endl;
     }
+}
+
+void setOSPRayProperties(const PropertyObject& object, OSPObject ospObject)
+{
+    if (!object.hasProperties())
+        return;
+    setOSPRayProperties(object.getPropertyMap(), ospObject);
 }
 
 ospcommon::affine3f transformationToAffine3f(

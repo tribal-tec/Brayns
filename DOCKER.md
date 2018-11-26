@@ -38,12 +38,3 @@ Run Brayns with the HTTP interface binded to a different port:
 ```bash
 docker run -ti --rm -p 8300:8300 brayns --http-server :8300
 ```
-
-Provide other flags (or env vars) to `braynsService`:
-```bash
-docker run -ti --rm -p 8300:8300 -e DEFLECT_HOST=<your deflect host> brayns \
-    --http-server :8300 \
-    --enable-benchmark \
-    --synchronous-mode \
-    --camera [100, 100]
-```

@@ -28,9 +28,6 @@
 #ifdef BRAYNS_USE_NETWORKING
 #include <plugins/Rockets/RocketsPlugin.h>
 #endif
-#ifdef BRAYNS_USE_DEFLECT
-#include <plugins/Deflect/DeflectPlugin.h>
-#endif
 #ifdef BRAYNS_USE_CIRCUITVIEWER
 #include <plugins/CircuitViewer/CircuitViewer.h>
 #endif
@@ -75,24 +72,12 @@ PluginManager::PluginManager(int argc, const char** argv)
 
 void PluginManager::initPlugins(PluginAPI* api)
 {
-    // Rockets and Deflect plugins cannot be initialized until we have
-    // the command line parameters
+    // Rockets plugin cannot be initialized until we have the command line
+    // parameters
     auto& parameters = api->getParametersManager();
     auto& appParameters = parameters.getApplicationParameters();
-    auto& streamParameters = parameters.getStreamParameters();
 
     const bool haveHttpServerURI = !appParameters.getHttpServerURI().empty();
-
-    const bool haveDeflectHost =
-        getenv("DEFLECT_HOST") || !streamParameters.getHostname().empty();
-    if (haveDeflectHost)
-#ifdef BRAYNS_USE_DEFLECT
-        _extensions.push_back(std::make_shared<DeflectPlugin>());
-#else
-        throw std::runtime_error(
-            "BRAYNS_DEFLECT_ENABLED was not set, but Deflect host was "
-            "specified");
-#endif
 
     if (haveHttpServerURI)
 #ifdef BRAYNS_USE_NETWORKING
@@ -137,10 +122,13 @@ void PluginManager::_loadPlugin(const char* name, int argc, const char* argv[])
         }
 
         CreateFuncType createFunc = (CreateFuncType)createSym;
-
-        _extensions.emplace_back(createFunc(argc, argv));
-        _libs.push_back(std::move(library));
-        BRAYNS_INFO << "Loaded plugin '" << name << "'" << std::endl;
+        auto plugin = createFunc(argc, argv);
+        if (plugin)
+        {
+            _extensions.emplace_back(plugin);
+            _libs.push_back(std::move(library));
+            BRAYNS_INFO << "Loaded plugin '" << name << "'" << std::endl;
+        }
     }
     catch (const std::runtime_error& exc)
     {

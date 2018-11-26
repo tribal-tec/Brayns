@@ -17,19 +17,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef STREAMPARAMETERS_H
-#define STREAMPARAMETERS_H
+#pragma once
 
-#include "AbstractParameters.h"
+#include <brayns/parameters/AbstractParameters.h>
 
-SERIALIZATION_ACCESS(StreamParameters)
+#include <deflect/types.h>
+
+// SERIALIZATION_ACCESS(StreamParameters)
 
 namespace brayns
 {
-class StreamParameters : public AbstractParameters
+class DeflectParameters : public AbstractParameters
 {
 public:
-    StreamParameters();
+    DeflectParameters();
 
     /** @copydoc AbstractParameters::print */
     void print() final;
@@ -59,8 +60,20 @@ public:
     /** Stream resizing enabled */
     bool getResizing() const { return _resizing; }
     void setResizing(const bool enabled) { _updateValue(_resizing, enabled); }
-private:
+    bool isTopDown() const { return _topDown; }
+    void setIsTopDown(const bool topDown) { _updateValue(_topDown, topDown); }
+    bool usePixelOp() const { return _usePixelOp; }
+    deflect::ChromaSubsampling getChromaSubsampling() const
+    {
+        return _chromaSubsampling;
+    }
+    void setChromaSubsampling(const deflect::ChromaSubsampling subsampling)
+    {
+        _updateValue(_chromaSubsampling, subsampling);
+    }
     void parse(const po::variables_map& vm);
+
+private:
     std::string _host;
     bool _enabled{true};
     std::string _id;
@@ -68,8 +81,11 @@ private:
     bool _compression{true};
     unsigned _quality{80};
     bool _resizing{true};
+    bool _topDown{false};
+    bool _usePixelOp{false};
+    deflect::ChromaSubsampling _chromaSubsampling{
+        deflect::ChromaSubsampling::YUV444};
 
-    SERIALIZATION_FRIEND(StreamParameters)
+    // SERIALIZATION_FRIEND(StreamParameters)
 };
 }
-#endif

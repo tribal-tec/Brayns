@@ -37,7 +37,7 @@
 #include <brayns/parameters/GeometryParameters.h>
 #include <brayns/parameters/RenderingParameters.h>
 #include <brayns/parameters/SceneParameters.h>
-#include <brayns/parameters/StreamParameters.h>
+//#include <brayns/parameters/StreamParameters.h>
 #include <brayns/parameters/VolumeParameters.h>
 #include <brayns/tasks/AddModelFromBlobTask.h>
 #include <brayns/tasks/errors.h>
@@ -378,16 +378,16 @@ inline void init(brayns::CircuitConfiguration* c, ObjectHandler* h)
     h->set_flags(Flags::DisallowUnknownKey);
 }
 
-inline void init(brayns::StreamParameters* s, ObjectHandler* h)
-{
-    h->add_property("host", &s->_host);
-    h->add_property("enabled", &s->_enabled, Flags::Optional);
-    h->add_property("id", &s->_id, Flags::Optional);
-    h->add_property("port", &s->_port, Flags::Optional);
-    h->add_property("compression", &s->_compression, Flags::Optional);
-    h->add_property("quality", &s->_quality, Flags::Optional);
-    h->set_flags(Flags::DisallowUnknownKey);
-}
+// inline void init(brayns::StreamParameters* s, ObjectHandler* h)
+//{
+//    h->add_property("host", &s->_host);
+//    h->add_property("enabled", &s->_enabled, Flags::Optional);
+//    h->add_property("id", &s->_id, Flags::Optional);
+//    h->add_property("port", &s->_port, Flags::Optional);
+//    h->add_property("compression", &s->_compression, Flags::Optional);
+//    h->add_property("quality", &s->_quality, Flags::Optional);
+//    h->set_flags(Flags::DisallowUnknownKey);
+//}
 
 inline void init(brayns::ApplicationParameters* a, ObjectHandler* h)
 {

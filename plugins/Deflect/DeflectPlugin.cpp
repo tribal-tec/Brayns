@@ -22,22 +22,16 @@
 #include "DeflectParameters.h"
 #include "utils.h"
 
-#include <brayns/Brayns.h>
+#include <brayns/common/PropertyMap.h>
 #include <brayns/common/camera/AbstractManipulator.h>
-#include <brayns/common/camera/Camera.h>
+#include <brayns/common/commandlinePropertyMap.h>
 #include <brayns/common/engine/Engine.h>
 #include <brayns/common/input/KeyboardHandler.h>
 #include <brayns/common/renderer/FrameBuffer.h>
-#include <brayns/common/renderer/Renderer.h>
-#include <brayns/common/scene/Scene.h>
 
-#include <brayns/parameters/ApplicationParameters.h>
 #include <brayns/parameters/ParametersManager.h>
 
 #include <brayns/pluginapi/PluginAPI.h>
-
-#include <deflect/SizeHints.h>
-#include <deflect/Stream.h>
 
 #ifdef BRAYNS_USE_LIBUV
 #include <uvw.hpp>
@@ -65,6 +59,26 @@ brayns::PropertyMap toPropertyMap(const brayns::DeflectParameters& params)
                             brayns::enumNames<deflect::ChromaSubsampling>()});
     return properties;
 }
+}
+brayns::PropertyMap createPropertyMap()
+{
+    brayns::PropertyMap properties;
+    properties.setProperty({"id", "Stream ID", std::string()});
+    properties.setProperty({"hostname", "Stream hostname", std::string()});
+    properties.setProperty({"port",
+                            "Stream port",
+                            (int32_t)deflect::Stream::defaultPortNumber,
+                            {1023, 65535}});
+    properties.setProperty({"enabled", "Enable streaming", true});
+    properties.setProperty({"compression", "Use compression", true});
+    properties.setProperty({"top-down", "Stream image top-down", false});
+    properties.setProperty({"quality", "JPEG quality", (int32_t)80, {1, 100}});
+    properties.setProperty(
+        {"use-pixelop", "Use optimized, distributed streaming", false});
+    properties.setProperty({"chroma-subsampling", "Chroma subsampling",
+                            int32_t(deflect::ChromaSubsampling::YUV444),
+                            brayns::enumNames<deflect::ChromaSubsampling>()});
+    return properties;
 }
 
 namespace brayns
@@ -475,13 +489,16 @@ extern "C" brayns::ExtensionPlugin* brayns_plugin_create(const int argc,
     try
     {
         po::variables_map vm;
+        auto pm = createPropertyMap();
         po::options_description desc;
-        desc.add(plugin->_params.parameters());
+        desc.add(brayns::toCommandlineDescription(pm));
+        // desc.add(plugin->_params.parameters());
         po::parsed_options parsedOptions =
             po::command_line_parser(argc, argv).options(desc).run();
         po::store(parsedOptions, vm);
         po::notify(vm);
-        plugin->_params.parse(vm);
+        // plugin->_params.parse(vm);
+        brayns::commandlineToPropertyMap(vm, pm);
 
         return plugin;
     }

@@ -5,30 +5,31 @@
 
 set(BRAYNSCOMMON_SOURCES
   ImageManager.cpp
-  engine/Engine.cpp
-  simulation/AbstractSimulationHandler.cpp
-  input/KeyboardHandler.cpp
-  transferFunction/TransferFunction.cpp
+  PropertyMap.cpp
   camera/AbstractManipulator.cpp
   camera/Camera.cpp
   camera/FlyingModeManipulator.cpp
   camera/InspectCenterManipulator.cpp
-  PropertyMap.cpp
+  commandlinePropertyMap.cpp
+  engine/Engine.cpp
+  input/KeyboardHandler.cpp
+  light/DirectionalLight.cpp
+  light/Light.cpp
+  light/PointLight.cpp
+  loader/LoaderRegistry.cpp
+  material/Material.cpp
+  material/Texture2D.cpp
+  renderer/FrameBuffer.cpp
+  renderer/Renderer.cpp
   scene/ClipPlane.cpp
   scene/Model.cpp
   scene/Scene.cpp
-  material/Material.cpp
-  material/Texture2D.cpp
-  renderer/Renderer.cpp
-  renderer/FrameBuffer.cpp
-  light/Light.cpp
-  light/PointLight.cpp
-  light/DirectionalLight.cpp
-  loader/LoaderRegistry.cpp
-  utils/base64/base64.cpp
+  simulation/AbstractSimulationHandler.cpp
+  transferFunction/TransferFunction.cpp
   utils/DynamicLib.cpp
   utils/ImageUtils.cpp
   utils/Utils.cpp
+  utils/base64/base64.cpp
   volume/SharedDataVolume.cpp
   volume/Volume.cpp
 )
@@ -47,14 +48,15 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   camera/Camera.h
   camera/FlyingModeManipulator.h
   camera/InspectCenterManipulator.h
+  commandlinePropertyMap.h
   engine/Engine.h
+  geometry/CommonDefines.h
   geometry/Cone.h
   geometry/Cylinder.h
   geometry/SDFGeometry.h
   geometry/Sphere.h
   geometry/Streamline.h
   geometry/TrianglesMesh.h
-  geometry/CommonDefines.h
   input/KeyboardHandler.h
   light/DirectionalLight.h
   light/Light.h
@@ -76,17 +78,17 @@ set(BRAYNSCOMMON_PUBLIC_HEADERS
   tasks/TaskRuntimeError.h
   transferFunction/TransferFunction.h
   types.h
-  utils/Utils.h
   utils/EnumUtils.h
+  utils/Utils.h
   volume/BrickedVolume.h
   volume/SharedDataVolume.h
   volume/Volume.h
 )
 
 set(BRAYNSCOMMON_HEADERS
+  utils/DynamicLib.h
   utils/ImageUtils.h
   utils/base64/base64.h
-  utils/DynamicLib.h
 )
 
 set(BRAYNSCOMMON_INCLUDE_NAME brayns/common)

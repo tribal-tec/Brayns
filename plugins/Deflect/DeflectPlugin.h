@@ -30,6 +30,7 @@ namespace brayns
 class DeflectPlugin : public ExtensionPlugin
 {
 public:
+    DeflectPlugin(const PropertyMap& props);
     void init(PluginAPI* api) final;
 
     /** Handle stream setup and incoming events. */
@@ -38,10 +39,10 @@ public:
     /** Send rendered frame. */
     void postRender() final;
 
-    DeflectParameters _params;
-
 private:
     class Impl;
     std::shared_ptr<Impl> _impl;
+
+    PropertyMap _props;
 };
 }

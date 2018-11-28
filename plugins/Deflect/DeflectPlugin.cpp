@@ -41,44 +41,24 @@ namespace
 {
 const float wheelFactor = 1.f / 40.f;
 
-brayns::PropertyMap toPropertyMap(const brayns::DeflectParameters& params)
-{
-    brayns::PropertyMap properties;
-    properties.setProperty({"id", "id", params.getId()});
-    properties.setProperty({"hostname", "hostname", params.getHostname()});
-    properties.setProperty(
-        {"port", "port", (int32_t)params.getPort(), {1023, 65535}});
-    properties.setProperty({"enabled", "enabled", params.getEnabled()});
-    properties.setProperty(
-        {"compression", "compression", params.getCompression()});
-    properties.setProperty({"top-down", "top-down", params.isTopDown()});
-    properties.setProperty(
-        {"quality", "quality", (int32_t)params.getQuality(), {1, 100}});
-    properties.setProperty({"subsampling", "subsampling",
-                            int32_t(deflect::ChromaSubsampling::YUV444),
-                            brayns::enumNames<deflect::ChromaSubsampling>()});
-    return properties;
-}
-}
-brayns::PropertyMap createPropertyMap()
-{
-    brayns::PropertyMap properties;
-    properties.setProperty({"id", "Stream ID", std::string()});
-    properties.setProperty({"hostname", "Stream hostname", std::string()});
-    properties.setProperty({"port",
-                            "Stream port",
-                            (int32_t)deflect::Stream::defaultPortNumber,
-                            {1023, 65535}});
-    properties.setProperty({"enabled", "Enable streaming", true});
-    properties.setProperty({"compression", "Use compression", true});
-    properties.setProperty({"top-down", "Stream image top-down", false});
-    properties.setProperty({"quality", "JPEG quality", (int32_t)80, {1, 100}});
-    properties.setProperty(
-        {"use-pixelop", "Use optimized, distributed streaming", false});
-    properties.setProperty({"chroma-subsampling", "Chroma subsampling",
-                            int32_t(deflect::ChromaSubsampling::YUV444),
-                            brayns::enumNames<deflect::ChromaSubsampling>()});
-    return properties;
+// brayns::PropertyMap toPropertyMap(const brayns::DeflectParameters& params)
+//{
+//    brayns::PropertyMap properties;
+//    properties.setProperty({"id", "id", params.getId()});
+//    properties.setProperty({"hostname", "hostname", params.getHostname()});
+//    properties.setProperty(
+//        {"port", "port", (int32_t)params.getPort(), {1023, 65535}});
+//    properties.setProperty({"enabled", "enabled", params.getEnabled()});
+//    properties.setProperty(
+//        {"compression", "compression", params.getCompression()});
+//    properties.setProperty({"top-down", "top-down", params.isTopDown()});
+//    properties.setProperty(
+//        {"quality", "quality", (int32_t)params.getQuality(), {1, 100}});
+//    properties.setProperty({"subsampling", "subsampling",
+//                            int32_t(deflect::ChromaSubsampling::YUV444),
+//                            brayns::enumNames<deflect::ChromaSubsampling>()});
+//    return properties;
+//}
 }
 
 namespace brayns
@@ -86,10 +66,10 @@ namespace brayns
 class DeflectPlugin::Impl
 {
 public:
-    Impl(PluginAPI* api, DeflectParameters& params)
+    Impl(PluginAPI* api, PropertyMap&& props)
         : _engine(api->getEngine())
         , _appParams{api->getParametersManager().getApplicationParameters()}
-        , _params(params)
+        , _params(std::move(props))
         , _keyboardHandler(api->getKeyboardHandler())
         , _cameraManipulator(api->getCameraManipulator())
     {
@@ -185,7 +165,7 @@ private:
                     // tile readback to the MPI master
                     frameBuffer->setFormat(FrameBufferFormat::none);
                     frameBuffer->setPixelOp(TEXTIFY(DEFLECT_PIXEL_OP));
-                    frameBuffer->updatePixelOp(toPropertyMap(_params));
+                    frameBuffer->updatePixelOp(_params.getPropertyMap());
                 }
             }
 
@@ -450,7 +430,7 @@ private:
 
     Engine& _engine;
     ApplicationParameters& _appParams;
-    DeflectParameters& _params;
+    DeflectParameters _params;
     KeyboardHandler& _keyboardHandler;
     AbstractManipulator& _cameraManipulator;
     Vector2d _previousPos;
@@ -466,9 +446,14 @@ private:
 #endif
 };
 
+DeflectPlugin::DeflectPlugin(const PropertyMap& props)
+    : _props(props)
+{
+}
+
 void DeflectPlugin::init(PluginAPI* api)
 {
-    _impl = std::make_shared<Impl>(api, _params);
+    _impl = std::make_shared<Impl>(api, std::move(_props));
 }
 
 void DeflectPlugin::preRender()
@@ -485,28 +470,9 @@ void DeflectPlugin::postRender()
 extern "C" brayns::ExtensionPlugin* brayns_plugin_create(const int argc,
                                                          const char** argv)
 {
-    auto plugin = new brayns::DeflectPlugin();
-    try
-    {
-        po::variables_map vm;
-        auto pm = createPropertyMap();
-        po::options_description desc;
-        desc.add(brayns::toCommandlineDescription(pm));
-        // desc.add(plugin->_params.parameters());
-        po::parsed_options parsedOptions =
-            po::command_line_parser(argc, argv).options(desc).run();
-        po::store(parsedOptions, vm);
-        po::notify(vm);
-        // plugin->_params.parse(vm);
-        brayns::commandlineToPropertyMap(vm, pm);
-
-        return plugin;
-    }
-    catch (const po::error& e)
-    {
-        BRAYNS_ERROR << "Failed to load DeflectPlugin: " << e.what()
-                     << std::endl;
-        delete plugin;
+    auto pm = brayns::DeflectParameters::createPropertyMap();
+    if (!brayns::parseIntoPropertyMap(argc, argv, pm))
         return nullptr;
-    }
+
+    return new brayns::DeflectPlugin(pm);
 }

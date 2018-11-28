@@ -21,6 +21,7 @@
 #include "commandlinePropertyMap.h"
 
 #include "PropertyMap.h"
+#include "log.h"
 
 #include <boost/make_shared.hpp>
 
@@ -56,8 +57,9 @@ po::options_description toCommandlineDescription(const PropertyMap& propertyMap)
         {
         case PropertyMap::Property::Type::Int:
             valueSemantic = po::value<int32_t>();
-        //            if(!property->enums.empty())
-        //            break;
+            //            if(!property->enums.empty())
+            //            break;
+            break;
         case PropertyMap::Property::Type::Double:
             valueSemantic = po::value<double>();
             break;
@@ -128,6 +130,28 @@ void commandlineToPropertyMap(const boost::program_options::variables_map& vm,
         default:
             continue;
         }
+    }
+}
+
+bool parseIntoPropertyMap(int argc, const char** argv, PropertyMap& propertyMap)
+{
+    try
+    {
+        po::variables_map vm;
+        po::options_description desc;
+        desc.add(brayns::toCommandlineDescription(propertyMap));
+        po::parsed_options parsedOptions =
+            po::command_line_parser(argc, argv).options(desc).run();
+        po::store(parsedOptions, vm);
+        po::notify(vm);
+        brayns::commandlineToPropertyMap(vm, propertyMap);
+        return true;
+    }
+    catch (const po::error& e)
+    {
+        BRAYNS_ERROR << "Failed to load parse commandline for property map: "
+                     << e.what() << std::endl;
+        return false;
     }
 }
 }

@@ -19,73 +19,106 @@
 
 #pragma once
 
-#include <brayns/parameters/AbstractParameters.h>
+#include <brayns/common/PropertyMap.h>
 
 #include <deflect/types.h>
 
-// SERIALIZATION_ACCESS(StreamParameters)
-
 namespace brayns
 {
-class DeflectParameters : public AbstractParameters
+class DeflectParameters
 {
 public:
-    DeflectParameters();
+    static PropertyMap createPropertyMap();
+
+    DeflectParameters()
+        : _props(createPropertyMap())
+    {
+    }
+
+    DeflectParameters(PropertyMap&& props)
+        : _props(std::move(props))
+    {
+    }
 
     /** @copydoc AbstractParameters::print */
-    void print() final;
+    // void print() final;
 
     /** Streaming enabled */
-    bool getEnabled() const { return _enabled; }
-    void setEnabled(const bool enabled) { _updateValue(_enabled, enabled); }
+    bool getEnabled() const { return _props.getProperty<bool>("enabled"); }
+    void setEnabled(const bool enabled)
+    {
+        _props.updateProperty("enabled", enabled);
+    }
+
     /** Stream compression enabled */
-    bool getCompression() const { return _compression; }
+    bool getCompression() const
+    {
+        return _props.getProperty<bool>("compression");
+    }
     void setCompression(const bool enabled)
     {
-        _updateValue(_compression, enabled);
+        _props.updateProperty("compression", enabled);
     }
 
     /** Stream compression quality, 1 (worst) to 100 (best) */
-    unsigned getQuality() const { return _quality; }
-    void setQuality(const unsigned quality) { _updateValue(_quality, quality); }
+    unsigned getQuality() const
+    {
+        return (unsigned)_props.getProperty<int32_t>("quality");
+    }
+    void setQuality(const unsigned quality)
+    {
+        _props.updateProperty("quality", (int32_t)quality);
+    }
+
     /** Stream ID; defaults to DEFLECT_ID if empty */
-    const std::string& getId() const { return _id; }
-    void setId(const std::string& id) { _updateValue(_id, id); }
+    std::string getId() const { return _props.getProperty<std::string>("id"); }
+    void setId(const std::string& id) { _props.updateProperty("id", id); }
     /** Stream hostname; defaults to DEFLECT_HOST if empty */
-    const std::string& getHostname() const { return _host; }
-    void setHost(const std::string& host) { _updateValue(_host, host); }
+    std::string getHostname() const
+    {
+        return _props.getProperty<std::string>("hostname");
+    }
+    void setHost(const std::string& host)
+    {
+        _props.updateProperty("hostname", host);
+    }
+
     /** Stream port; defaults to 1701 if empty */
-    unsigned getPort() const { return _port; }
-    void setPort(const unsigned port) { _updateValue(_port, port); }
+    unsigned getPort() const
+    {
+        return (unsigned)_props.getProperty<int32_t>("port");
+    }
+    void setPort(const unsigned port)
+    {
+        _props.updateProperty("port", (int32_t)port);
+    }
+
     /** Stream resizing enabled */
-    bool getResizing() const { return _resizing; }
-    void setResizing(const bool enabled) { _updateValue(_resizing, enabled); }
-    bool isTopDown() const { return _topDown; }
-    void setIsTopDown(const bool topDown) { _updateValue(_topDown, topDown); }
-    bool usePixelOp() const { return _usePixelOp; }
+    bool getResizing() const { return _props.getProperty<bool>("resizing"); }
+    void setResizing(const bool enabled)
+    {
+        _props.updateProperty("resizing", enabled);
+    }
+
+    bool isTopDown() const { return _props.getProperty<bool>("top-down"); }
+    void setIsTopDown(const bool topDown)
+    {
+        _props.updateProperty("top-down", topDown);
+    }
+
+    bool usePixelOp() const { return _props.getProperty<bool>("use-pixelop"); }
     deflect::ChromaSubsampling getChromaSubsampling() const
     {
-        return _chromaSubsampling;
+        return (deflect::ChromaSubsampling)_props.getProperty<int32_t>(
+            "chroma-subsampling");
     }
     void setChromaSubsampling(const deflect::ChromaSubsampling subsampling)
     {
-        _updateValue(_chromaSubsampling, subsampling);
+        _props.updateProperty("chroma-subsampling", (int32_t)subsampling);
     }
-    void parse(const po::variables_map& vm);
 
+    const PropertyMap& getPropertyMap() const { return _props; }
 private:
-    std::string _host;
-    bool _enabled{true};
-    std::string _id;
-    unsigned _port{1701};
-    bool _compression{true};
-    unsigned _quality{80};
-    bool _resizing{true};
-    bool _topDown{false};
-    bool _usePixelOp{false};
-    deflect::ChromaSubsampling _chromaSubsampling{
-        deflect::ChromaSubsampling::YUV444};
-
-    // SERIALIZATION_FRIEND(StreamParameters)
+    PropertyMap _props;
 };
 }

@@ -31,14 +31,16 @@ using boost::property_tree::ptree;
 
 namespace
 {
-using Property = brayns::PropertyMap::Property;
-const Property PROP_DIMENSIONS = {"dimensions", "Dimensions",
-                                  std::array<int32_t, 3>({{0, 0, 0}})};
-const Property PROP_SPACING = {"spacing", "Spacing",
-                               std::array<double, 3>({{0, 0, 0}})};
-const Property PROP_TYPE = {"type", "Type",
+using Property = brayns::Property;
+const Property PROP_DIMENSIONS = {"dimensions",
+                                  std::array<int32_t, 3>({{0, 0, 0}}),
+                                  Property::UserInfo{"Dimensions"}};
+const Property PROP_SPACING = {"spacing", std::array<double, 3>({{0, 0, 0}}),
+                               Property::UserInfo{"Spacing"}};
+const Property PROP_TYPE = {"type",
                             brayns::enumToString(brayns::DataType::UINT8),
-                            brayns::enumNames<brayns::DataType>()};
+                            brayns::enumNames<brayns::DataType>(),
+                            Property::UserInfo{"Type"}};
 }
 
 namespace brayns
@@ -250,10 +252,10 @@ ModelDescriptorPtr MHDVolumeLoader::importFromFile(
 
     PropertyMap properties;
     properties.setProperty(
-        {PROP_DIMENSIONS.name, PROP_DIMENSIONS.label, dimensions});
-    properties.setProperty({PROP_SPACING.name, PROP_SPACING.label, spacing});
-    properties.setProperty({PROP_TYPE.name, PROP_TYPE.label,
-                            brayns::enumToString(type), PROP_TYPE.enums});
+        {PROP_DIMENSIONS.name, dimensions, PROP_DIMENSIONS.userInfo});
+    properties.setProperty({PROP_SPACING.name, spacing, PROP_SPACING.userInfo});
+    properties.setProperty({PROP_TYPE.name, brayns::enumToString(type),
+                            PROP_TYPE.enums, PROP_TYPE.userInfo});
 
     return RawVolumeLoader(_scene).importFromFile(volumeFile, callback,
                                                   properties, index,

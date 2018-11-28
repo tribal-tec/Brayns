@@ -45,6 +45,29 @@ std::istream& operator>>(std::istream& in, array<T, N>& value)
     return in;
 }
 }
+
+// struct enumFake
+//{
+//    std::string value;
+//    std::set<std::string> values;
+
+//    friend std::istream &operator>>(std::istream &is, enumFake &arg) {
+//        is >> arg.value;
+//        if(arg.values.count(arg.value) == 0)
+//        {
+//            std::ostringstream ss;
+//                        ss << "value must be in the list, you supplied " <<
+//                        std::quoted(arg.value);
+//            throw std::invalid_argument(ss.str());
+//        }
+//        return is;
+//    }
+
+//    friend std::ostream &operator<<(std::ostream &os, enumFake const &arg) {
+//        return os << arg.value;
+//    }
+//};
+
 namespace brayns
 {
 po::options_description toCommandlineDescription(const PropertyMap& propertyMap)
@@ -52,45 +75,49 @@ po::options_description toCommandlineDescription(const PropertyMap& propertyMap)
     po::options_description desc;
     for (const auto& property : propertyMap.getProperties())
     {
-        po::value_semantic* valueSemantic;
+        po::value_semantic* valueSemantic{nullptr};
         switch (property->type)
         {
-        case PropertyMap::Property::Type::Int:
-            valueSemantic = po::value<int32_t>();
-            //            if(!property->enums.empty())
-            //            break;
+        case Property::Type::Int:
+        {
+            if (property->enums.empty())
+                valueSemantic = po::value<int32_t>()->default_value(
+                    property->get<int32_t>());
             break;
-        case PropertyMap::Property::Type::Double:
-            valueSemantic = po::value<double>();
-            break;
-        case PropertyMap::Property::Type::String:
-            valueSemantic = po::value<std::string>();
-            break;
-        case PropertyMap::Property::Type::Bool:
+        }
+        case Property::Type::Double:
             valueSemantic =
-                po::bool_switch()->default_value(property->get<bool>());
+                po::value<double>()->default_value(property->get<double>());
             break;
-        case PropertyMap::Property::Type::Vec2i:
+        case Property::Type::String:
+            valueSemantic = po::value<std::string>()->default_value(
+                property->get<std::string>());
+            break;
+        case Property::Type::Bool:
+            valueSemantic = po::bool_switch();
+            break;
+        case Property::Type::Vec2i:
             valueSemantic = po::value<boost::array<int32_t, 2>>();
             break;
-        case PropertyMap::Property::Type::Vec2d:
+        case Property::Type::Vec2d:
             valueSemantic = po::value<boost::array<double, 2>>();
             break;
-        case PropertyMap::Property::Type::Vec3i:
+        case Property::Type::Vec3i:
             valueSemantic = po::value<boost::array<int32_t, 3>>();
             break;
-        case PropertyMap::Property::Type::Vec3d:
+        case Property::Type::Vec3d:
             valueSemantic = po::value<boost::array<double, 3>>();
             break;
-        case PropertyMap::Property::Type::Vec4d:
+        case Property::Type::Vec4d:
             valueSemantic = po::value<boost::array<double, 4>>();
             break;
         default:
             continue;
         }
-        desc.add(
-            boost::make_shared<po::option_description>(property->name.c_str(),
-                                                       valueSemantic));
+        if (valueSemantic)
+            desc.add(boost::make_shared<po::option_description>(
+                property->name.c_str(), valueSemantic,
+                property->userInfo.description.c_str()));
     }
     return desc;
 }
@@ -104,28 +131,28 @@ void commandlineToPropertyMap(const boost::program_options::variables_map& vm,
             continue;
         switch (property->type)
         {
-        case PropertyMap::Property::Type::Int:
+        case Property::Type::Int:
             property->set(vm[property->name].as<int32_t>());
             break;
-        case PropertyMap::Property::Type::Double:
+        case Property::Type::Double:
             property->set(vm[property->name].as<double>());
             break;
-        case PropertyMap::Property::Type::String:
+        case Property::Type::String:
             property->set(vm[property->name].as<std::string>());
             break;
-        case PropertyMap::Property::Type::Bool:
+        case Property::Type::Bool:
             property->set(vm[property->name].as<bool>());
             break;
-        case PropertyMap::Property::Type::Vec2i:
+        case Property::Type::Vec2i:
             property->set(vm[property->name].as<boost::array<int32_t, 2>>());
             break;
-        case PropertyMap::Property::Type::Vec2d:
+        case Property::Type::Vec2d:
             break;
-        case PropertyMap::Property::Type::Vec3i:
+        case Property::Type::Vec3i:
             break;
-        case PropertyMap::Property::Type::Vec3d:
+        case Property::Type::Vec3d:
             break;
-        case PropertyMap::Property::Type::Vec4d:
+        case Property::Type::Vec4d:
             break;
         default:
             continue;
@@ -139,12 +166,23 @@ bool parseIntoPropertyMap(int argc, const char** argv, PropertyMap& propertyMap)
     {
         po::variables_map vm;
         po::options_description desc;
-        desc.add(brayns::toCommandlineDescription(propertyMap));
+        desc.add(boost::make_shared<po::option_description>("help",
+                                                            po::bool_switch(),
+                                                            "Print this help"));
+
+        desc.add(toCommandlineDescription(propertyMap));
         po::parsed_options parsedOptions =
             po::command_line_parser(argc, argv).options(desc).run();
         po::store(parsedOptions, vm);
         po::notify(vm);
-        brayns::commandlineToPropertyMap(vm, propertyMap);
+
+        if (vm.count("help"))
+        {
+            std::cout << desc << std::endl;
+            return false;
+        }
+
+        commandlineToPropertyMap(vm, propertyMap);
         return true;
     }
     catch (const po::error& e)

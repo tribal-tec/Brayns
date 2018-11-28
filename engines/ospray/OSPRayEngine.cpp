@@ -169,77 +169,105 @@ void OSPRayEngine::_createRenderers()
         PropertyMap properties;
         if (renderer == "pathtracing")
         {
-            properties.setProperty(
-                {"shadows", "Shadow intensity", 0., {0., 1.}});
-            properties.setProperty(
-                {"softShadows", "Shadow softness", 0., {0., 1.}});
+            properties.setProperty({"shadows",
+                                    0.,
+                                    {0., 1.},
+                                    Property::UserInfo{"Shadow intensity"}});
+            properties.setProperty({"softShadows",
+                                    0.,
+                                    {0., 1.},
+                                    Property::UserInfo{"Shadow softness"}});
         }
         if (renderer == "proximity")
         {
+            properties.setProperty({"alphaCorrection",
+                                    0.5,
+                                    {0.001, 1.},
+                                    Property::UserInfo{"Alpha correction"}});
+            properties.setProperty({"detectionDistance", 1.,
+                                    Property::UserInfo{"Detection distance"}});
+            properties.setProperty({"detectionFarColor",
+                                    std::array<double, 3>{{1., 0., 0.}},
+                                    Property::UserInfo{"Detection far color"}});
             properties.setProperty(
-                {"alphaCorrection", "Alpha correction", 0.5, {0.001, 1.}});
+                {"detectionNearColor", std::array<double, 3>{{0., 1., 0.}},
+                 Property::UserInfo{"Detection near color"}});
             properties.setProperty(
-                {"detectionDistance", "Detection distance", 1.});
-            properties.setProperty({"detectionFarColor", "Detection far color",
-                                    std::array<double, 3>{{1., 0., 0.}}});
-            properties.setProperty({"detectionNearColor",
-                                    "Detection near color",
-                                    std::array<double, 3>{{0., 1., 0.}}});
-            properties.setProperty({"detectionOnDifferentMaterial",
-                                    "Detection on different material", false});
-            properties.setProperty(
-                {"electronShadingEnabled", "Electron shading", false});
-            properties.setProperty(
-                {"surfaceShadingEnabled", "Surface shading", true});
+                {"detectionOnDifferentMaterial", false,
+                 Property::UserInfo{"Detection on different material"}});
+            properties.setProperty({"electronShadingEnabled", false,
+                                    Property::UserInfo{"Electron shading"}});
+            properties.setProperty({"surfaceShadingEnabled", true,
+                                    Property::UserInfo{"Surface shading"}});
         }
         if (renderer == "basic_simulation")
         {
-            properties.setProperty(
-                {"alphaCorrection", "Alpha correction", 0.5, {0.001, 1.}});
+            properties.setProperty({"alphaCorrection",
+                                    0.5,
+                                    {0.001, 1.},
+                                    Property::UserInfo{"Alpha correction"}});
         }
         if (renderer == "advanced_simulation")
         {
             properties.setProperty(
-                {"aoDistance", "Ambient occlusion distance", 10000.});
+                {"aoDistance", 10000.,
+                 Property::UserInfo{"Ambient occlusion distance"}});
             properties.setProperty(
-                {"aoWeight", "Ambient occlusion weight", 0., {0., 1.}});
+                {"aoWeight",
+                 0.,
+                 {0., 1.},
+                 Property::UserInfo{"Ambient occlusion weight"}});
+            properties.setProperty({"detectionDistance", 15.,
+                                    Property::UserInfo{"Detection distance"}});
             properties.setProperty(
-                {"detectionDistance", "Detection distance", 15.});
+                {"shading", int32_t(AdvancedSimulationRenderer::Shading::none),
+                 brayns::enumNames<AdvancedSimulationRenderer::Shading>(),
+                 Property::UserInfo{"Shading"}});
+            properties.setProperty({"shadows",
+                                    0.,
+                                    {0., 1.},
+                                    Property::UserInfo{"Shadow intensity"}});
+            properties.setProperty({"softShadows",
+                                    0.,
+                                    {0., 1.},
+                                    Property::UserInfo{"Shadow softness"}});
             properties.setProperty(
-                {"shading", "Shading",
-                 int32_t(AdvancedSimulationRenderer::Shading::none),
-                 brayns::enumNames<AdvancedSimulationRenderer::Shading>()});
+                {"samplingThreshold",
+                 0.001,
+                 {0.001, 1.},
+                 Property::UserInfo{
+                     "Threshold under which sampling is ignored"}});
             properties.setProperty(
-                {"shadows", "Shadow intensity", 0., {0., 1.}});
+                {"volumeSpecularExponent",
+                 20.,
+                 {1., 100.},
+                 Property::UserInfo{"Volume specular exponent"}});
             properties.setProperty(
-                {"softShadows", "Shadow softness", 0., {0., 1.}});
-            properties.setProperty({"samplingThreshold",
-                                    "Threshold under which sampling is ignored",
-                                    0.001,
-                                    {0.001, 1.}});
-            properties.setProperty({"volumeSpecularExponent",
-                                    "Volume specular exponent",
-                                    20.,
-                                    {1., 100.}});
-            properties.setProperty({"volumeAlphaCorrection",
-                                    "Volume alpha correction",
-                                    0.5,
-                                    {0.001, 1.}});
+                {"volumeAlphaCorrection",
+                 0.5,
+                 {0.001, 1.},
+                 Property::UserInfo{"Volume alpha correction"}});
         }
         if (renderer == "scivis")
         {
             properties.setProperty(
-                {"aoDistance", "Ambient occlusion distance", 10000.});
-            properties.setProperty({"aoSamples", "Ambient occlusion samples",
-                                    int32_t(1),
-                                    std::pair<int32_t, int32_t>{0, 128}});
-            properties.setProperty({"aoTransparencyEnabled",
-                                    "Ambient occlusion transparency", true});
+                {"aoDistance", 10000.,
+                 Property::UserInfo{"Ambient occlusion distance"}});
             properties.setProperty(
-                {"aoWeight", "Ambient occlusion weight", 0., {0., 1.}});
+                {"aoSamples", int32_t(1), std::pair<int32_t, int32_t>{0, 128},
+                 Property::UserInfo{"Ambient occlusion samples"}});
             properties.setProperty(
-                {"oneSidedLighting", "One-sided lighting", true});
-            properties.setProperty({"shadowsEnabled", "Shadows", false});
+                {"aoTransparencyEnabled", true,
+                 Property::UserInfo{"Ambient occlusion transparency"}});
+            properties.setProperty(
+                {"aoWeight",
+                 0.,
+                 {0., 1.},
+                 Property::UserInfo{"Ambient occlusion weight"}});
+            properties.setProperty({"oneSidedLighting", true,
+                                    Property::UserInfo{"One-sided lighting"}});
+            properties.setProperty(
+                {"shadowsEnabled", false, Property::UserInfo{"Shadows"}});
         }
         ospRenderer->setProperties(renderer, properties);
     }
@@ -287,13 +315,13 @@ void OSPRayEngine::_createCameras()
 
     const bool isStereo =
         _parametersManager.getApplicationParameters().isStereo();
-    PropertyMap::Property stereoProperty{"stereo", "Stereo", isStereo};
+    Property stereoProperty{"stereo", isStereo, Property::UserInfo{"Stereo"}};
     stereoProperty.markReadOnly();
-    PropertyMap::Property fovy{"fovy", "Field of view", 45., {.1, 360.}};
-    PropertyMap::Property aspect{"aspect", "Aspect ratio", 1.};
+    Property fovy{"fovy", 45., {.1, 360.}, Property::UserInfo{"Field of view"}};
+    Property aspect{"aspect", 1., Property::UserInfo{"Aspect ratio"}};
     aspect.markReadOnly();
-    PropertyMap::Property eyeSeparation{"interpupillaryDistance",
-                                        "Eye separation", 0.0635};
+    Property eyeSeparation{"interpupillaryDistance", 0.0635,
+                           Property::UserInfo{"Eye separation"}};
 
     RenderingParameters& rp = _parametersManager.getRenderingParameters();
     for (const auto& camera : rp.getCameras())
@@ -303,8 +331,10 @@ void OSPRayEngine::_createCameras()
         {
             properties.setProperty(fovy);
             properties.setProperty(aspect);
-            properties.setProperty({"apertureRadius", "Aperture radius", 0.});
-            properties.setProperty({"focusDistance", "Focus Distance", 1.});
+            properties.setProperty(
+                {"apertureRadius", 0., Property::UserInfo{"Aperture radius"}});
+            properties.setProperty(
+                {"focusDistance", 1., Property::UserInfo{"Focus Distance"}});
             if (isStereo)
             {
                 properties.setProperty(stereoProperty);
@@ -313,7 +343,8 @@ void OSPRayEngine::_createCameras()
         }
         if (camera == "orthographic")
         {
-            properties.setProperty({"height", "Height", 1.});
+            properties.setProperty(
+                {"height", 1., Property::UserInfo{"Height"}});
             properties.setProperty(aspect);
         }
         if (camera == "stereoFull")
@@ -325,7 +356,8 @@ void OSPRayEngine::_createCameras()
                 properties.setProperty(stereoProperty);
                 properties.setProperty(eyeSeparation);
                 properties.setProperty(
-                    {"zeroParallaxPlane", "Zero parallax plane", 1.});
+                    {"zeroParallaxPlane", 1.,
+                     Property::UserInfo{"Zero parallax plane"}});
             }
         }
         ospCamera->setProperties(camera, properties);

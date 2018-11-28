@@ -22,21 +22,6 @@
 #include "utils.h"
 #include <deflect/Stream.h>
 
-//#include <brayns/common/utils/EnumUtils.h>
-
-// namespace
-//{
-// const std::string PARAM_CHROMA_SUBSAMPLING = "chroma-subsampling";
-// const std::string PARAM_COMPRESSION = "disable-compression";
-// const std::string PARAM_HOST = "host";
-// const std::string PARAM_ID = "id";
-// const std::string PARAM_PORT = "port";
-// const std::string PARAM_QUALITY = "quality";
-// const std::string PARAM_RESIZING = "disable-resizing";
-// const std::string PARAM_TOP_DOWN = "top-down";
-// const std::string PARAM_USE_PIXELOP = "use-pixelop";
-//}
-
 namespace deflect
 {
 // std::istream& operator>>(std::istream& in, ChromaSubsampling& ss)
@@ -60,82 +45,47 @@ namespace brayns
 PropertyMap DeflectParameters::createPropertyMap()
 {
     PropertyMap properties;
-    properties.setProperty({"id", "Stream ID", std::string()});
-    properties.setProperty({"hostname", "Stream hostname", std::string()});
-    properties.setProperty({"port",
-                            "Stream port",
-                            (int32_t)deflect::Stream::defaultPortNumber,
-                            {1023, 65535}});
-    properties.setProperty({"enabled", "Enable streaming", true});
-    properties.setProperty({"compression", "Use compression", true});
-    properties.setProperty({"top-down", "Stream image top-down", false});
-    properties.setProperty({"resizing", "Resize on Deflect events", true});
-    properties.setProperty({"quality", "JPEG quality", (int32_t)80, {1, 100}});
     properties.setProperty(
-        {"use-pixelop", "Use optimized, distributed streaming", false});
-    properties.setProperty({"chroma-subsampling", "Chroma subsampling",
-                            int32_t(deflect::ChromaSubsampling::YUV444),
-                            enumNames<deflect::ChromaSubsampling>()});
+        {"id", std::string(),
+         Property::UserInfo{
+             "Stream ID",
+             "The ID/name of the stream, equivalent to DEFLECT_ID"}});
+    properties.setProperty(
+        {"hostname", std::string(),
+         Property::UserInfo{"Stream hostname", "Hostname of Deflect server"}});
+    properties.setProperty(
+        {"port",
+         (int32_t)deflect::Stream::defaultPortNumber,
+         {1023, 65535},
+         Property::UserInfo{"Stream port", "Port of Deflect server"}});
+    properties.setProperty({"no-compression", false,
+                            Property::UserInfo{"Disable JPEG compression",
+                                               "Disable JPEG compression"}});
+    properties.setProperty(
+        {"top-down", false,
+         Property::UserInfo{
+             "Stream image top-down",
+             "Top-down image orientation instead of bottom-up"}});
+    properties.setProperty(
+        {"disable-resizing", false,
+         Property::UserInfo{
+             "Disable resizing",
+             "Disable resizing of framebuffers from EVT_VIEW_SIZE_CHANGED"}});
+    properties.setProperty(
+        {"quality",
+         (int32_t)80,
+         {1, 100},
+         Property::UserInfo{"JPEG quality", "JPEG quality"}});
+    properties.setProperty(
+        {"use-pixelop", false,
+         Property::UserInfo{"Use per-tile direct streaming",
+                            "Use per-tile direct streaming"}});
+    properties.setProperty(
+        {"chroma-subsampling", int32_t(deflect::ChromaSubsampling::YUV444),
+         enumNames<deflect::ChromaSubsampling>(),
+         Property::UserInfo{
+             "Chroma subsampling",
+             "Chroma subsampling modes: YUV444, YUV422, YUV420"}});
     return properties;
 }
-// DeflectParameters::DeflectParameters()
-//    : AbstractParameters("Deflect")
-//{
-//    _parameters.add_options()(PARAM_COMPRESSION.c_str(),
-//                              po::bool_switch()->default_value(!_compression),
-//                              "Disable JPEG compression")(
-//        PARAM_HOST.c_str(), po::value<std::string>(),
-//        "Hostname of Deflect server")(PARAM_ID.c_str(),
-//                                      po::value<std::string>(),
-//                                      "Name of stream")(
-//        PARAM_PORT.c_str(), po::value<unsigned>(), "Port of Deflect server")(
-//        PARAM_QUALITY.c_str(), po::value<unsigned>(),
-//        "JPEG quality of stream")(PARAM_RESIZING.c_str(),
-//                                  po::bool_switch()->default_value(!_resizing),
-//                                  "Disable stream resizing")(
-//        PARAM_USE_PIXELOP.c_str(),
-//        po::bool_switch()->default_value(_usePixelOp),
-//        "Use optimized pixel op")(PARAM_CHROMA_SUBSAMPLING.c_str(),
-//                                  po::value<deflect::ChromaSubsampling>(),
-//                                  "Chroma subsampling")(
-//        PARAM_TOP_DOWN.c_str(), po::bool_switch()->default_value(_topDown),
-//        "TTop-down image orientation instead of bottom-up");
-//}
-
-// void DeflectParameters::parse(const po::variables_map& vm)
-//{
-//    _compression = !vm[PARAM_COMPRESSION].as<bool>();
-//    if (vm.count(PARAM_HOST))
-//        _host = vm[PARAM_HOST].as<std::string>();
-//    if (vm.count(PARAM_ID))
-//        _id = vm[PARAM_ID].as<std::string>();
-//    if (vm.count(PARAM_PORT))
-//        _port = vm[PARAM_PORT].as<unsigned>();
-//    if (vm.count(PARAM_QUALITY))
-//        _quality = vm[PARAM_QUALITY].as<unsigned>();
-//    if (vm.count(PARAM_CHROMA_SUBSAMPLING))
-//        _chromaSubsampling =
-//            vm[PARAM_CHROMA_SUBSAMPLING].as<deflect::ChromaSubsampling>();
-//    _resizing = !vm[PARAM_RESIZING].as<bool>();
-//    _usePixelOp = vm[PARAM_USE_PIXELOP].as<bool>();
-//    _topDown = vm[PARAM_TOP_DOWN].as<bool>();
-//    markModified();
-//}
-
-// void DeflectParameters::print()
-//{
-//    AbstractParameters::print();
-//    BRAYNS_INFO << "Stream compression                : "
-//                << asString(_compression) << std::endl;
-//    BRAYNS_INFO << "Stream host                       : " << _host <<
-//    std::endl;
-//    BRAYNS_INFO << "Stream ID                         : " << _id << std::endl;
-//    BRAYNS_INFO << "Stream port                       : " << _port <<
-//    std::endl;
-//    BRAYNS_INFO << "Stream quality                    : " << _quality
-//                << std::endl;
-//    BRAYNS_INFO << "Stream resizing                   : " <<
-//    asString(_resizing)
-//                << std::endl;
-//}
 }

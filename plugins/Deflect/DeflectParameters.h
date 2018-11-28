@@ -40,16 +40,9 @@ public:
     {
     }
 
-    /** @copydoc AbstractParameters::print */
-    // void print() final;
-
     /** Streaming enabled */
-    bool getEnabled() const { return _props.getProperty<bool>("enabled"); }
-    void setEnabled(const bool enabled)
-    {
-        _props.updateProperty("enabled", enabled);
-    }
-
+    bool getEnabled() const { return _enabled; }
+    void setEnabled(const bool enabled) { _enabled = enabled; }
     /** Stream compression enabled */
     bool getCompression() const
     {
@@ -93,11 +86,10 @@ public:
         _props.updateProperty("port", (int32_t)port);
     }
 
-    /** Stream resizing enabled */
-    bool getResizing() const { return _props.getProperty<bool>("resizing"); }
-    void setResizing(const bool enabled)
+    /** Stream resizing disabled */
+    bool isResizingDisabled() const
     {
-        _props.updateProperty("resizing", enabled);
+        return _props.getProperty<bool>("disable-resizing");
     }
 
     bool isTopDown() const { return _props.getProperty<bool>("top-down"); }
@@ -119,6 +111,7 @@ public:
 
     const PropertyMap& getPropertyMap() const { return _props; }
 private:
+    bool _enabled{true};
     PropertyMap _props;
 };
 }

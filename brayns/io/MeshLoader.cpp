@@ -56,15 +56,16 @@ std::vector<std::string> getSupportedTypes()
     return output;
 }
 
-using Property = brayns::PropertyMap::Property;
+using Property = brayns::Property;
 const Property PROP_GEOMETRY_QUALITY = {
-    "geometryQuality", "Geometry quality",
-    brayns::enumToString(brayns::GeometryQuality::high),
-    brayns::enumNames<brayns::GeometryQuality>()};
-const Property PROP_COLOR_SCHEME = {"colorScheme", "Color scheme",
+    "geometryQuality", brayns::enumToString(brayns::GeometryQuality::high),
+    brayns::enumNames<brayns::GeometryQuality>(),
+    Property::UserInfo{"Geometry quality"}};
+const Property PROP_COLOR_SCHEME = {"colorScheme",
                                     brayns::enumToString(
                                         brayns::ColorScheme::none),
-                                    brayns::enumNames<brayns::ColorScheme>()};
+                                    brayns::enumNames<brayns::ColorScheme>(),
+                                    Property::UserInfo{"Color scheme"}};
 
 const auto LOADER_NAME = "mesh";
 }

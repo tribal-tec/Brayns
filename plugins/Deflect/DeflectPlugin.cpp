@@ -40,25 +40,6 @@
 namespace
 {
 const float wheelFactor = 1.f / 40.f;
-
-// brayns::PropertyMap toPropertyMap(const brayns::DeflectParameters& params)
-//{
-//    brayns::PropertyMap properties;
-//    properties.setProperty({"id", "id", params.getId()});
-//    properties.setProperty({"hostname", "hostname", params.getHostname()});
-//    properties.setProperty(
-//        {"port", "port", (int32_t)params.getPort(), {1023, 65535}});
-//    properties.setProperty({"enabled", "enabled", params.getEnabled()});
-//    properties.setProperty(
-//        {"compression", "compression", params.getCompression()});
-//    properties.setProperty({"top-down", "top-down", params.isTopDown()});
-//    properties.setProperty(
-//        {"quality", "quality", (int32_t)params.getQuality(), {1, 100}});
-//    properties.setProperty({"subsampling", "subsampling",
-//                            int32_t(deflect::ChromaSubsampling::YUV444),
-//                            brayns::enumNames<deflect::ChromaSubsampling>()});
-//    return properties;
-//}
 }
 
 namespace brayns
@@ -101,7 +82,15 @@ public:
             _sendSizeHints(_engine);
 
         if (deflectEnabled && _stream && _stream->isConnected())
+        {
             _handleDeflectEvents();
+
+            if (observerOnly)
+            {
+                for (auto frameBuffer : _engine.getFrameBuffers())
+                    frameBuffer->updatePixelOp(_params.getPropertyMap());
+            }
+        }
     }
 
     void postRender()
@@ -261,7 +250,7 @@ private:
             case deflect::Event::EVT_VIEW_SIZE_CHANGED:
             {
                 Vector2ui newSize(event.dx, event.dy);
-                if (_params.getResizing())
+                if (!_params.isResizingDisabled())
                     _appParams.setWindowSize(newSize);
                 break;
             }

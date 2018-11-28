@@ -51,34 +51,35 @@ constexpr std::array<double, 4> to_array_4d(const vrpn_float64* quat)
     return {{quat[0], quat[1], quat[2], quat[3]}};
 }
 
-PropertyMap::Property getHeadPositionProperty()
+Property getHeadPositionProperty()
 {
-    PropertyMap::Property headPosition{HEAD_POSITION_PROP, "Head position",
-                                       HEAD_INIT_POS};
+    Property headPosition{HEAD_POSITION_PROP, HEAD_INIT_POS};
     headPosition.markReadOnly();
     return headPosition;
 }
 
-PropertyMap::Property getHeadRotationProperty()
+Property getHeadRotationProperty()
 {
-    PropertyMap::Property headRotation{HEAD_ROTATION_PROP, "Head rotation",
-                                       HEAD_INIT_ROT};
+    Property headRotation{HEAD_ROTATION_PROP, HEAD_INIT_ROT};
     headRotation.markReadOnly();
     return headRotation;
 }
 
-PropertyMap::Property getStereoModeProperty()
+Property getStereoModeProperty()
 {
     return {"stereoMode",
-            "Stereo mode",
             static_cast<int>(
                 ospray::PerspectiveCamera::StereoMode::OSP_STEREO_SIDE_BY_SIDE),
-            {"None", "Left eye", "Right eye", "Side by side"}};
+            {"None", "Left eye", "Right eye", "Side by side"},
+            Property::UserInfo{"Stereo mode"}};
 }
 
-PropertyMap::Property getInterpupillaryDistanceProperty()
+Property getInterpupillaryDistanceProperty()
 {
-    return {"interpupillaryDistance", "Eye separation", 0.0635, {0.0, 10.0}};
+    return {"interpupillaryDistance",
+            0.0635,
+            {0.0, 10.0},
+            Property::UserInfo{"Eye separation"}};
 }
 
 PropertyMap getDefaultCameraProperties()

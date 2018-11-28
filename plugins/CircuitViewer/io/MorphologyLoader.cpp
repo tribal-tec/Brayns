@@ -49,35 +49,35 @@ typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
            || std::abs(x - y) < std::numeric_limits<T>::min();
 }
 
-using Property = brayns::PropertyMap::Property;
+using Property = brayns::Property;
 
-const Property PROP_COLOR_SCHEME = {"colorScheme", "Color scheme",
+const Property PROP_COLOR_SCHEME = {"colorScheme",
                                     brayns::enumToString(
-                                        brayns::ColorScheme::none),
-                                    brayns::enumNames<brayns::ColorScheme>()};
-const Property PROP_RADIUS_MULTIPLIER = {"radiusMultiplier",
-                                         "Radius multiplier", 1.0};
-const Property PROP_RADIUS_CORRECTION = {"radiusCorrection",
-                                         "Radius correction", 0.};
-const Property PROP_SECTION_TYPES_SOMA = {"sectionTypesSoma",
-                                          "Enable 'Soma' section type", true};
-const Property PROP_SECTION_TYPES_AXON = {"sectionTypesAxon",
-                                          "Enable 'Axon' section type", true};
+                                        brayns::ColorScheme::none),brayns::enumNames<brayns::ColorScheme>(),
+                                    Property::UserInfo{"Color scheme"}};
+const Property PROP_RADIUS_MULTIPLIER = {"radiusMultiplier", 1.0,
+                                         Property::UserInfo{"Radius multiplier"}};
+const Property PROP_RADIUS_CORRECTION = {"radiusCorrection", 0.,
+                                         Property::UserInfo{"Radius correction"}};
+const Property PROP_SECTION_TYPES_SOMA = {"sectionTypesSoma", true,
+                                          Property::UserInfo{"Enable 'Soma' section type"}};
+const Property PROP_SECTION_TYPES_AXON = {"sectionTypesAxon", true,
+                                          Property::UserInfo{"Enable 'Axon' section type"}};
 const Property PROP_SECTION_TYPES_DENDRITE = {"sectionTypesDendrite",
-                                              "Enable 'Dendrite' section type",
-                                              true};
+                                              true,
+                                              Property::UserInfo{"Enable 'Dendrite' section type"}};
 const Property PROP_SECTION_TYPES_APICAL_DENDRITE = {
-    "sectionTypesApicalDendrite", "Enable 'Apical Dendrite' section type",
-    true};
+    "sectionTypesApicalDendrite",
+    true, Property::UserInfo{"Enable 'Apical Dendrite' section type"}};
 const Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
-    "dampenBranchThicknessChangerate", "Dampen branch thickness changerate",
-    false};
-const Property PROP_USE_SDF_GEOMETRIES = {"useSdfGeometries",
-                                          "Use SDF geometries", false};
+    "dampenBranchThicknessChangerate",
+    false, Property::UserInfo{"Dampen branch thickness changerate"}};
+const Property PROP_USE_SDF_GEOMETRIES = {"useSdfGeometries", false,
+                                          Property::UserInfo{"Use SDF geometries"}};
 const Property PROP_GEOMETRY_QUALITY = {
-    "geometryQuality", "Geometry quality",
-    brayns::enumToString(brayns::GeometryQuality::high),
-    brayns::enumNames<brayns::GeometryQuality>()};
+    "geometryQuality", brayns::enumToString(brayns::GeometryQuality::high),
+    brayns::enumNames<brayns::GeometryQuality>(),
+    Property::UserInfo{"Geometry quality"}};
 
 const auto LOADER_NAME = "morphology";
 }

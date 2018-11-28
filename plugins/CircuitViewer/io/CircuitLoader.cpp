@@ -43,41 +43,42 @@ using namespace brayns;
 
 namespace
 {
-using Property = brayns::PropertyMap::Property;
-const Property PROP_DENSITY = {"density", "Density", 100.0};
-const Property PROP_RANDOM_SEED = {"randomSeed", "Random seed", 0};
-const Property PROP_REPORT = {"report", "Report", std::string("")};
-const Property PROP_TARGETS = {"targets", "Targets", std::string("")};
+using Property = brayns::Property;
+const Property PROP_DENSITY = {"density", 100.0, Property::UserInfo{"Density"}};
+const Property PROP_RANDOM_SEED = {"randomSeed", 0, Property::UserInfo{"Random seed"}};
+const Property PROP_REPORT = {"report", std::string(""), Property::UserInfo{"Report"}};
+const Property PROP_TARGETS = {"targets", std::string(""), Property::UserInfo{"Targets"}};
 const Property PROP_MESH_FILENAME_PATTERN = {"meshFilenamePattern",
-                                             "Mesh filename pattern",
-                                             std::string("")};
-const Property PROP_MESH_FOLDER = {"meshFolder", "Mesh folder",
-                                   std::string("")};
+                                             std::string(""),
+                                             Property::UserInfo{"Mesh filename pattern"}};
+const Property PROP_MESH_FOLDER = {"meshFolder",
+                                   std::string(""), Property::UserInfo{"Mesh folder"}};
 const Property PROP_BOUNDING_BOX_P0 = {"boundingBoxP0",
-                                       "First bounding box boundary point",
-                                       std::array<double, 3>{{0, 0, 0}}};
+                                       std::array<double, 3>{{0, 0, 0}},
+                                       Property::UserInfo{"First bounding box boundary point"}};
 const Property PROP_BOUNDING_BOX_P1 = {"boundingBoxP1",
-                                       "Second bounding box boundary point",
-                                       std::array<double, 3>{{0, 0, 0}}};
-const Property PROP_USE_SIMULATION_MODEL = {"useSimulationModel",
-                                            "Use simulation model", false};
-const Property PROP_TRANSFORM_MESHES = {"transformMeshes", "Transform meshes",
-                                        false};
-const Property PROP_COLOR_SCHEME = {"colorScheme", "Color scheme",
+                                       std::array<double, 3>{{0, 0, 0}},
+                                       Property::UserInfo{"Second bounding box boundary point"}};
+const Property PROP_USE_SIMULATION_MODEL = {"useSimulationModel", false,
+                                            Property::UserInfo{"Use simulation model"}};
+const Property PROP_TRANSFORM_MESHES = {"transformMeshes",
+                                        false, Property::UserInfo{"Transform meshes"}};
+const Property PROP_COLOR_SCHEME = {"colorScheme",
                                     brayns::enumToString(ColorScheme::none),
-                                    brayns::enumNames<ColorScheme>()};
-const Property PROP_START_SIMULATION_TIME = {"startSimulationTime",
-                                             "Start simulation time", 0.0};
-const Property PROP_END_SIMULATION_TIME = {"endSimulationTime",
-                                           "End simulation time", 0.0};
-const Property PROP_SIMULATION_STEP = {"simulationStep", "Simulation step",
-                                       0.0};
-const Property PROP_SYNCHRONOUS_MODE = {"synchronousMode", "Synchronous mode",
-                                        false};
-const Property PROP_GEOMETRY_QUALITY = {"geometryQuality", "Geometry quality",
+                                    brayns::enumNames<ColorScheme>(), Property::UserInfo{"Color scheme"}};
+const Property PROP_START_SIMULATION_TIME = {"startSimulationTime", 0.0,
+                                             Property::UserInfo{"Start simulation time"}};
+const Property PROP_END_SIMULATION_TIME = {"endSimulationTime", 0.0,
+                                           Property::UserInfo{"End simulation time"}};
+const Property PROP_SIMULATION_STEP = {"simulationStep",
+                                       0.0, Property::UserInfo{"Simulation step"}};
+const Property PROP_SYNCHRONOUS_MODE = {"synchronousMode",
+                                        false, Property::UserInfo{"Synchronous mode"}};
+const Property PROP_GEOMETRY_QUALITY = {"geometryQuality",
                                         brayns::enumToString(
                                             GeometryQuality::high),
-                                        brayns::enumNames<GeometryQuality>()};
+                                        brayns::enumNames<GeometryQuality>(),
+                                        Property::UserInfo{"Geometry quality"}};
 const auto LOADER_NAME = "circuit";
 
 using SimulationHandlerPtr = std::shared_ptr<SimulationHandler>;

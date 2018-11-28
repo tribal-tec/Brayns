@@ -35,13 +35,15 @@
 
 namespace
 {
-using Property = brayns::PropertyMap::Property;
-const Property PROP_RADIUS_MULTIPLIER = {"radiusMultiplier",
-                                         "Radius multiplier", 1.0};
-const Property PROP_COLOR_SCHEME = {"colorScheme", "Color scheme",
+using Property = brayns::Property;
+const Property PROP_RADIUS_MULTIPLIER = {"radiusMultiplier", 1.0,
+                                         Property::UserInfo{
+                                             "Radius multiplier"}};
+const Property PROP_COLOR_SCHEME = {"colorScheme",
                                     brayns::enumToString(
                                         brayns::ColorScheme::none),
-                                    brayns::enumNames<brayns::ColorScheme>()};
+                                    brayns::enumNames<brayns::ColorScheme>(),
+                                    Property::UserInfo{"Color scheme"}};
 const auto LOADER_NAME = "protein";
 }
 

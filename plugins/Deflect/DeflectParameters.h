@@ -44,13 +44,13 @@ public:
     bool getEnabled() const { return _enabled; }
     void setEnabled(const bool enabled) { _enabled = enabled; }
     /** Stream compression enabled */
-    bool noCompression() const
+    bool getCompression() const
     {
-        return _props.getProperty<bool>("no-compression");
+        return _props.getProperty<bool>("compression");
     }
-    void setNoCompression(const bool enabled)
+    void setCompression(const bool enabled)
     {
-        _props.updateProperty("no-compression", enabled);
+        _props.updateProperty("compression", enabled);
     }
 
     /** Stream compression quality, 1 (worst) to 100 (best) */
@@ -86,30 +86,31 @@ public:
         _props.updateProperty("port", (int32_t)port);
     }
 
-    /** Stream resizing disabled */
-    bool isResizingDisabled() const
+    /** Stream resizing enabled */
+    bool isResizingEnabled() const
     {
-        return _props.getProperty<bool>("disable-resizing");
+        return _props.getProperty<bool>("resizing");
     }
 
-    bool isTopDown() const { return _props.getProperty<bool>("top-down"); }
+    bool isTopDown() const { return _props.getProperty<bool>("topDown"); }
     void setIsTopDown(const bool topDown)
     {
-        _props.updateProperty("top-down", topDown);
+        _props.updateProperty("topDown", topDown);
     }
 
-    bool usePixelOp() const { return _props.getProperty<bool>("use-pixelop"); }
+    bool usePixelOp() const { return _props.getProperty<bool>("usePixelop"); }
     deflect::ChromaSubsampling getChromaSubsampling() const
     {
         return (deflect::ChromaSubsampling)_props.getProperty<int32_t>(
-            "chroma-subsampling");
+            "chromaSubsampling");
     }
     void setChromaSubsampling(const deflect::ChromaSubsampling subsampling)
     {
-        _props.updateProperty("chroma-subsampling", (int32_t)subsampling);
+        _props.updateProperty("chromaSubsampling", (int32_t)subsampling);
     }
 
     const PropertyMap& getPropertyMap() const { return _props; }
+    PropertyMap& getPropertyMap() { return _props; }
 private:
     bool _enabled{true};
     PropertyMap _props;

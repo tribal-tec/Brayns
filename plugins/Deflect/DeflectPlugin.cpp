@@ -22,6 +22,7 @@
 #include "DeflectParameters.h"
 #include "utils.h"
 
+#include <brayns/common/ActionInterface.h>
 #include <brayns/common/PropertyMap.h>
 #include <brayns/common/camera/AbstractManipulator.h>
 #include <brayns/common/commandlinePropertyMap.h>
@@ -56,6 +57,15 @@ public:
         , _keyboardHandler(api->getKeyboardHandler())
         , _cameraManipulator(api->getCameraManipulator())
     {
+        const RpcParameterDescription desc{"stream-to",
+                                           "Stream to a displaywall",
+                                           Execution::sync, "param",
+                                           "Stream parameters"};
+        api->getActionInterface()->registerNotification(
+            desc, _params.getPropertyMap(), [&](const PropertyMap& prop) {
+                _params.getPropertyMap().merge(prop);
+                _engine.triggerRender();
+            });
     }
 
     void preRender()
@@ -252,7 +262,7 @@ private:
             case deflect::Event::EVT_VIEW_SIZE_CHANGED:
             {
                 Vector2ui newSize(event.dx, event.dy);
-                if (!_params.isResizingDisabled())
+                if (_params.isResizingEnabled())
                     _appParams.setWindowSize(newSize);
                 break;
             }
@@ -368,8 +378,9 @@ private:
         deflectImage.view = view;
         deflectImage.channel = channel;
         deflectImage.compressionQuality = _params.getQuality();
-        if (_params.noCompression())
-            deflectImage.compressionPolicy = deflect::COMPRESSION_OFF;
+        deflectImage.compressionPolicy = _params.getCompression()
+                                             ? deflect::COMPRESSION_ON
+                                             : deflect::COMPRESSION_OFF;
         deflectImage.rowOrder = _params.isTopDown()
                                     ? deflect::RowOrder::top_down
                                     : deflect::RowOrder::bottom_up;
@@ -482,7 +493,7 @@ extern "C" brayns::ExtensionPlugin* brayns_plugin_create(const int argc,
     auto pm = brayns::DeflectParameters::createPropertyMap();
     po::options_description desc;
 
-    const char* propName = "chroma-subsampling";
+    const char* propName = "chromaSubsampling";
     desc.add(boost::make_shared<po::option_description>(
         propName, po::value<deflect::ChromaSubsampling>(),
         pm.getUserInfo(propName).description.c_str()));

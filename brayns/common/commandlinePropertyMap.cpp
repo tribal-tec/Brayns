@@ -94,7 +94,11 @@ po::options_description toCommandlineDescription(const PropertyMap& propertyMap)
                 property->get<std::string>());
             break;
         case Property::Type::Bool:
-            valueSemantic = po::bool_switch();
+            // default true bools cannot be switched off with bool_switch
+            if (property->get<bool>())
+                valueSemantic = po::value<bool>()->default_value(true);
+            else
+                valueSemantic = po::bool_switch();
             break;
         case Property::Type::Vec2i:
             valueSemantic = po::value<boost::array<int32_t, 2>>();

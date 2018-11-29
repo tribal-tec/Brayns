@@ -39,30 +39,30 @@ PropertyMap DeflectParameters::createPropertyMap()
          (int32_t)deflect::Stream::defaultPortNumber,
          {1023, 65535},
          Property::UserInfo{"Stream port", "Port of Deflect server"}});
-    properties.setProperty({"no-compression", false,
-                            Property::UserInfo{"Disable JPEG compression",
-                                               "Disable JPEG compression"}});
     properties.setProperty(
-        {"top-down", false,
+        {"compression", true,
+         Property::UserInfo{"Use JPEG compression", "Use JPEG compression"}});
+    properties.setProperty(
+        {"topDown", false,
          Property::UserInfo{
              "Stream image top-down",
              "Top-down image orientation instead of bottom-up"}});
     properties.setProperty(
-        {"disable-resizing", false,
+        {"resizing", true,
          Property::UserInfo{
-             "Disable resizing",
-             "Disable resizing of framebuffers from EVT_VIEW_SIZE_CHANGED"}});
+             "Allow resizing",
+             "Allow resizing of framebuffers from EVT_VIEW_SIZE_CHANGED"}});
     properties.setProperty(
         {"quality",
          (int32_t)80,
          {1, 100},
          Property::UserInfo{"JPEG quality", "JPEG quality"}});
     properties.setProperty(
-        {"use-pixelop", false,
+        {"usePixelop", false,
          Property::UserInfo{"Use per-tile direct streaming",
                             "Use per-tile direct streaming"}});
     properties.setProperty(
-        {"chroma-subsampling", int32_t(deflect::ChromaSubsampling::YUV444),
+        {"chromaSubsampling", int32_t(deflect::ChromaSubsampling::YUV444),
          enumNames<deflect::ChromaSubsampling>(),
          Property::UserInfo{
              "Chroma subsampling",

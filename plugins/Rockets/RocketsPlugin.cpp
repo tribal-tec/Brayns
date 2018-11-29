@@ -66,7 +66,6 @@ const std::string ENDPOINT_RENDERER = "renderer";
 const std::string ENDPOINT_RENDERER_PARAMS = "renderer-params";
 const std::string ENDPOINT_SCENE = "scene";
 const std::string ENDPOINT_SCENE_PARAMS = "scene-parameters";
-const std::string ENDPOINT_STREAM = "stream";
 const std::string ENDPOINT_VOLUME_PARAMS = "volume-parameters";
 
 // REST GET, JSONRPC get-* request
@@ -103,7 +102,6 @@ const std::string METHOD_UPDATE_MODEL = "update-model";
 const std::string METHOD_CHUNK = "chunk";
 const std::string METHOD_QUIT = "quit";
 const std::string METHOD_RESET_CAMERA = "reset-camera";
-const std::string METHOD_STREAM_TO = "stream-to";
 
 const std::string LOADERS_SCHEMA = "loaders-schema";
 
@@ -922,7 +920,6 @@ public:
         _handleCamera();
         _handleImageJPEG();
         _handleRenderer();
-        //_handleStreaming();
         _handleVersion();
 
         _handle(ENDPOINT_APP_PARAMS,
@@ -947,7 +944,6 @@ public:
         _handleQuit();
         _handleResetCamera();
         _handleSnapshot();
-        //_handleStreamTo();
 
         _handleRequestModelUpload();
         _handleChunk();
@@ -1023,25 +1019,6 @@ public:
             _rocketsServer->broadcastBinary((const char*)image.data.get(),
                                             image.size);
     }
-
-    //    void _handleStreaming()
-    //    {
-    //#if BRAYNS_USE_DEFLECT
-    //        _handle(ENDPOINT_STREAM,
-    //        _parametersManager.getStreamParameters());
-    //#else
-    //        _handleGET(ENDPOINT_STREAM,
-    //        _parametersManager.getStreamParameters());
-    //        using namespace rockets::http;
-    //        auto respondNotImplemented = [](const Request&) {
-    //            const auto message =
-    //                "Brayns was not compiled with streaming support";
-    //            return make_ready_response(Code::NOT_IMPLEMENTED, message);
-    //        };
-    //        _rocketsServer->handle(Method::PUT, ENDPOINT_STREAM,
-    //                               respondNotImplemented);
-    //#endif
-    //    }
 
     void _handleVersion()
     {
@@ -1170,30 +1147,6 @@ public:
         };
         _handleTask<SnapshotParams, ImageGenerator::ImageBase64>(desc, func);
     }
-
-    //    void _handleStreamTo()
-    //    {
-    //        const RpcParameterDescription desc{METHOD_STREAM_TO,
-    //                                           "Stream to a displaywall",
-    //                                           Execution::sync, "param",
-    //                                           "Stream parameters"};
-
-    //        _bindEndpoint(METHOD_STREAM_TO, [&](const auto& request) {
-    //            auto& streamParams =
-    //                _engine.getParametersManager().getStreamParameters();
-    //            if (::from_json(streamParams, request.message))
-    //            {
-    //                streamParams.markModified();
-    //                _engine.triggerRender();
-    //                return Response{to_json(true)};
-    //            }
-    //            return Response::invalidParams();
-    //        });
-
-    //        _handleSchema(METHOD_STREAM_TO,
-    //                      buildJsonRpcSchemaRequest<StreamParameters,
-    //                      bool>(desc));
-    //    }
 
     void _handleRequestModelUpload()
     {

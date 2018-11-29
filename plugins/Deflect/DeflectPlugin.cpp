@@ -493,7 +493,7 @@ extern "C" brayns::ExtensionPlugin* brayns_plugin_create(const int argc,
     auto pm = brayns::DeflectParameters::createPropertyMap();
     po::options_description desc;
 
-    const char* propName = "chromaSubsampling";
+    const auto propName = brayns::PARAM_CHROMA_SUBSAMPLING;
     desc.add(boost::make_shared<po::option_description>(
         propName, po::value<deflect::ChromaSubsampling>(),
         pm.getUserInfo(propName).description.c_str()));

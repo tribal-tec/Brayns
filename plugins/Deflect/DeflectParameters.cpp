@@ -27,42 +27,45 @@ PropertyMap DeflectParameters::createPropertyMap()
 {
     PropertyMap properties;
     properties.setProperty(
-        {"id", std::string(),
+        {PARAM_ENABLED, true,
+         Property::UserInfo{"Enable streaming", "Enable/disable streaming"}});
+    properties.setProperty(
+        {PARAM_ID, std::string(),
          Property::UserInfo{
              "Stream ID",
              "The ID/name of the stream, equivalent to DEFLECT_ID"}});
     properties.setProperty(
-        {"hostname", std::string(),
+        {PARAM_HOSTNAME, std::string(),
          Property::UserInfo{"Stream hostname", "Hostname of Deflect server"}});
     properties.setProperty(
-        {"port",
+        {PARAM_PORT,
          (int32_t)deflect::Stream::defaultPortNumber,
          {1023, 65535},
          Property::UserInfo{"Stream port", "Port of Deflect server"}});
     properties.setProperty(
-        {"compression", true,
+        {PARAM_COMPRESSION, true,
          Property::UserInfo{"Use JPEG compression", "Use JPEG compression"}});
     properties.setProperty(
-        {"topDown", false,
+        {PARAM_TOP_DOWN, false,
          Property::UserInfo{
              "Stream image top-down",
              "Top-down image orientation instead of bottom-up"}});
     properties.setProperty(
-        {"resizing", true,
+        {PARAM_RESIZING, true,
          Property::UserInfo{
              "Allow resizing",
              "Allow resizing of framebuffers from EVT_VIEW_SIZE_CHANGED"}});
     properties.setProperty(
-        {"quality",
+        {PARAM_QUALITY,
          (int32_t)80,
          {1, 100},
          Property::UserInfo{"JPEG quality", "JPEG quality"}});
     properties.setProperty(
-        {"usePixelop", false,
+        {PARAM_USE_PIXEL_OP, false,
          Property::UserInfo{"Use per-tile direct streaming",
                             "Use per-tile direct streaming"}});
     properties.setProperty(
-        {"chromaSubsampling", int32_t(deflect::ChromaSubsampling::YUV444),
+        {PARAM_CHROMA_SUBSAMPLING, int32_t(deflect::ChromaSubsampling::YUV444),
          enumNames<deflect::ChromaSubsampling>(),
          Property::UserInfo{
              "Chroma subsampling",

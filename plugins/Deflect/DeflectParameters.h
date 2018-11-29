@@ -25,6 +25,17 @@
 
 namespace brayns
 {
+constexpr auto PARAM_CHROMA_SUBSAMPLING = "chromaSubsampling";
+constexpr auto PARAM_COMPRESSION = "compression";
+constexpr auto PARAM_ENABLED = "enabled";
+constexpr auto PARAM_HOSTNAME = "hostname";
+constexpr auto PARAM_ID = "id";
+constexpr auto PARAM_PORT = "port";
+constexpr auto PARAM_QUALITY = "quality";
+constexpr auto PARAM_RESIZING = "resizing";
+constexpr auto PARAM_TOP_DOWN = "topDown";
+constexpr auto PARAM_USE_PIXEL_OP = "usePixelop";
+
 class DeflectParameters
 {
 public:
@@ -41,78 +52,86 @@ public:
     }
 
     /** Streaming enabled */
-    bool getEnabled() const { return _enabled; }
-    void setEnabled(const bool enabled) { _enabled = enabled; }
+    bool getEnabled() const { return _props.getProperty<bool>(PARAM_ENABLED); }
+    void setEnabled(const bool enabled)
+    {
+        _props.updateProperty(PARAM_ENABLED, enabled);
+    }
     /** Stream compression enabled */
     bool getCompression() const
     {
-        return _props.getProperty<bool>("compression");
+        return _props.getProperty<bool>(PARAM_COMPRESSION);
     }
     void setCompression(const bool enabled)
     {
-        _props.updateProperty("compression", enabled);
+        _props.updateProperty(PARAM_COMPRESSION, enabled);
     }
 
     /** Stream compression quality, 1 (worst) to 100 (best) */
     unsigned getQuality() const
     {
-        return (unsigned)_props.getProperty<int32_t>("quality");
+        return (unsigned)_props.getProperty<int32_t>(PARAM_QUALITY);
     }
     void setQuality(const unsigned quality)
     {
-        _props.updateProperty("quality", (int32_t)quality);
+        _props.updateProperty(PARAM_QUALITY, (int32_t)quality);
     }
 
     /** Stream ID; defaults to DEFLECT_ID if empty */
-    std::string getId() const { return _props.getProperty<std::string>("id"); }
-    void setId(const std::string& id) { _props.updateProperty("id", id); }
+    std::string getId() const
+    {
+        return _props.getProperty<std::string>(PARAM_ID);
+    }
+    void setId(const std::string& id) { _props.updateProperty(PARAM_ID, id); }
     /** Stream hostname; defaults to DEFLECT_HOST if empty */
     std::string getHostname() const
     {
-        return _props.getProperty<std::string>("hostname");
+        return _props.getProperty<std::string>(PARAM_HOSTNAME);
     }
     void setHost(const std::string& host)
     {
-        _props.updateProperty("hostname", host);
+        _props.updateProperty(PARAM_HOSTNAME, host);
     }
 
     /** Stream port; defaults to 1701 if empty */
     unsigned getPort() const
     {
-        return (unsigned)_props.getProperty<int32_t>("port");
+        return (unsigned)_props.getProperty<int32_t>(PARAM_PORT);
     }
     void setPort(const unsigned port)
     {
-        _props.updateProperty("port", (int32_t)port);
+        _props.updateProperty(PARAM_PORT, (int32_t)port);
     }
 
     /** Stream resizing enabled */
     bool isResizingEnabled() const
     {
-        return _props.getProperty<bool>("resizing");
+        return _props.getProperty<bool>(PARAM_RESIZING);
     }
 
-    bool isTopDown() const { return _props.getProperty<bool>("topDown"); }
+    bool isTopDown() const { return _props.getProperty<bool>(PARAM_TOP_DOWN); }
     void setIsTopDown(const bool topDown)
     {
-        _props.updateProperty("topDown", topDown);
+        _props.updateProperty(PARAM_TOP_DOWN, topDown);
     }
 
-    bool usePixelOp() const { return _props.getProperty<bool>("usePixelop"); }
+    bool usePixelOp() const
+    {
+        return _props.getProperty<bool>(PARAM_USE_PIXEL_OP);
+    }
     deflect::ChromaSubsampling getChromaSubsampling() const
     {
         return (deflect::ChromaSubsampling)_props.getProperty<int32_t>(
-            "chromaSubsampling");
+            PARAM_CHROMA_SUBSAMPLING);
     }
     void setChromaSubsampling(const deflect::ChromaSubsampling subsampling)
     {
-        _props.updateProperty("chromaSubsampling", (int32_t)subsampling);
+        _props.updateProperty(PARAM_CHROMA_SUBSAMPLING, (int32_t)subsampling);
     }
 
     const PropertyMap& getPropertyMap() const { return _props; }
     PropertyMap& getPropertyMap() { return _props; }
 private:
-    bool _enabled{true};
     PropertyMap _props;
 };
 }

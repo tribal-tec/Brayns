@@ -208,18 +208,18 @@ unsigned char* DeflectPixelOp::Instance::_copyPixels(
 
 void DeflectPixelOp::commit()
 {
-    const std::string hostname = getParamString("hostname", "");
-    const std::string id = getParamString("id", "");
+    const std::string hostname = getParamString(PARAM_HOSTNAME, "");
+    const std::string id = getParamString(PARAM_ID, "");
     const bool changed =
         _params.getId() != id || _params.getHostname() != hostname;
 
     _params.setId(id);
     _params.setHost(hostname);
-    _params.setPort(getParam1i("port", deflect::Stream::defaultPortNumber));
-    _params.setCompression(getParam1i("compression", 0));
-    _params.setQuality(getParam1i("quality", 80));
-    _params.setEnabled(getParam1i("enabled", 1));
-    _params.setIsTopDown(getParam1i("topDown", 1));
+    _params.setPort(getParam1i(PARAM_PORT, deflect::Stream::defaultPortNumber));
+    _params.setCompression(getParam1i(PARAM_COMPRESSION, 0));
+    _params.setQuality(getParam1i(PARAM_QUALITY, 80));
+    _params.setEnabled(getParam1i(PARAM_ENABLED, 1));
+    _params.setIsTopDown(getParam1i(PARAM_TOP_DOWN, 1));
     _params.setChromaSubsampling(
         (deflect::ChromaSubsampling)getParam1i("subsampling", 0));
 

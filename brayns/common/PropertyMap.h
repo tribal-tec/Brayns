@@ -320,6 +320,17 @@ public:
         throw std::runtime_error("No property found with name " + name);
     }
 
+    /**
+     * @return the enum values for the given property, empty if no enum
+     *         property.
+     */
+    const auto& getUserInfo(const std::string& name) const
+    {
+        if (auto property = find(name))
+            return property->userInfo;
+        throw std::runtime_error("No property found with name " + name);
+    }
+
     /** @return all the registered properties. */
     const auto& getProperties() const { return _properties; }
     /** Merge this property map with properties from another. */

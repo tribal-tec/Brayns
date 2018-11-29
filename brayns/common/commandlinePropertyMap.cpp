@@ -132,7 +132,8 @@ void commandlineToPropertyMap(const boost::program_options::variables_map& vm,
         switch (property->type)
         {
         case Property::Type::Int:
-            property->set(vm[property->name].as<int32_t>());
+            if (property->enums.empty())
+                property->set(vm[property->name].as<int32_t>());
             break;
         case Property::Type::Double:
             property->set(vm[property->name].as<double>());
@@ -160,17 +161,24 @@ void commandlineToPropertyMap(const boost::program_options::variables_map& vm,
     }
 }
 
-bool parseIntoPropertyMap(int argc, const char** argv, PropertyMap& propertyMap)
+bool parseIntoPropertyMap(int argc, const char** argv, PropertyMap& propertyMap,
+                          const po::options_description& extra_description)
+{
+    po::variables_map vm;
+    return parseIntoPropertyMap(argc, argv, propertyMap, extra_description, vm);
+}
+
+bool parseIntoPropertyMap(int argc, const char** argv, PropertyMap& propertyMap,
+                          const po::options_description& extra_description,
+                          po::variables_map& vm)
 {
     try
     {
-        po::variables_map vm;
         po::options_description desc;
-        desc.add(boost::make_shared<po::option_description>("help",
-                                                            po::bool_switch(),
-                                                            "Print this help"));
+        desc.add_options()("help", "Print this help");
 
         desc.add(toCommandlineDescription(propertyMap));
+        desc.add(extra_description);
         po::parsed_options parsedOptions =
             po::command_line_parser(argc, argv).options(desc).run();
         po::store(parsedOptions, vm);

@@ -19,27 +19,8 @@
 
 #include "DeflectParameters.h"
 
-#include "utils.h"
 #include <deflect/Stream.h>
 
-namespace deflect
-{
-// std::istream& operator>>(std::istream& in, ChromaSubsampling& ss)
-//{
-//    std::string token;
-//    in >> token;
-//    try
-//    {
-//        ss = brayns::stringToEnum<ChromaSubsampling>(token);
-//    }
-//    catch (const std::runtime_error&)
-//    {
-//        in.setstate(std::ios_base::failbit);
-//    }
-
-//    return in;
-//}
-}
 namespace brayns
 {
 PropertyMap DeflectParameters::createPropertyMap()
@@ -85,7 +66,7 @@ PropertyMap DeflectParameters::createPropertyMap()
          enumNames<deflect::ChromaSubsampling>(),
          Property::UserInfo{
              "Chroma subsampling",
-             "Chroma subsampling modes: YUV444, YUV422, YUV420"}});
+             "Chroma subsampling modes: yuv444, yuv422, yuv420"}});
     return properties;
 }
 }

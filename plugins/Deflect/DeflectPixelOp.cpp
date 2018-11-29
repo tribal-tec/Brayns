@@ -103,9 +103,8 @@ void DeflectPixelOp::Instance::postAccum(ospray::Tile& tile)
     deflect::ImageWrapper image(_copyPixels(tile, tileSize), tileSize.x,
                                 tileSize.y, deflect::RGBA, tile.region.lower.x,
                                 tile.region.lower.y);
-    image.compressionPolicy = _parent._params.getCompression()
-                                  ? deflect::COMPRESSION_ON
-                                  : deflect::COMPRESSION_OFF;
+    if (_parent._params.noCompression())
+        image.compressionPolicy = deflect::COMPRESSION_OFF;
     image.compressionQuality = _parent._params.getQuality();
     image.subsampling = _parent._params.getChromaSubsampling();
     image.rowOrder = _parent._params.isTopDown() ? deflect::RowOrder::top_down
@@ -216,7 +215,7 @@ void DeflectPixelOp::commit()
     _params.setId(id);
     _params.setHost(hostname);
     _params.setPort(getParam1i("port", deflect::Stream::defaultPortNumber));
-    _params.setCompression(getParam1i("compression", 1));
+    _params.setNoCompression(getParam1i("no-compression", 0));
     _params.setQuality(getParam1i("quality", 80));
     _params.setEnabled(getParam1i("enabled", 1));
     _params.setIsTopDown(getParam1i("top-down", 1));

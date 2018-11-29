@@ -37,6 +37,8 @@
 #include <uvw.hpp>
 #endif
 
+#include <boost/make_shared.hpp>
+
 namespace
 {
 const float wheelFactor = 1.f / 40.f;
@@ -366,9 +368,8 @@ private:
         deflectImage.view = view;
         deflectImage.channel = channel;
         deflectImage.compressionQuality = _params.getQuality();
-        deflectImage.compressionPolicy = _params.getCompression()
-                                             ? deflect::COMPRESSION_ON
-                                             : deflect::COMPRESSION_OFF;
+        if (_params.noCompression())
+            deflectImage.compressionPolicy = deflect::COMPRESSION_OFF;
         deflectImage.rowOrder = _params.isTopDown()
                                     ? deflect::RowOrder::top_down
                                     : deflect::RowOrder::bottom_up;
@@ -456,12 +457,42 @@ void DeflectPlugin::postRender()
 }
 }
 
+namespace deflect
+{
+std::istream& operator>>(std::istream& in, ChromaSubsampling& ss)
+{
+    std::string token;
+    in >> token;
+    try
+    {
+        ss = brayns::stringToEnum<ChromaSubsampling>(token);
+    }
+    catch (const std::runtime_error&)
+    {
+        in.setstate(std::ios_base::failbit);
+    }
+
+    return in;
+}
+}
+
 extern "C" brayns::ExtensionPlugin* brayns_plugin_create(const int argc,
                                                          const char** argv)
 {
     auto pm = brayns::DeflectParameters::createPropertyMap();
-    if (!brayns::parseIntoPropertyMap(argc, argv, pm))
+    po::options_description desc;
+
+    const char* propName = "chroma-subsampling";
+    desc.add(boost::make_shared<po::option_description>(
+        propName, po::value<deflect::ChromaSubsampling>(),
+        pm.getUserInfo(propName).description.c_str()));
+    po::variables_map vm;
+    if (!brayns::parseIntoPropertyMap(argc, argv, pm, desc, vm))
         return nullptr;
+
+    if (vm.count(propName))
+        pm.updateProperty(
+            propName, (int32_t)vm[propName].as<deflect::ChromaSubsampling>());
 
     return new brayns::DeflectPlugin(pm);
 }

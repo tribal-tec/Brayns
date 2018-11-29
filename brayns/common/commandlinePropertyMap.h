@@ -33,6 +33,11 @@ po::options_description toCommandlineDescription(
 void commandlineToPropertyMap(const po::variables_map& vm,
                               PropertyMap& propertyMap);
 
-bool parseIntoPropertyMap(int argc, const char** argv,
-                          PropertyMap& propertyMap);
+bool parseIntoPropertyMap(
+    int argc, const char** argv, PropertyMap& propertyMap,
+    const po::options_description& extra_description = {});
+
+bool parseIntoPropertyMap(int argc, const char** argv, PropertyMap& propertyMap,
+                          const po::options_description& extra_description,
+                          po::variables_map& vm);
 }

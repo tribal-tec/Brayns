@@ -44,13 +44,13 @@ public:
     bool getEnabled() const { return _enabled; }
     void setEnabled(const bool enabled) { _enabled = enabled; }
     /** Stream compression enabled */
-    bool getCompression() const
+    bool noCompression() const
     {
-        return _props.getProperty<bool>("compression");
+        return _props.getProperty<bool>("no-compression");
     }
-    void setCompression(const bool enabled)
+    void setNoCompression(const bool enabled)
     {
-        _props.updateProperty("compression", enabled);
+        _props.updateProperty("no-compression", enabled);
     }
 
     /** Stream compression quality, 1 (worst) to 100 (best) */

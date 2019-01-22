@@ -133,16 +133,16 @@ RT_PROGRAM void camera()
 
     rtTrace(top_object, ray, prd);
 
-    float4 acc_val = accum_buffer[launch_index];
+    //float4 acc_val = accum_buffer[launch_index];
 
-    if (frame_number > 1)
-        acc_val = lerp(acc_val, make_float4(prd.result, 1.f),
-                       1.f / (float)frame_number);
-    else
-        acc_val = make_float4(prd.result, 1.f);
+    //if (frame_number > 1)
+//        acc_val = lerp(acc_val, make_float4(prd.result, 1.f),
+//                       1.f / (float)frame_number);
+//    else
+        float4 acc_val = make_float4(prd.result, 1.f);
 
     output_buffer[launch_index] = make_color(make_float3(acc_val));
-    accum_buffer[launch_index] = acc_val;
+    //accum_buffer[launch_index] = acc_val;
 }
 
 RT_PROGRAM void exception()

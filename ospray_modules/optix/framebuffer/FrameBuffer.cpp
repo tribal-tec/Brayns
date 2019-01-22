@@ -141,6 +141,5 @@ void FrameBuffer::_mapColorBuffer()
     else
         _context["frame_number"]->setUint(1u);
 }
-
 }
 }

@@ -128,13 +128,13 @@ void FrameBuffer::unmap(const void* mappedMem)
         throw std::runtime_error(
             "ERROR: unmapping a pointer not created by Optix!");
 
-    rtBufferUnmap(_frameBuffer->get());
+    // rtBufferUnmap(_frameBuffer->get());
     colorBuffer = nullptr;
 }
 
 void FrameBuffer::_mapColorBuffer()
 {
-    rtBufferMap(_frameBuffer->get(), &colorBuffer);
+    // rtBufferMap(_frameBuffer->get(), &colorBuffer);
 
     if (_accumulation)
         _context["frame_number"]->setUint(_accumulationFrame++);

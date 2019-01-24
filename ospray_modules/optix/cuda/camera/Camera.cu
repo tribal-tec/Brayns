@@ -139,9 +139,9 @@ RT_PROGRAM void camera()
 //        acc_val = lerp(acc_val, make_float4(prd.result, 1.f),
 //                       1.f / (float)frame_number);
 //    else
-        float4 acc_val = make_float4(prd.result, 1.f);
+//        float4 acc_val = make_float4(prd.result, 1.f);
 
-    output_buffer[launch_index] = make_color(make_float3(acc_val));
+    //output_buffer[launch_index] = make_color(make_float3(acc_val));
     //accum_buffer[launch_index] = acc_val;
 }
 

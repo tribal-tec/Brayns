@@ -176,6 +176,7 @@ struct Brayns::Impl : public PluginAPI
         _renderTimer.start();
         _engine->render();
         _renderTimer.stop();
+        _engine->renderDuration = _renderTimer.elapsed();
         _lastFPS = _renderTimer.perSecondSmoothed();
 
         const auto& params = _parametersManager.getApplicationParameters();
@@ -219,7 +220,7 @@ struct Brayns::Impl : public PluginAPI
         FrameBuffer& frameBuffer = _engine->getFrameBuffer();
         frameBuffer.map();
         const Vector2i& frameSize = frameBuffer.getSize();
-        const auto colorBuffer = frameBuffer.getColorBuffer();
+        const auto colorBuffer = (const uint8_t*)frameBuffer.getColorBuffer();
         if (colorBuffer)
         {
             const size_t size =
@@ -287,6 +288,8 @@ private:
 
         _engine->getCamera().setCurrentType(
             _parametersManager.getRenderingParameters().getCurrentCamera());
+        _engine->getRenderer().setCurrentType(
+            _parametersManager.getRenderingParameters().getCurrentRenderer());
     }
 
     void _createFrameBuffer()

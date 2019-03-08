@@ -71,7 +71,7 @@ ImageGenerator::ImageJPEG ImageGenerator::createJPEG(
     FrameBuffer& frameBuffer BRAYNS_UNUSED, const uint8_t quality BRAYNS_UNUSED)
 {
     frameBuffer.map();
-    const auto colorBuffer = frameBuffer.getColorBuffer();
+    const auto colorBuffer = (const uint8_t*)frameBuffer.getColorBuffer();
     if (!colorBuffer)
     {
         frameBuffer.unmap();

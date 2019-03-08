@@ -121,6 +121,8 @@ void OptiXEngine::_createCameras()
             {"headPosition", std::array<double, 3>{{0.0, 2.0, 0.0}}});
         properties.setProperty(
             {"headRotation", std::array<double, 4>{{0.0, 0.0, 0.0, 1.0}}});
+        properties.setProperty(
+            {"flystickRotation", std::array<double, 4>{{0.0, 0.0, 0.0, 1.0}}});
         context.addCamera("opendeck", std::make_shared<OptiXOpenDeckCamera>());
         addCameraType("opendeck", properties);
     }
@@ -154,7 +156,7 @@ void OptiXEngine::_createRenderers()
         PropertyMap properties;
         properties.setProperty({"shadingEnabled", true, {"Shading enabled"}});
         properties.setProperty(
-            {"electronShadingEnabled", true, {"Electron shading enabled"}});
+            {"electronShadingEnabled", false, {"Electron shading enabled"}});
         properties.setProperty({"shadows", 0., 0., 1., {"Shadow strength"}});
         properties.setProperty(
             {"softShadows", 0., 0., 1., {"Soft shadow strength"}});

@@ -37,7 +37,7 @@ public:
     /** Unmap the buffer for reading with get*Buffer(). */
     virtual void unmap() = 0;
     /** @return the color buffer, valid only after map(). */
-    virtual const uint8_t* getColorBuffer() const = 0;
+    virtual const void* getColorBuffer() const = 0;
     /** @return the depth buffer, valid only after map(). */
     virtual const float* getDepthBuffer() const = 0;
     /** Resize the framebuffer to the new size. */
@@ -79,7 +79,7 @@ public:
     void incrementAccumFrames() { ++_accumFrames; }
     size_t numAccumFrames() const { return _accumFrames; }
     freeimage::ImagePtr getImage();
-
+    virtual const void* cudaBuffer() { return nullptr; }
 protected:
     const std::string _name;
     Vector2ui _frameSize;

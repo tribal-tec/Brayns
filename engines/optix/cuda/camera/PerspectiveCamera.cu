@@ -147,5 +147,9 @@ RT_PROGRAM void perspectiveCamera()
 
 RT_PROGRAM void exception()
 {
+#if USE_DEBUG_EXCEPTIONS
+    const unsigned int code = rtGetExceptionCode();
+    rtPrintf("Exception code 0x%X at (%d, %d)\n", code, launch_index.x, launch_index.y);
+#endif
     output_buffer[launch_index] = make_color(bad_color);
 }

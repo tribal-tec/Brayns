@@ -20,7 +20,7 @@ static int encode_and_write_frame(AVCodecContext *codec_ctx,
     AVPacket pkt = {0};
     av_init_packet(&pkt);
 
-#if 0
+#if 1
     int ret = avcodec_send_frame(codec_ctx, frame);
     if (ret < 0)
     {
@@ -64,7 +64,7 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
     codec_ctx->codec_type = AVMEDIA_TYPE_VIDEO;
     codec_ctx->width = width;
     codec_ctx->height = height;
-    codec_ctx->gop_size = 12;
+    codec_ctx->gop_size = 25;
     codec_ctx->pix_fmt = STREAM_PIX_FMT;
     codec_ctx->framerate = dst_fps;
     codec_ctx->time_base = av_inv_q(dst_fps);
@@ -86,7 +86,7 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
 
     AVDictionary *codec_options = nullptr;
     av_dict_set(&codec_options, "profile", codec_profile.c_str(), 0);
-    av_dict_set(&codec_options, "preset", "fast", 0);
+    av_dict_set(&codec_options, "preset", "ultrafast", 0);
     av_dict_set(&codec_options, "tune", "zerolatency", 0);
 
     // open video encoder
@@ -114,9 +114,9 @@ Streamer::Streamer()
 
 void Streamer::init()
 {
-    StreamerConfig streamer_config(800, 600, 800, 600, 30, 500000, "high444",
+    StreamerConfig streamer_config(800, 600, 800, 600, 30, 400000, "high444",
                                    "rtmp://localhost/live/mystream");
-    enable_av_debug_log();
+    //enable_av_debug_log();
     init(streamer_config);
 }
 
@@ -141,7 +141,7 @@ void Streamer::postRender()
         frameBuffer->map();
         if (frameBuffer->getColorBuffer())
         {
-            Image image;
+            static Image image;
             _copyToImage(image, *frameBuffer);
             stream_frame(image);
         }
@@ -178,9 +178,16 @@ void Streamer::stream_frame(const Image &image)
 {
     if (can_stream())
     {
-        const int stride[] = {(int)image.size[0]};
+        const int width = image.size[0];
+        const int height = image.size[1];
+        const int stride[] = {4 * width};
         auto data = reinterpret_cast<const uint8_t *const>(image.data.data());
-        sws_scale(scaler.ctx, &data, stride, 0, (int)image.size[1],
+        static SwsContext* sws_context = nullptr;
+        sws_context = sws_getCachedContext(sws_context, width,
+                                               height, AV_PIX_FMT_RGBA,
+                                               width, height,
+                                               STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+        sws_scale(sws_context, &data, stride, 0, height,
                   picture.frame->data, picture.frame->linesize);
         picture.frame->pts +=
             av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
@@ -215,9 +222,19 @@ int Streamer::init(const StreamerConfig &streamer_config)
     {
         return 1;
     }
+//#define RTP_TEST
+#ifdef RTP_TEST
+    AVOutputFormat* fmt = av_guess_format("rtp", NULL, NULL);
+    const char* fmt_name = "h264";
+    const char* filename = "rtp://127.0.0.1:49990";
+    #else
+    AVOutputFormat* fmt = nullptr;
+    const char* fmt_name = "flv";
+    const char* filename = config.server.c_str();
+    #endif
 
     // initialize format context for output with flv and no filename
-    avformat_alloc_output_context2(&format_ctx, nullptr, "flv", nullptr);
+    avformat_alloc_output_context2(&format_ctx, fmt, fmt_name, filename);
     if (!format_ctx)
     {
         return 1;
@@ -226,7 +243,7 @@ int Streamer::init(const StreamerConfig &streamer_config)
     // AVIOContext for accessing the resource indicated by url
     if (!(format_ctx->oformat->flags & AVFMT_NOFILE))
     {
-        int avopen_ret = avio_open2(&format_ctx->pb, config.server.c_str(),
+        int avopen_ret = avio_open2(&format_ctx->pb, format_ctx->filename,
                                     AVIO_FLAG_WRITE, nullptr, nullptr);
         if (avopen_ret < 0)
         {
@@ -275,7 +292,7 @@ int Streamer::init(const StreamerConfig &streamer_config)
 
     picture.init(out_codec_ctx->pix_fmt, config.dst_width, config.dst_height);
     scaler.init(out_codec_ctx, config.src_width, config.src_height,
-                config.dst_width, config.dst_height, SWS_BILINEAR);
+                config.dst_width, config.dst_height, SWS_FAST_BILINEAR);
 
     if (avformat_write_header(format_ctx, nullptr) < 0)
     {
@@ -290,6 +307,20 @@ int Streamer::init(const StreamerConfig &streamer_config)
         (double)out_stream->time_base.den / (double)out_stream->time_base.num;
 
     init_ok = true;
+
+    #ifdef RTP_TEST
+    char buf[200000];
+        AVFormatContext* ac[] = {format_ctx};
+        av_sdp_create(ac, 1, buf, 20000);
+
+         printf("sdp:\n%s\n", buf);
+        FILE* fsdp = fopen("/tmp/test.sdp", "w");
+        if (fsdp)
+        {
+            fprintf(fsdp, "%s", buf);
+            fclose(fsdp);
+        }
+    #endif
     return 0;
 }
 

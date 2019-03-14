@@ -9,6 +9,9 @@
 #include <brayns/engine/Engine.h>
 #include <brayns/engine/FrameBuffer.h>
 #include <brayns/pluginapi/PluginAPI.h>
+#include <brayns/parameters/ParametersManager.h>
+
+// mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
 
 namespace streamer
 {
@@ -69,6 +72,20 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
     codec_ctx->framerate = dst_fps;
     codec_ctx->time_base = av_inv_q(dst_fps);
     codec_ctx->bit_rate = bitrate;
+    codec_ctx->max_b_frames = 0;
+
+    auto c=codec_ctx;
+    c->rc_max_rate = 0;
+    c->rc_buffer_size = 0;
+    c->gop_size = 5;
+    c->max_b_frames = 0;
+    c->qmin = 10;
+    c->qmax = 51;
+    c->me_subpel_quality = 5;
+    c->i_quant_factor = 0.71;
+    c->qcompress = 0.6;
+    c->max_qdiff = 4;
+
     if (fctx->oformat->flags & AVFMT_GLOBALHEADER)
     {
         codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -84,10 +101,13 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
         return 1;
     }
 
+    stream->codecpar->video_delay = 0;
+
     AVDictionary *codec_options = nullptr;
     av_dict_set(&codec_options, "profile", codec_profile.c_str(), 0);
     av_dict_set(&codec_options, "preset", "ultrafast", 0);
     av_dict_set(&codec_options, "tune", "zerolatency", 0);
+    av_dict_set(&codec_options, "g", "30", 0);
 
     // open video encoder
     ret = avcodec_open2(codec_ctx, codec, &codec_options);
@@ -114,10 +134,14 @@ Streamer::Streamer()
 
 void Streamer::init()
 {
-    StreamerConfig streamer_config(800, 600, 800, 600, 30, 400000, "high444",
-                                   "rtmp://localhost/live/mystream");
-    //enable_av_debug_log();
+    const auto size =
+        _api->getParametersManager().getApplicationParameters().getWindowSize();
+    StreamerConfig streamer_config(size.x, size.y, 1920, 1200, 30, 10000000,
+                                   "high444", "rtmp://localhost/live/mystream");
+    // enable_av_debug_log();
     init(streamer_config);
+
+    _timer.start();
 }
 
 void _copyToImage(Streamer::Image &image, brayns::FrameBuffer &frameBuffer)
@@ -134,6 +158,20 @@ void _copyToImage(Streamer::Image &image, brayns::FrameBuffer &frameBuffer)
 
 void Streamer::postRender()
 {
+    const auto fps = config.fps;
+    if (fps == 0)
+        return;
+
+    const auto elapsed = _timer.elapsed() + _leftover;
+    const auto duration = 1.0 / fps;
+    if (elapsed < duration)
+        return;
+
+    _leftover = elapsed - duration;
+    for (; _leftover > duration;)
+        _leftover -= duration;
+    _timer.start();
+
     const auto &frameBuffers = _api->getEngine().getFrameBuffers();
     for (size_t i = 0; i < frameBuffers.size(); ++i)
     {
@@ -222,7 +260,7 @@ int Streamer::init(const StreamerConfig &streamer_config)
     {
         return 1;
     }
-//#define RTP_TEST
+#define RTP_TEST
 #ifdef RTP_TEST
     AVOutputFormat* fmt = av_guess_format("rtp", NULL, NULL);
     const char* fmt_name = "h264";

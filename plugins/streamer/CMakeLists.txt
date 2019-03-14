@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(HighFive QUIET REQUIRED)
+find_package(FFMPEG REQUIRED)
+find_package(Lunchbox REQUIRED)
 
 set(STREAMER_SOURCES
   streamer.cpp
@@ -20,9 +22,10 @@ set(STREAMER_HEADERS
 )
 
 add_library(braynsStreamer SHARED ${STREAMER_SOURCES} ${STREAMER_HEADERS})
+target_include_directories(braynsStreamer PRIVATE ${FFMPEG_INCLUDE_DIR})
 target_link_libraries(braynsStreamer
   PUBLIC braynsCommon braynsPluginAPI
-  PRIVATE braynsEngine avcodec avformat avutil swscale avfilter avdevice
+  PRIVATE braynsEngine ${FFMPEG_LIBRARIES} Lunchbox
 )
 set_target_properties(braynsStreamer PROPERTIES
   VERSION ${PROJECT_VERSION}

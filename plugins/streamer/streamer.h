@@ -19,6 +19,7 @@ extern "C" {
 #include <string>
 
 #include <brayns/common/types.h>
+#include <brayns/common/Timer.h>
 #include <brayns/pluginapi/ExtensionPlugin.h>
 
 namespace streamer
@@ -176,6 +177,9 @@ public:
 
     void stream_frame(const Image &frame);
     // void stream_frame(const Image &image, int64_t frame_duration);
+
+    brayns::Timer _timer;
+    float _leftover{0.f};
 };
 
 } // namespace streamer

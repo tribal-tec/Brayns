@@ -8,8 +8,8 @@
 
 #include <brayns/engine/Engine.h>
 #include <brayns/engine/FrameBuffer.h>
-#include <brayns/pluginapi/PluginAPI.h>
 #include <brayns/parameters/ParametersManager.h>
+#include <brayns/pluginapi/PluginAPI.h>
 
 // mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
 
@@ -34,7 +34,7 @@ static int encode_and_write_frame(AVCodecContext *codec_ctx,
     ret = avcodec_receive_packet(codec_ctx, &pkt);
     if (ret < 0)
     {
-        fprintf(stderr, "Error receiving packet from codec context!\n" );
+        fprintf(stderr, "Error receiving packet from codec context!\n");
         return ret;
     }
 #else
@@ -74,7 +74,7 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
     codec_ctx->bit_rate = bitrate;
     codec_ctx->max_b_frames = 0;
 
-    auto c=codec_ctx;
+    auto c = codec_ctx;
     c->rc_max_rate = 0;
     c->rc_buffer_size = 0;
     c->gop_size = 5;
@@ -142,6 +142,8 @@ void Streamer::init()
     init(streamer_config);
 
     _timer.start();
+
+    thread = std::thread(std::bind(&Streamer::_runLoop, this));
 }
 
 void _copyToImage(Streamer::Image &image, brayns::FrameBuffer &frameBuffer)
@@ -208,25 +210,32 @@ void Streamer::cleanup()
 
 Streamer::~Streamer()
 {
+    thread.join();
     cleanup();
     avformat_network_deinit();
 }
 
 void Streamer::stream_frame(const Image &image)
 {
-    if (can_stream())
+    _rgbas.push(image);
+}
+
+void Streamer::_runLoop()
+{
+    while (can_stream())
     {
+        const auto &image = _rgbas.pop();
         const int width = image.size[0];
         const int height = image.size[1];
         const int stride[] = {4 * width};
         auto data = reinterpret_cast<const uint8_t *const>(image.data.data());
-        static SwsContext* sws_context = nullptr;
-        sws_context = sws_getCachedContext(sws_context, width,
-                                               height, AV_PIX_FMT_RGBA,
-                                               width, height,
-                                               STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
-        sws_scale(sws_context, &data, stride, 0, height,
-                  picture.frame->data, picture.frame->linesize);
+        static SwsContext *sws_context = nullptr;
+        sws_context =
+            sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
+                                 width, height, STREAM_PIX_FMT,
+                                 SWS_FAST_BILINEAR, 0, 0, 0);
+        sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
+                  picture.frame->linesize);
         picture.frame->pts +=
             av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
         encode_and_write_frame(out_codec_ctx, format_ctx, picture.frame);
@@ -262,14 +271,14 @@ int Streamer::init(const StreamerConfig &streamer_config)
     }
 #define RTP_TEST
 #ifdef RTP_TEST
-    AVOutputFormat* fmt = av_guess_format("rtp", NULL, NULL);
-    const char* fmt_name = "h264";
-    const char* filename = "rtp://127.0.0.1:49990";
-    #else
-    AVOutputFormat* fmt = nullptr;
-    const char* fmt_name = "flv";
-    const char* filename = config.server.c_str();
-    #endif
+    AVOutputFormat *fmt = av_guess_format("rtp", NULL, NULL);
+    const char *fmt_name = "h264";
+    const char *filename = "rtp://127.0.0.1:49990";
+#else
+    AVOutputFormat *fmt = nullptr;
+    const char *fmt_name = "flv";
+    const char *filename = config.server.c_str();
+#endif
 
     // initialize format context for output with flv and no filename
     avformat_alloc_output_context2(&format_ctx, fmt, fmt_name, filename);
@@ -346,19 +355,19 @@ int Streamer::init(const StreamerConfig &streamer_config)
 
     init_ok = true;
 
-    #ifdef RTP_TEST
+#ifdef RTP_TEST
     char buf[200000];
-        AVFormatContext* ac[] = {format_ctx};
-        av_sdp_create(ac, 1, buf, 20000);
+    AVFormatContext *ac[] = {format_ctx};
+    av_sdp_create(ac, 1, buf, 20000);
 
-         printf("sdp:\n%s\n", buf);
-        FILE* fsdp = fopen("/tmp/test.sdp", "w");
-        if (fsdp)
-        {
-            fprintf(fsdp, "%s", buf);
-            fclose(fsdp);
-        }
-    #endif
+    printf("sdp:\n%s\n", buf);
+    FILE *fsdp = fopen("/tmp/test.sdp", "w");
+    if (fsdp)
+    {
+        fprintf(fsdp, "%s", buf);
+        fclose(fsdp);
+    }
+#endif
     return 0;
 }
 

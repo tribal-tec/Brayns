@@ -18,9 +18,12 @@ extern "C" {
 
 #include <string>
 
-#include <brayns/common/types.h>
 #include <brayns/common/Timer.h>
+#include <brayns/common/types.h>
 #include <brayns/pluginapi/ExtensionPlugin.h>
+
+#include <lunchbox/mtQueue.h>
+#include <thread>
 
 namespace streamer
 {
@@ -180,6 +183,11 @@ public:
 
     brayns::Timer _timer;
     float _leftover{0.f};
+
+    std::thread thread;
+    lunchbox::MTQueue<Image> _rgbas;
+
+    void _runLoop();
 };
 
 } // namespace streamer

@@ -18,6 +18,7 @@ extern "C" {
 
 #include <string>
 
+#include <brayns/common/PropertyMap.h>
 #include <brayns/common/Timer.h>
 #include <brayns/common/types.h>
 #include <brayns/pluginapi/ExtensionPlugin.h>
@@ -166,7 +167,7 @@ public:
 public:
     double inv_stream_timebase;
     StreamerConfig config;
-    Streamer();
+    Streamer(const brayns::PropertyMap &props);
     ~Streamer();
     void enable_av_debug_log();
     int init(const StreamerConfig &streamer_config);
@@ -188,6 +189,8 @@ public:
     lunchbox::MTQueue<Image> _rgbas;
 
     void _runLoop();
+
+    const brayns::PropertyMap _props;
 };
 
 } // namespace streamer

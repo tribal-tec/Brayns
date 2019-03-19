@@ -12,7 +12,7 @@
 #include <brayns/pluginapi/PluginAPI.h>
 
 // mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
-
+// mpv /tmp/test.sdp --profile=low-latency --vf=vflip
 namespace streamer
 {
 #define STREAM_PIX_FMT AV_PIX_FMT_YUV420P
@@ -120,7 +120,8 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
     return 0;
 }
 
-Streamer::Streamer()
+Streamer::Streamer(const brayns::PropertyMap &props)
+    : _props(props)
 {
     format_ctx = nullptr;
     out_codec = nullptr;
@@ -136,7 +137,11 @@ void Streamer::init()
 {
     const auto size =
         _api->getParametersManager().getApplicationParameters().getWindowSize();
-    StreamerConfig streamer_config(size.x, size.y, 1920, 1200, 30, 10000000,
+    StreamerConfig streamer_config(size.x, size.y,
+                                   _props.getProperty<int>("width"),
+                                   _props.getProperty<int>("height"),
+                                   _props.getProperty<int>("fps"),
+                                   _props.getProperty<int>("bitrate"),
                                    "high444", "rtmp://localhost/live/mystream");
     // enable_av_debug_log();
     init(streamer_config);
@@ -273,7 +278,9 @@ int Streamer::init(const StreamerConfig &streamer_config)
 #ifdef RTP_TEST
     AVOutputFormat *fmt = av_guess_format("rtp", NULL, NULL);
     const char *fmt_name = "h264";
-    const char *filename = "rtp://127.0.0.1:49990";
+    std::string fileBla =
+        "rtp://" + _props.getProperty<std::string>("host") + ":49990";
+    const char *filename = fileBla.c_str();
 #else
     AVOutputFormat *fmt = nullptr;
     const char *fmt_name = "flv";
@@ -339,7 +346,7 @@ int Streamer::init(const StreamerConfig &streamer_config)
 
     picture.init(out_codec_ctx->pix_fmt, config.dst_width, config.dst_height);
     scaler.init(out_codec_ctx, config.src_width, config.src_height,
-                config.dst_width, config.dst_height, SWS_FAST_BILINEAR);
+                config.dst_width, config.dst_height, SWS_BILINEAR);
 
     if (avformat_write_header(format_ctx, nullptr) < 0)
     {
@@ -373,7 +380,16 @@ int Streamer::init(const StreamerConfig &streamer_config)
 
 } // namespace streamer
 
-extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int, const char **)
+extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
+                                                         const char **argv)
 {
-    return new streamer::Streamer;
+    brayns::PropertyMap props;
+    props.setProperty({"host", std::string("localhost")});
+    props.setProperty({"fps", 30});
+    props.setProperty({"bitrate", 10000000});
+    props.setProperty({"width", 1920});
+    props.setProperty({"height", 1080});
+    if (!props.parse(argc, argv))
+        return nullptr;
+    return new streamer::Streamer(props);
 }

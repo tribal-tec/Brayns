@@ -28,32 +28,30 @@ extern "C" {
 
 namespace streamer
 {
-class Scaler
+struct StreamerConfig
 {
-public:
-    SwsContext *ctx;
+    int dst_width;
+    int dst_height;
+    int fps;
+    int bitrate;
+    std::string profile;
 
-    Scaler() { ctx = nullptr; }
-    ~Scaler()
+    StreamerConfig()
     {
-        if (ctx)
-        {
-            sws_freeContext(ctx);
-        }
+        dst_width = 0;
+        dst_height = 0;
+        fps = 0;
+        bitrate = 0;
     }
 
-    int init(AVCodecContext *codec_ctx, int src_width, int src_height,
-             int dst_width, int dst_height, int flags)
+    StreamerConfig(int stream_width, int stream_height, int stream_fps,
+                   int stream_bitrate, const std::string &stream_profile)
     {
-        ctx = sws_getContext(src_width, src_height, AV_PIX_FMT_BGR24, dst_width,
-                             dst_height, codec_ctx->pix_fmt, flags, nullptr,
-                             nullptr, nullptr);
-        if (!ctx)
-        {
-            fprintf(stderr, "Could not initialize sample scaler!\n");
-            return 1;
-        }
-        return 0;
+        dst_width = stream_width;
+        dst_height = stream_height;
+        fps = stream_fps;
+        bitrate = stream_bitrate;
+        profile = stream_profile;
     }
 };
 
@@ -106,89 +104,42 @@ public:
     }
 };
 
-struct StreamerConfig
+struct Image
 {
-    int src_width;
-    int src_height;
-    int dst_width;
-    int dst_height;
-    int fps;
-    int bitrate;
-    std::string profile;
-    std::string server;
-
-    StreamerConfig()
-    {
-        dst_width = 0;
-        dst_height = 0;
-        src_width = 0;
-        src_height = 0;
-        fps = 0;
-        bitrate = 0;
-    }
-
-    StreamerConfig(int source_width, int source_height, int stream_width,
-                   int stream_height, int stream_fps, int stream_bitrate,
-                   const std::string &stream_profile,
-                   const std::string &stream_server)
-    {
-        src_width = source_width;
-        src_height = source_height;
-        dst_width = stream_width;
-        dst_height = stream_height;
-        fps = stream_fps;
-        bitrate = stream_bitrate;
-        profile = stream_profile;
-        server = stream_server;
-    }
+    std::vector<char> data;
+    brayns::Vector2ui size;
+    brayns::FrameBufferFormat format;
 };
 
 class Streamer : public brayns::ExtensionPlugin
 {
 public:
+    Streamer(const brayns::PropertyMap &props);
+    ~Streamer();
     void init() final;
-
     void postRender() final;
 
-    bool network_init_ok;
-    bool rtmp_server_conn;
-    bool init_ok;
+private:
+    bool init(const StreamerConfig &streamer_config);
+    void cleanup();
+    void _runLoop();
+    void stream_frame(const Image &frame);
 
     AVFormatContext *format_ctx;
     AVCodec *out_codec;
     AVStream *out_stream;
     AVCodecContext *out_codec_ctx;
-
-    Scaler scaler;
+    SwsContext *sws_context{nullptr};
     Picture picture;
 
-    void cleanup();
-    bool can_stream() { return network_init_ok && rtmp_server_conn && init_ok; }
-public:
     double inv_stream_timebase;
     StreamerConfig config;
-    Streamer(const brayns::PropertyMap &props);
-    ~Streamer();
-    void enable_av_debug_log();
-    int init(const StreamerConfig &streamer_config);
-
-    struct Image
-    {
-        std::vector<char> data;
-        brayns::Vector2ui size;
-        brayns::FrameBufferFormat format;
-    };
-
-    void stream_frame(const Image &frame);
-    // void stream_frame(const Image &image, int64_t frame_duration);
 
     brayns::Timer _timer;
     float _leftover{0.f};
 
     std::thread thread;
     lunchbox::MTQueue<Image> _rgbas;
-
-    void _runLoop();
 
     const brayns::PropertyMap _props;
 };

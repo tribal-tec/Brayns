@@ -127,31 +127,26 @@ Streamer::Streamer(const brayns::PropertyMap &props)
     out_codec = nullptr;
     out_stream = nullptr;
     out_codec_ctx = nullptr;
-    rtmp_server_conn = false;
     av_register_all();
     inv_stream_timebase = 30.0;
-    network_init_ok = !avformat_network_init();
 }
 
 void Streamer::init()
 {
-    const auto size =
-        _api->getParametersManager().getApplicationParameters().getWindowSize();
-    StreamerConfig streamer_config(size.x, size.y,
-                                   _props.getProperty<int>("width"),
+    StreamerConfig streamer_config(_props.getProperty<int>("width"),
                                    _props.getProperty<int>("height"),
                                    _props.getProperty<int>("fps"),
                                    _props.getProperty<int>("bitrate"),
-                                   "high444", "rtmp://localhost/live/mystream");
-    // enable_av_debug_log();
-    init(streamer_config);
+                                   _props.getProperty<std::string>("profile"));
+    if (!init(streamer_config))
+        return;
 
     _timer.start();
 
     thread = std::thread(std::bind(&Streamer::_runLoop, this));
 }
 
-void _copyToImage(Streamer::Image &image, brayns::FrameBuffer &frameBuffer)
+void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
 {
     const auto &size = frameBuffer.getSize();
     const size_t bufferSize = size.x * size.y * frameBuffer.getColorDepth();
@@ -180,18 +175,17 @@ void Streamer::postRender()
     _timer.start();
 
     const auto &frameBuffers = _api->getEngine().getFrameBuffers();
-    for (size_t i = 0; i < frameBuffers.size(); ++i)
+    if (frameBuffers.size() < 1)
+        return;
+    auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
+    frameBuffer->map();
+    if (frameBuffer->getColorBuffer())
     {
-        auto frameBuffer = frameBuffers[i];
-        frameBuffer->map();
-        if (frameBuffer->getColorBuffer())
-        {
-            static Image image;
-            _copyToImage(image, *frameBuffer);
-            stream_frame(image);
-        }
-        frameBuffer->unmap();
+        static Image image;
+        _copyToImage(image, *frameBuffer);
+        stream_frame(image);
     }
+    frameBuffer->unmap();
 }
 
 void Streamer::cleanup()
@@ -227,18 +221,17 @@ void Streamer::stream_frame(const Image &image)
 
 void Streamer::_runLoop()
 {
-    while (can_stream())
+    while (_api->getEngine().getKeepRunning())
     {
         const auto &image = _rgbas.pop();
         const int width = image.size[0];
         const int height = image.size[1];
         const int stride[] = {4 * width};
         auto data = reinterpret_cast<const uint8_t *const>(image.data.data());
-        static SwsContext *sws_context = nullptr;
         sws_context =
             sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
-                                 width, height, STREAM_PIX_FMT,
-                                 SWS_FAST_BILINEAR, 0, 0, 0);
+                                 config.dst_width, config.dst_height,
+                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
         sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
                   picture.frame->linesize);
         picture.frame->pts +=
@@ -247,52 +240,23 @@ void Streamer::_runLoop()
     }
 }
 
-// void Streamer::stream_frame(const Image &image, int64_t frame_duration)
-//{
-//    if(can_stream()) {
-//        const int stride[] = {static_cast<int>(image.step[0])};
-//        sws_scale(scaler.ctx, &image.data, stride, 0, image.rows,
-//        picture.frame->data, picture.frame->linesize);
-//        picture.frame->pts += frame_duration; //time of frame in milliseconds
-//        encode_and_write_frame(out_codec_ctx, format_ctx, picture.frame);
-//    }
-//}
-
-void Streamer::enable_av_debug_log()
+bool Streamer::init(const StreamerConfig &streamer_config)
 {
-    av_log_set_level(AV_LOG_DEBUG);
-}
-
-int Streamer::init(const StreamerConfig &streamer_config)
-{
-    init_ok = false;
     cleanup();
+    if (avformat_network_init() < 0)
+        return false;
 
     config = streamer_config;
 
-    if (!network_init_ok)
-    {
-        return 1;
-    }
-#define RTP_TEST
-#ifdef RTP_TEST
     AVOutputFormat *fmt = av_guess_format("rtp", NULL, NULL);
     const char *fmt_name = "h264";
-    std::string fileBla =
-        "rtp://" + _props.getProperty<std::string>("host") + ":49990";
+    std::string fileBla = "rtp://" + _props.getProperty<std::string>("host");
     const char *filename = fileBla.c_str();
-#else
-    AVOutputFormat *fmt = nullptr;
-    const char *fmt_name = "flv";
-    const char *filename = config.server.c_str();
-#endif
 
     // initialize format context for output with flv and no filename
     avformat_alloc_output_context2(&format_ctx, fmt, fmt_name, filename);
     if (!format_ctx)
-    {
-        return 1;
-    }
+        return false;
 
     // AVIOContext for accessing the resource indicated by url
     if (!(format_ctx->oformat->flags & AVFMT_NOFILE))
@@ -304,9 +268,8 @@ int Streamer::init(const StreamerConfig &streamer_config)
             fprintf(
                 stderr,
                 "failed to open stream output context, stream will not work\n");
-            return 1;
+            return false;
         }
-        rtmp_server_conn = true;
     }
 
     // use selected codec
@@ -316,14 +279,14 @@ int Streamer::init(const StreamerConfig &streamer_config)
     {
         fprintf(stderr, "Could not find encoder for '%s'\n",
                 avcodec_get_name(codec_id));
-        return 1;
+        return false;
     }
 
     out_stream = avformat_new_stream(format_ctx, out_codec);
     if (!out_stream)
     {
         fprintf(stderr, "Could not allocate stream\n");
-        return 1;
+        return false;
     }
 
     out_codec_ctx = avcodec_alloc_context3(out_codec);
@@ -333,7 +296,7 @@ int Streamer::init(const StreamerConfig &streamer_config)
                                      config.dst_width, config.dst_height,
                                      config.fps, config.bitrate, codec_id))
     {
-        return 1;
+        return false;
     }
 
     out_stream->codecpar->extradata_size = out_codec_ctx->extradata_size;
@@ -342,16 +305,12 @@ int Streamer::init(const StreamerConfig &streamer_config)
     memcpy(out_stream->codecpar->extradata, out_codec_ctx->extradata,
            out_codec_ctx->extradata_size);
 
-    av_dump_format(format_ctx, 0, config.server.c_str(), 1);
-
     picture.init(out_codec_ctx->pix_fmt, config.dst_width, config.dst_height);
-    scaler.init(out_codec_ctx, config.src_width, config.src_height,
-                config.dst_width, config.dst_height, SWS_BILINEAR);
 
     if (avformat_write_header(format_ctx, nullptr) < 0)
     {
         fprintf(stderr, "Could not write header!\n");
-        return 1;
+        return false;
     }
 
     printf("stream time base = %d / %d \n", out_stream->time_base.num,
@@ -360,9 +319,6 @@ int Streamer::init(const StreamerConfig &streamer_config)
     inv_stream_timebase =
         (double)out_stream->time_base.den / (double)out_stream->time_base.num;
 
-    init_ok = true;
-
-#ifdef RTP_TEST
     char buf[200000];
     AVFormatContext *ac[] = {format_ctx};
     av_sdp_create(ac, 1, buf, 20000);
@@ -374,8 +330,7 @@ int Streamer::init(const StreamerConfig &streamer_config)
         fprintf(fsdp, "%s", buf);
         fclose(fsdp);
     }
-#endif
-    return 0;
+    return true;
 }
 
 } // namespace streamer
@@ -384,11 +339,13 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
                                                          const char **argv)
 {
     brayns::PropertyMap props;
-    props.setProperty({"host", std::string("localhost")});
+    props.setProperty({"host", std::string("localhost:49990")});
     props.setProperty({"fps", 30});
     props.setProperty({"bitrate", 10000000});
     props.setProperty({"width", 1920});
     props.setProperty({"height", 1080});
+    props.setProperty({"profile", std::string("high444")});
+    props.setProperty({"fb", 0});
     if (!props.parse(argc, argv))
         return nullptr;
     return new streamer::Streamer(props);

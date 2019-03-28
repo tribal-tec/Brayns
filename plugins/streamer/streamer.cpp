@@ -17,42 +17,6 @@ namespace streamer
 {
 #define STREAM_PIX_FMT AV_PIX_FMT_YUV420P
 
-static int encode_and_write_frame(AVCodecContext *codec_ctx,
-                                  AVFormatContext *fmt_ctx, AVFrame *frame)
-{
-    AVPacket pkt = {0};
-    av_init_packet(&pkt);
-
-#if 1
-    int ret = avcodec_send_frame(codec_ctx, frame);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Error sending frame to codec context!\n");
-        return ret;
-    }
-
-    ret = avcodec_receive_packet(codec_ctx, &pkt);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Error receiving packet from codec context!\n");
-        return ret;
-    }
-#else
-    int frameDecodingComplete = 0;
-    int ret =
-        avcodec_encode_video2(codec_ctx, &pkt, frame, &frameDecodingComplete);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Error sending frame to codec context!\n");
-        return ret;
-    }
-#endif
-    av_interleaved_write_frame(fmt_ctx, &pkt);
-    av_packet_unref(&pkt);
-
-    return 0;
-}
-
 static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
                                         AVCodecContext *codec_ctx,
                                         AVCodec *codec,
@@ -146,18 +110,6 @@ void Streamer::init()
     thread = std::thread(std::bind(&Streamer::_runLoop, this));
 }
 
-void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
-{
-    const auto &size = frameBuffer.getSize();
-    const size_t bufferSize = size.x * size.y * frameBuffer.getColorDepth();
-    const auto data = frameBuffer.getColorBuffer();
-
-    image.data.resize(bufferSize);
-    memcpy(image.data.data(), data, bufferSize);
-    image.size = size;
-    image.format = frameBuffer.getFrameBufferFormat();
-}
-
 void Streamer::postRender()
 {
     const auto fps = config.fps;
@@ -181,9 +133,22 @@ void Streamer::postRender()
     frameBuffer->map();
     if (frameBuffer->getColorBuffer())
     {
-        static Image image;
-        _copyToImage(image, *frameBuffer);
-        stream_frame(image);
+        const int width = frameBuffer->getSize().x;
+        const int height = frameBuffer->getSize().y;
+        const int stride[] = {4 * width};
+        auto data = reinterpret_cast<const uint8_t *const>(
+            frameBuffer->getColorBuffer());
+        sws_context =
+            sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
+                                 config.dst_width, config.dst_height,
+                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+        sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
+                  picture.frame->linesize);
+        picture.frame->pts +=
+            av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
+
+        if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
+            stream_frame();
     }
     frameBuffer->unmap();
 }
@@ -214,29 +179,25 @@ Streamer::~Streamer()
     avformat_network_deinit();
 }
 
-void Streamer::stream_frame(const Image &image)
+void Streamer::stream_frame()
 {
-    _rgbas.push(image);
+    ++_pkts;
 }
 
 void Streamer::_runLoop()
 {
     while (_api->getEngine().getKeepRunning())
     {
-        const auto &image = _rgbas.pop();
-        const int width = image.size[0];
-        const int height = image.size[1];
-        const int stride[] = {4 * width};
-        auto data = reinterpret_cast<const uint8_t *const>(image.data.data());
-        sws_context =
-            sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
-                                 config.dst_width, config.dst_height,
-                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
-        sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
-                  picture.frame->linesize);
-        picture.frame->pts +=
-            av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
-        encode_and_write_frame(out_codec_ctx, format_ctx, picture.frame);
+        _pkts.waitGT(0);
+        --_pkts;
+
+        AVPacket pkt = {0};
+        av_init_packet(&pkt);
+        if (avcodec_receive_packet(out_codec_ctx, &pkt) >= 0)
+        {
+            av_interleaved_write_frame(format_ctx, &pkt);
+            av_packet_unref(&pkt);
+        }
     }
 }
 

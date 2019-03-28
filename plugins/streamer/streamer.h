@@ -23,7 +23,7 @@ extern "C" {
 #include <brayns/common/types.h>
 #include <brayns/pluginapi/ExtensionPlugin.h>
 
-#include <lunchbox/mtQueue.h>
+#include <lunchbox/monitor.h>
 #include <thread>
 
 namespace streamer
@@ -104,13 +104,6 @@ public:
     }
 };
 
-struct Image
-{
-    std::vector<char> data;
-    brayns::Vector2ui size;
-    brayns::FrameBufferFormat format;
-};
-
 class Streamer : public brayns::ExtensionPlugin
 {
 public:
@@ -123,7 +116,7 @@ private:
     bool init(const StreamerConfig &streamer_config);
     void cleanup();
     void _runLoop();
-    void stream_frame(const Image &frame);
+    void stream_frame();
 
     AVFormatContext *format_ctx;
     AVCodec *out_codec;
@@ -139,7 +132,7 @@ private:
     float _leftover{0.f};
 
     std::thread thread;
-    lunchbox::MTQueue<Image> _rgbas;
+    lunchbox::Monitor<int> _pkts;
 
     const brayns::PropertyMap _props;
 };

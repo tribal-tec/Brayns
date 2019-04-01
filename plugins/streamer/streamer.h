@@ -30,77 +30,31 @@ namespace streamer
 {
 struct StreamerConfig
 {
-    int dst_width;
-    int dst_height;
-    int fps;
-    int bitrate;
+    int dst_width{0};
+    int dst_height{0};
+    int fps{0};
+    int bitrate{0};
     std::string profile;
-
-    StreamerConfig()
-    {
-        dst_width = 0;
-        dst_height = 0;
-        fps = 0;
-        bitrate = 0;
-    }
-
-    StreamerConfig(int stream_width, int stream_height, int stream_fps,
-                   int stream_bitrate, const std::string &stream_profile)
-    {
-        dst_width = stream_width;
-        dst_height = stream_height;
-        fps = stream_fps;
-        bitrate = stream_bitrate;
-        profile = stream_profile;
-    }
 };
 
 class Picture
 {
-    static const int align_frame_buffer = 32;
-
 public:
-    AVFrame *frame;
-    uint8_t *data;
+    AVFrame *frame{nullptr};
 
     int init(enum AVPixelFormat pix_fmt, int width, int height)
     {
-        frame = nullptr;
-        data = nullptr;
         frame = av_frame_alloc();
-
-        int sz = av_image_get_buffer_size(pix_fmt, width, height,
-                                          align_frame_buffer);
-        int ret = posix_memalign(reinterpret_cast<void **>(&data),
-                                 align_frame_buffer, sz);
-
-        av_image_fill_arrays(frame->data, frame->linesize, data, pix_fmt, width,
-                             height, align_frame_buffer);
         frame->format = pix_fmt;
         frame->width = width;
         frame->height = height;
-
-        return ret;
-    }
-
-    Picture()
-    {
-        frame = nullptr;
-        data = nullptr;
+        return av_frame_get_buffer(frame, 32);
     }
 
     ~Picture()
     {
-        if (data)
-        {
-            free(data);
-            data = nullptr;
-        }
-
         if (frame)
-        {
             av_frame_free(&frame);
-        }
     }
 };
 
@@ -118,10 +72,11 @@ private:
     void _runLoop();
     void stream_frame();
 
-    AVFormatContext *format_ctx;
-    AVCodec *out_codec;
-    AVStream *out_stream;
-    AVCodecContext *out_codec_ctx;
+    AVFormatContext *format_ctx{nullptr};
+    AVCodec *out_codec{nullptr};
+    AVStream *out_stream{nullptr};
+    AVCodecContext *out_codec_ctx{nullptr};
+    AVPacket *pkt{nullptr};
     SwsContext *sws_context{nullptr};
     Picture picture;
 

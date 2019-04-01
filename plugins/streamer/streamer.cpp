@@ -22,7 +22,7 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
                                         AVCodec *codec,
                                         std::string codec_profile, double width,
                                         double height, int fps, int bitrate,
-                                        AVCodecID codec_id)
+                                        int gop, AVCodecID codec_id)
 {
     const AVRational dst_fps = {fps, 1};
 
@@ -31,24 +31,21 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
     codec_ctx->codec_type = AVMEDIA_TYPE_VIDEO;
     codec_ctx->width = width;
     codec_ctx->height = height;
-    codec_ctx->gop_size = 25;
+    codec_ctx->gop_size = gop;
     codec_ctx->pix_fmt = STREAM_PIX_FMT;
     codec_ctx->framerate = dst_fps;
     codec_ctx->time_base = av_inv_q(dst_fps);
     codec_ctx->bit_rate = bitrate;
     codec_ctx->max_b_frames = 0;
 
-    auto c = codec_ctx;
-    c->rc_max_rate = 0;
-    c->rc_buffer_size = 0;
-    c->gop_size = 5;
-    c->max_b_frames = 0;
-    c->qmin = 10;
-    c->qmax = 51;
-    c->me_subpel_quality = 5;
-    c->i_quant_factor = 0.71;
-    c->qcompress = 0.6;
-    c->max_qdiff = 4;
+    //    codec_ctx->rc_max_rate = 0;
+    //    codec_ctx->rc_buffer_size = 0;
+    //    codec_ctx->qmin = 10;
+    //    codec_ctx->qmax = 51;
+    //    codec_ctx->me_subpel_quality = 5;
+    //    codec_ctx->i_quant_factor = 0.71;
+    //    codec_ctx->qcompress = 0.6;
+    //    codec_ctx->max_qdiff = 4;
 
     if (fctx->oformat->flags & AVFMT_GLOBALHEADER)
     {
@@ -87,21 +84,16 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
 Streamer::Streamer(const brayns::PropertyMap &props)
     : _props(props)
 {
-    format_ctx = nullptr;
-    out_codec = nullptr;
-    out_stream = nullptr;
-    out_codec_ctx = nullptr;
     av_register_all();
-    inv_stream_timebase = 30.0;
 }
 
 void Streamer::init()
 {
-    StreamerConfig streamer_config(_props.getProperty<int>("width"),
+    StreamerConfig streamer_config{_props.getProperty<int>("width"),
                                    _props.getProperty<int>("height"),
                                    _props.getProperty<int>("fps"),
                                    _props.getProperty<int>("bitrate"),
-                                   _props.getProperty<std::string>("profile"));
+                                   _props.getProperty<std::string>("profile")};
     if (!init(streamer_config))
         return;
 
@@ -155,10 +147,13 @@ void Streamer::postRender()
 
 void Streamer::cleanup()
 {
+    if (pkt)
+        av_packet_free(&pkt);
     if (out_codec_ctx)
     {
         avcodec_close(out_codec_ctx);
         avcodec_free_context(&out_codec_ctx);
+        out_codec_ctx = nullptr;
     }
 
     if (format_ctx)
@@ -170,13 +165,13 @@ void Streamer::cleanup()
         avformat_free_context(format_ctx);
         format_ctx = nullptr;
     }
+    avformat_network_deinit();
 }
 
 Streamer::~Streamer()
 {
     thread.join();
     cleanup();
-    avformat_network_deinit();
 }
 
 void Streamer::stream_frame()
@@ -191,12 +186,16 @@ void Streamer::_runLoop()
         _pkts.waitGT(0);
         --_pkts;
 
-        AVPacket pkt = {0};
-        av_init_packet(&pkt);
-        if (avcodec_receive_packet(out_codec_ctx, &pkt) >= 0)
+        const auto ret = avcodec_receive_packet(out_codec_ctx, pkt);
+        if (ret >= 0)
         {
-            av_interleaved_write_frame(format_ctx, &pkt);
-            av_packet_unref(&pkt);
+            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+                return;
+            if (ret >= 0)
+            {
+                av_interleaved_write_frame(format_ctx, pkt);
+                av_packet_unref(pkt);
+            }
         }
     }
 }
@@ -251,11 +250,17 @@ bool Streamer::init(const StreamerConfig &streamer_config)
     }
 
     out_codec_ctx = avcodec_alloc_context3(out_codec);
+    if (!out_codec_ctx)
+    {
+        fprintf(stderr, "Could not allocate video codec context\n");
+        return false;
+    }
 
     if (set_options_and_open_encoder(format_ctx, out_stream, out_codec_ctx,
                                      out_codec, config.profile,
                                      config.dst_width, config.dst_height,
-                                     config.fps, config.bitrate, codec_id))
+                                     config.fps, config.bitrate,
+                                     _props.getProperty<int>("gop"), codec_id))
     {
         return false;
     }
@@ -291,6 +296,9 @@ bool Streamer::init(const StreamerConfig &streamer_config)
         fprintf(fsdp, "%s", buf);
         fclose(fsdp);
     }
+
+    pkt = av_packet_alloc();
+
     return true;
 }
 
@@ -307,6 +315,7 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"height", 1080});
     props.setProperty({"profile", std::string("high444")});
     props.setProperty({"fb", 0});
+    props.setProperty({"gop", 1});
     if (!props.parse(argc, argv))
         return nullptr;
     return new streamer::Streamer(props);

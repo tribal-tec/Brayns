@@ -58,6 +58,13 @@ public:
     }
 };
 
+struct Image
+{
+    std::vector<char> data;
+    brayns::Vector2ui size;
+    brayns::FrameBufferFormat format;
+};
+
 class Streamer : public brayns::ExtensionPlugin
 {
 public:
@@ -69,6 +76,7 @@ public:
 private:
     bool init(const StreamerConfig &streamer_config);
     void cleanup();
+    void _runCopyLoop();
     void _runLoop();
     void stream_frame();
 
@@ -80,13 +88,15 @@ private:
     SwsContext *sws_context{nullptr};
     Picture picture;
 
-    double inv_stream_timebase;
     StreamerConfig config;
 
     brayns::Timer _timer;
     float _leftover{0.f};
 
-    std::thread thread;
+    Image image;
+    std::thread _copyThread;
+    std::thread _sendThread;
+    lunchbox::Monitor<int> _rgbas;
     lunchbox::Monitor<int> _pkts;
 
     const brayns::PropertyMap _props;

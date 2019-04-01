@@ -99,7 +99,21 @@ void Streamer::init()
 
     _timer.start();
 
-    thread = std::thread(std::bind(&Streamer::_runLoop, this));
+    _copyThread = std::thread(std::bind(&Streamer::_runCopyLoop, this));
+    _sendThread = std::thread(std::bind(&Streamer::_runLoop, this));
+}
+
+void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
+{
+    const auto &size = frameBuffer.getSize();
+    const size_t bufferSize = size.x * size.y * frameBuffer.getColorDepth();
+    const auto data = frameBuffer.getColorBuffer();
+
+    if(image.data.size() < bufferSize)
+        image.data.resize(bufferSize);
+    memcpy(image.data.data(), data, bufferSize);
+    image.size = size;
+    image.format = frameBuffer.getFrameBufferFormat();
 }
 
 void Streamer::postRender()
@@ -125,22 +139,32 @@ void Streamer::postRender()
     frameBuffer->map();
     if (frameBuffer->getColorBuffer())
     {
-        const int width = frameBuffer->getSize().x;
-        const int height = frameBuffer->getSize().y;
-        const int stride[] = {4 * width};
-        auto data = reinterpret_cast<const uint8_t *const>(
-            frameBuffer->getColorBuffer());
-        sws_context =
-            sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
-                                 config.dst_width, config.dst_height,
-                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
-        sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
-                  picture.frame->linesize);
-        picture.frame->pts +=
-            av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
+        // const int width = frameBuffer->getSize().x;
+        // const int height = frameBuffer->getSize().y;
+        // const int stride[] = {4 * width};
+        //        auto data = reinterpret_cast<const uint8_t *const>(
+        //            frameBuffer->getColorBuffer());
 
-        if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
-            stream_frame();
+        if (_rgbas == 0)
+        {
+            _copyToImage(image, *frameBuffer);
+            ++_rgbas;
+        }
+        //        sws_context =
+        //            sws_getCachedContext(sws_context, width, height,
+        //            AV_PIX_FMT_RGBA,
+        //                                 config.dst_width, config.dst_height,
+        //                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0,
+        //                                 0, 0);
+        //        sws_scale(sws_context, &data, stride, 0, height,
+        //        picture.frame->data,
+        //                  picture.frame->linesize);
+        //        picture.frame->pts +=
+        //            av_rescale_q(1, out_codec_ctx->time_base,
+        //            out_stream->time_base);
+
+        //        if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
+        //            stream_frame();
     }
     frameBuffer->unmap();
 }
@@ -168,9 +192,34 @@ void Streamer::cleanup()
     avformat_network_deinit();
 }
 
+void Streamer::_runCopyLoop()
+{
+    while (_api->getEngine().getKeepRunning())
+    {
+        _rgbas.waitGT(0);
+        const int width = image.size[0];
+        const int height = image.size[1];
+        const int stride[] = {4 * width};
+        auto data = reinterpret_cast<const uint8_t *const>(image.data.data());
+        sws_context =
+            sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
+                                 config.dst_width, config.dst_height,
+                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+        sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
+                  picture.frame->linesize);
+        --_rgbas;
+        picture.frame->pts +=
+            av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
+
+        if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
+            stream_frame();
+    }
+}
+
 Streamer::~Streamer()
 {
-    thread.join();
+    _copyThread.join();
+    _sendThread.join();
     cleanup();
 }
 

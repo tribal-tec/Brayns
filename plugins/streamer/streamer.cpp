@@ -109,7 +109,7 @@ void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
     const size_t bufferSize = size.x * size.y * frameBuffer.getColorDepth();
     const auto data = frameBuffer.getColorBuffer();
 
-    if(image.data.size() < bufferSize)
+    if (image.data.size() < bufferSize)
         image.data.resize(bufferSize);
     memcpy(image.data.data(), data, bufferSize);
     image.size = size;
@@ -257,9 +257,13 @@ bool Streamer::init(const StreamerConfig &streamer_config)
 
     config = streamer_config;
 
-    AVOutputFormat *fmt = av_guess_format("rtp", NULL, NULL);
+    const bool useRTP = !_props.getProperty<bool>("rtsp");
+    AVOutputFormat *fmt = av_guess_format(useRTP ? "rtp" : "rtsp", NULL, NULL);
     const char *fmt_name = "h264";
-    std::string fileBla = "rtp://" + _props.getProperty<std::string>("host");
+    std::string fileBla =
+        useRTP
+            ? "rtp://" + _props.getProperty<std::string>("host")
+            : "rtsp://" + _props.getProperty<std::string>("host") + "/test.sdp";
     const char *filename = fileBla.c_str();
 
     // initialize format context for output with flv and no filename
@@ -331,19 +335,19 @@ bool Streamer::init(const StreamerConfig &streamer_config)
     printf("stream time base = %d / %d \n", out_stream->time_base.num,
            out_stream->time_base.den);
 
-    inv_stream_timebase =
-        (double)out_stream->time_base.den / (double)out_stream->time_base.num;
-
-    char buf[200000];
-    AVFormatContext *ac[] = {format_ctx};
-    av_sdp_create(ac, 1, buf, 20000);
-
-    printf("sdp:\n%s\n", buf);
-    FILE *fsdp = fopen("/tmp/test.sdp", "w");
-    if (fsdp)
+    if (useRTP)
     {
-        fprintf(fsdp, "%s", buf);
-        fclose(fsdp);
+        char buf[200000];
+        AVFormatContext *ac[] = {format_ctx};
+        av_sdp_create(ac, 1, buf, 20000);
+
+        printf("sdp:\n%s\n", buf);
+        FILE *fsdp = fopen("/tmp/test.sdp", "w");
+        if (fsdp)
+        {
+            fprintf(fsdp, "%s", buf);
+            fclose(fsdp);
+        }
     }
 
     pkt = av_packet_alloc();
@@ -365,6 +369,7 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"profile", std::string("high444")});
     props.setProperty({"fb", 0});
     props.setProperty({"gop", 1});
+    props.setProperty({"rtsp", false});
     if (!props.parse(argc, argv))
         return nullptr;
     return new streamer::Streamer(props);

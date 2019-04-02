@@ -41,7 +41,7 @@ strings parseFolder(const std::string& folder, const strings& filters)
         for (fs::directory_iterator dirIter(folder); dirIter != endIter;
              ++dirIter)
         {
-            if (fs::is_regular_file(dirIter->status()))
+            // if (fs::is_regular_file(dirIter->status()))
             {
                 const auto filename = dirIter->path().c_str();
                 if (filters.empty())
@@ -55,6 +55,8 @@ strings parseFolder(const std::string& folder, const strings& filters)
                         files.push_back(filename);
                 }
             }
+            if (files.size() == 500)
+                break;
         }
     }
     std::sort(files.begin(), files.end());

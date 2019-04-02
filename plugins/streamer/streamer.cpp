@@ -70,7 +70,9 @@ static int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
     av_dict_set(&codec_options, "profile", codec_profile.c_str(), 0);
     av_dict_set(&codec_options, "preset", "ultrafast", 0);
     av_dict_set(&codec_options, "tune", "zerolatency", 0);
-    av_dict_set(&codec_options, "g", "30", 0);
+//    av_dict_set(&codec_options, "crf", "0", 0);
+//    av_opt_set(codec_ctx->priv_data, "crf", "0", AV_OPT_SEARCH_CHILDREN);
+//    av_opt_set(codec_ctx->priv_data, "preset", "slow", AV_OPT_SEARCH_CHILDREN);
 
     // open video encoder
     ret = avcodec_open2(codec_ctx, codec, &codec_options);

@@ -329,7 +329,7 @@ private:
     void _loadData()
     {
         auto& scene = _engine->getScene();
-        const auto& registry = scene.getLoaderRegistry();
+        //        const auto& registry = scene.getLoaderRegistry();
 
         const auto& paths =
             _parametersManager.getApplicationParameters().getInputPaths();
@@ -341,12 +341,18 @@ private:
                 return;
             }
 
-            for (const auto& path : paths)
-                if (!registry.isSupportedFile(path))
-                    throw std::runtime_error("No loader found for '" + path +
-                                             "'");
+            //            for (const auto& path : paths)
+            //                if (!registry.isSupportedFile(path))
+            //                    throw std::runtime_error("No loader found for
+            //                    '" + path +
+            //                                             "'");
 
-            for (const auto& path : paths)
+            for (const auto& path :
+                 paths[0] == "test"
+                     ? parseFolder("/gpfs/bbp.cscs.ch/project/proj3/resources/"
+                                   "surface/cortex/ply-meshes/meshes",
+                                   {})
+                     : paths)
             {
                 int percentageLast = 0;
                 std::string msgLast;

@@ -12,6 +12,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(HighFive QUIET REQUIRED)
 find_package(FFMPEG REQUIRED)
 find_package(Lunchbox REQUIRED)
+find_package(ospray 1.7 REQUIRED)
+
+list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
+include(macros)
+OSPRAY_CONFIGURE_MPI()
 
 set(STREAMER_SOURCES
   streamer.cpp
@@ -25,7 +30,7 @@ add_library(braynsStreamer SHARED ${STREAMER_SOURCES} ${STREAMER_HEADERS})
 target_include_directories(braynsStreamer PRIVATE ${FFMPEG_INCLUDE_DIR})
 target_link_libraries(braynsStreamer
   PUBLIC braynsCommon braynsPluginAPI
-  PRIVATE braynsEngine ${FFMPEG_LIBRARIES} Lunchbox
+  PRIVATE braynsEngine ${FFMPEG_LIBRARIES} Lunchbox ${OSPRAY_MPI_LIBRARIES}
 )
 set_target_properties(braynsStreamer PROPERTIES
   VERSION ${PROJECT_VERSION}

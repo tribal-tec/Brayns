@@ -11,6 +11,8 @@
 #include <brayns/parameters/ParametersManager.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
+#include <ospray/mpiCommon/MPICommon.h>
+
 // mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
 // mpv /tmp/test.sdp --profile=low-latency --vf=vflip
 namespace streamer
@@ -246,6 +248,9 @@ void Streamer::_runLoop()
         _pkts.waitGT(0);
         --_pkts;
 
+        if(_props.getProperty<bool>("mpi"))
+            mpicommon::world.barrier();
+
         const auto ret = avcodec_receive_packet(out_codec_ctx, pkt);
         if (ret >= 0)
         {
@@ -353,7 +358,12 @@ bool Streamer::init(const StreamerConfig &streamer_config)
         av_sdp_create(ac, 1, buf, 20000);
 
         printf("sdp:\n%s\n", buf);
-        FILE *fsdp = fopen("/tmp/test.sdp", "w");
+        std::stringstream outFile;
+        outFile << "/tmp/test";
+        if(_props.getProperty<bool>("mpi"))
+            outFile << mpicommon::world.rank;
+        outFile << ".sdp";
+        FILE *fsdp = fopen(outFile.str().c_str(), "w");
         if (fsdp)
         {
             fprintf(fsdp, "%s", buf);
@@ -385,5 +395,9 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"copy", false});
     if (!props.parse(argc, argv))
         return nullptr;
+
+    if(props.getProperty<bool>("mpi"))
+        mpicommon::init(&argc,argv,true);
+
     return new streamer::Streamer(props);
 }

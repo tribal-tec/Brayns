@@ -105,7 +105,7 @@ void CylindricStereoTrackedCamera_initRay_leftWall(
     const vec2f screen = Camera_subRegion(_self, sample.screen);
 
     float eyeDelta = -self->half_ipd;
-    float alpha = screen.x * pi;
+    float alpha = (pi / 7.f) * 3.f + screen.x * pi / 7;
 
     vec3f pixelPos;
     pixelPos.x = self->opendeck_radius * -cosf(alpha);
@@ -139,7 +139,7 @@ void CylindricStereoTrackedCamera_initRay_rightWall(
     const vec2f screen = Camera_subRegion(_self, sample.screen);
 
     float eyeDelta = self->half_ipd;
-    float alpha = screen.x * pi;
+    float alpha = (pi / 7.f) * 3.f + screen.x * pi / 7;
 
     vec3f pixelPos;
     pixelPos.x = self->opendeck_radius * -cosf(alpha);

@@ -40,7 +40,7 @@ constexpr char rightFloorBufferName[] = "1R";
 const std::string HEAD_POSITION_PROP = "headPosition";
 const std::string HEAD_ROTATION_PROP = "headRotation";
 
-constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 0.0, 0.0}};
+constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 2.0, 0.0}};
 constexpr std::array<double, 4> HEAD_INIT_ROT{{0.0, 0.0, 0.0, 1.0}};
 
 Property getHeadPositionProperty()
@@ -109,7 +109,7 @@ OpenDeckPlugin::OpenDeckPlugin(OpenDeckParameters&& params)
     if (_params.getCameraScaling() <= 0.0)
         throw std::runtime_error("The camera scale cannot be zero or negative");
 
-    _wallRes = Vector2ui(openDeckWallResX * _params.getResolutionScaling(),
+    _wallRes = Vector2ui(openDeckWallResX * _params.getResolutionScaling() / 6,
                          openDeckWallResY * _params.getResolutionScaling());
     _floorRes = Vector2ui(openDeckFloorResX * _params.getResolutionScaling(),
                           openDeckFloorResY * _params.getResolutionScaling());

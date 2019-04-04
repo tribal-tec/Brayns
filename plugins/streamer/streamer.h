@@ -78,7 +78,10 @@ private:
     void cleanup();
     void _runCopyLoop();
     void _runLoop();
+    void encodeFrame(const int width, const int height,
+                     const uint8_t *const data);
     void stream_frame();
+    int threadingLevel() const;
 
     AVFormatContext *format_ctx{nullptr};
     AVCodec *out_codec{nullptr};

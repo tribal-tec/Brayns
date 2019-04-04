@@ -101,8 +101,10 @@ void Streamer::init()
 
     _timer.start();
 
-    _copyThread = std::thread(std::bind(&Streamer::_runCopyLoop, this));
-    _sendThread = std::thread(std::bind(&Streamer::_runLoop, this));
+    if(threadingLevel() == 1)
+        _sendThread = std::thread(std::bind(&Streamer::_runLoop, this));
+    if(threadingLevel() == 2)
+        _copyThread = std::thread(std::bind(&Streamer::_runCopyLoop, this));
 }
 
 void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
@@ -141,7 +143,7 @@ void Streamer::postRender()
     frameBuffer->map();
     if (frameBuffer->getColorBuffer())
     {
-        if(_props.getProperty<bool>("copy"))
+        if(threadingLevel() == 2)
         {
             if (_rgbas == 0)
             {
@@ -153,26 +155,10 @@ void Streamer::postRender()
         {
             const int width = frameBuffer->getSize().x;
             const int height = frameBuffer->getSize().y;
-            const int stride[] = {4 * width};
             auto data = reinterpret_cast<const uint8_t *const>(
                 frameBuffer->getColorBuffer());
 
-
-            sws_context =
-                sws_getCachedContext(sws_context, width, height,
-                AV_PIX_FMT_RGBA,
-                                     config.dst_width, config.dst_height,
-                                     STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0,
-                                     0, 0);
-            sws_scale(sws_context, &data, stride, 0, height,
-            picture.frame->data,
-                      picture.frame->linesize);
-            picture.frame->pts +=
-                av_rescale_q(1, out_codec_ctx->time_base,
-                out_stream->time_base);
-
-            if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
-                stream_frame();
+            encodeFrame(width, height, data);
         }
     }
     frameBuffer->unmap();
@@ -206,39 +192,47 @@ void Streamer::_runCopyLoop()
     while (_api->getEngine().getKeepRunning())
     {
         _rgbas.waitGT(0);
+
         const int width = image.size[0];
         const int height = image.size[1];
-        const int stride[] = {4 * width};
         auto data = reinterpret_cast<const uint8_t *const>(image.data.data());
-        sws_context =
-            sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
-                                 config.dst_width, config.dst_height,
-                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
-        brayns::Timer timer;
-        timer.start();
-        sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
-                  picture.frame->linesize);
-        timer.stop();
-        std::cout << "Scale " << timer.milliseconds() << std::endl;
-        --_rgbas;
-        picture.frame->pts +=
-            av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
-
-        if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
-            stream_frame();
+        encodeFrame(width, height, data);
     }
 }
 
 Streamer::~Streamer()
 {
-    _copyThread.join();
-    _sendThread.join();
+    if(threadingLevel() == 2)
+        _copyThread.join();
+    if(threadingLevel() == 1)
+        _sendThread.join();
     cleanup();
 }
 
 void Streamer::stream_frame()
 {
-    ++_pkts;
+    if(_props.getProperty<bool>("mpi"))
+    {
+        std::cout << "BARRIER" << mpicommon::world.rank << std::endl;
+        mpicommon::world.barrier();
+    }
+
+    const auto ret = avcodec_receive_packet(out_codec_ctx, pkt);
+    if (ret >= 0)
+    {
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            return;
+        if (ret >= 0)
+        {
+            av_interleaved_write_frame(format_ctx, pkt);
+            av_packet_unref(pkt);
+        }
+    }
+}
+
+int Streamer::threadingLevel() const
+{
+    return _props.getProperty<int>("threading");
 }
 
 void Streamer::_runLoop()
@@ -248,20 +242,34 @@ void Streamer::_runLoop()
         _pkts.waitGT(0);
         --_pkts;
 
-        if(_props.getProperty<bool>("mpi"))
-            mpicommon::world.barrier();
+       stream_frame();
+    }
+}
 
-        const auto ret = avcodec_receive_packet(out_codec_ctx, pkt);
-        if (ret >= 0)
-        {
-            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-                return;
-            if (ret >= 0)
-            {
-                av_interleaved_write_frame(format_ctx, pkt);
-                av_packet_unref(pkt);
-            }
-        }
+void Streamer::encodeFrame(const int width, const int height, const uint8_t *const data)
+{
+    const int stride[] = {4 * width};
+    sws_context =
+        sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
+                             config.dst_width, config.dst_height,
+                             STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+    brayns::Timer timer;
+    timer.start();
+    sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
+              picture.frame->linesize);
+    timer.stop();
+    if(_props.getProperty<bool>("verbose"))
+        std::cout << "Scale " << timer.milliseconds() << std::endl;
+    --_rgbas;
+    picture.frame->pts +=
+        av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
+
+    if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
+    {
+        if(threadingLevel() == 1)
+            ++_pkts;
+        else
+            stream_frame();
     }
 }
 
@@ -389,10 +397,11 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"height", 1080});
     props.setProperty({"profile", std::string("high444")});
     props.setProperty({"fb", 0});
-    props.setProperty({"gop", 1});
+    props.setProperty({"gop", 5});
     props.setProperty({"rtsp", false});
     props.setProperty({"mpi", false});
-    props.setProperty({"copy", false});
+    props.setProperty({"threading", 0});
+    props.setProperty({"verbose", false});
     if (!props.parse(argc, argv))
         return nullptr;
 

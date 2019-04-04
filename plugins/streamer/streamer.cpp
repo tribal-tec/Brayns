@@ -139,32 +139,39 @@ void Streamer::postRender()
     frameBuffer->map();
     if (frameBuffer->getColorBuffer())
     {
-        // const int width = frameBuffer->getSize().x;
-        // const int height = frameBuffer->getSize().y;
-        // const int stride[] = {4 * width};
-        //        auto data = reinterpret_cast<const uint8_t *const>(
-        //            frameBuffer->getColorBuffer());
-
-        if (_rgbas == 0)
+        if(_props.getProperty<bool>("copy"))
         {
-            _copyToImage(image, *frameBuffer);
-            ++_rgbas;
+            if (_rgbas == 0)
+            {
+                _copyToImage(image, *frameBuffer);
+                ++_rgbas;
+            }
         }
-        //        sws_context =
-        //            sws_getCachedContext(sws_context, width, height,
-        //            AV_PIX_FMT_RGBA,
-        //                                 config.dst_width, config.dst_height,
-        //                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0,
-        //                                 0, 0);
-        //        sws_scale(sws_context, &data, stride, 0, height,
-        //        picture.frame->data,
-        //                  picture.frame->linesize);
-        //        picture.frame->pts +=
-        //            av_rescale_q(1, out_codec_ctx->time_base,
-        //            out_stream->time_base);
+        else
+        {
+            const int width = frameBuffer->getSize().x;
+            const int height = frameBuffer->getSize().y;
+            const int stride[] = {4 * width};
+            auto data = reinterpret_cast<const uint8_t *const>(
+                frameBuffer->getColorBuffer());
 
-        //        if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
-        //            stream_frame();
+
+            sws_context =
+                sws_getCachedContext(sws_context, width, height,
+                AV_PIX_FMT_RGBA,
+                                     config.dst_width, config.dst_height,
+                                     STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0,
+                                     0, 0);
+            sws_scale(sws_context, &data, stride, 0, height,
+            picture.frame->data,
+                      picture.frame->linesize);
+            picture.frame->pts +=
+                av_rescale_q(1, out_codec_ctx->time_base,
+                out_stream->time_base);
+
+            if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
+                stream_frame();
+        }
     }
     frameBuffer->unmap();
 }
@@ -205,8 +212,12 @@ void Streamer::_runCopyLoop()
             sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
                                  config.dst_width, config.dst_height,
                                  STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+        brayns::Timer timer;
+        timer.start();
         sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
                   picture.frame->linesize);
+        timer.stop();
+        std::cout << "Scale " << timer.milliseconds() << std::endl;
         --_rgbas;
         picture.frame->pts +=
             av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
@@ -370,6 +381,8 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"fb", 0});
     props.setProperty({"gop", 1});
     props.setProperty({"rtsp", false});
+    props.setProperty({"mpi", false});
+    props.setProperty({"copy", false});
     if (!props.parse(argc, argv))
         return nullptr;
     return new streamer::Streamer(props);

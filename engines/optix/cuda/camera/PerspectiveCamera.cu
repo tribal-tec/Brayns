@@ -74,22 +74,27 @@ __device__ void getClippingValues(const float3& ray_origin,
 
 // Pass 'seed' by reference to keep randomness state
 __device__ float3 launch(unsigned int& seed, const float2 screen,
-                         const bool use_randomness)
+                         int i)
 {
+    const float2 offset[] = {
+            make_float2(1/8.0f, 3/8.0f),
+            make_float2(3/8.0f, 1/8.0f),
+            make_float2(5/8.0f, 7/8.0f),
+            make_float2(7/8.0f, 5/8.0f)
+    };
     // Subpixel jitter: send the ray through a different position inside the
     // pixel each time, to provide antialiasing.
-    float2 subpixel_jitter =
-        use_randomness ? make_float2(rnd(seed) - 0.5f, rnd(seed) - 0.5f)
-                       : make_float2(0.f, 0.f);
+    const float2 subpixel_jitter = (frame+i) < 4 ? offset[i]
+                       : make_float2(rnd(seed) - 0.5f, rnd(seed) - 0.5f);
 
-    float2 d =
+    const float2 d =
         (make_float2(launch_index) + subpixel_jitter) / screen * 2.f - 1.f;
 
     float3 ray_origin = eye;
-    float3 ray_direction = d.x * U + d.y * V + W;
+    float3 ray_direction = normalize(d.x * U + d.y * V + W);
 
     float fs = focal_scale == 0.f ? 1.f : focal_scale;
-    float3 ray_target = ray_origin + fs * ray_direction;
+    const float3 ray_target = ray_origin + fs * ray_direction;
 
     // lens sampling
     float2 sample = optix::square_to_disk(make_float2(jitter4.z, jitter4.w));
@@ -124,26 +129,30 @@ RT_PROGRAM void perspectiveCamera()
         tea<16>(screen.x * launch_index.y + launch_index.x, frame);
 
     const int num_samples = max(1, samples_per_pixel);
-    // We enable randomness if we are using subpixel sampling or accumulation
-    const bool use_randomness = frame > 0 || num_samples > 1;
 
     float3 result = make_float3(0, 0, 0);
     for (int i = 0; i < num_samples; i++)
-        result += launch(seed, screen_f, use_randomness);
+        result += launch(seed, screen_f, i);
     result /= num_samples;
 
-    float4 acc_val = accum_buffer[launch_index];
+    float4 acc_val;
     if (frame > 0)
-        acc_val = lerp(acc_val, make_float4(result, 0.f),
+        acc_val = lerp(accum_buffer[launch_index], make_float4(result, 0.f),
                        1.0f / static_cast<float>(frame + 1));
     else
         acc_val = make_float4(result, 1.f);
 
     output_buffer[launch_index] = make_color(make_float3(acc_val));
-    accum_buffer[launch_index] = acc_val;
+
+    if(accum_buffer.size().x > 1 && accum_buffer.size().y > 1)
+        accum_buffer[launch_index] = acc_val;
 }
 
 RT_PROGRAM void exception()
 {
+#if USE_DEBUG_EXCEPTIONS
+    const unsigned int code = rtGetExceptionCode();
+    rtPrintf("Exception code 0x%X at (%d, %d)\n", code, launch_index.x, launch_index.y);
+#endif
     output_buffer[launch_index] = make_color(bad_color);
 }

@@ -109,7 +109,7 @@ OpenDeckPlugin::OpenDeckPlugin(OpenDeckParameters&& params)
     if (_params.getCameraScaling() <= 0.0)
         throw std::runtime_error("The camera scale cannot be zero or negative");
 
-    _wallRes = Vector2ui(openDeckWallResX * _params.getResolutionScaling() / 6,
+    _wallRes = Vector2ui(openDeckWallResX * _params.getResolutionScaling(),
                          openDeckWallResY * _params.getResolutionScaling());
     _floorRes = Vector2ui(openDeckFloorResX * _params.getResolutionScaling(),
                           openDeckFloorResY * _params.getResolutionScaling());

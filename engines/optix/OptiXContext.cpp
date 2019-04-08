@@ -226,6 +226,13 @@ void OptiXContext::_initialize()
     _intersects[OptixGeometryType::triangleMesh] =
         _optixContext->createProgramFromPTXString(CUDA_TRIANGLES_MESH,
                                                   CUDA_FUNC_INTERSECTION);
+
+#if USE_DEBUG_EXCEPTIONS
+    _optixContext->setPrintEnabled(true);
+    _optixContext->setPrintLaunchIndex(256, 256); // Launch index (0,0) at lower
+                                                  // left.
+    _optixContext->setExceptionEnabled(RT_EXCEPTION_ALL, true);
+#endif
     BRAYNS_DEBUG << "Context created" << std::endl;
 }
 

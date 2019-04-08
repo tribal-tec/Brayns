@@ -56,7 +56,9 @@ void OptiXCamera::commit()
 
     Vector3d u, v, w;
 
-    const Vector3d& pos = getPosition();
+    Vector3d pos = getPosition();
+    const auto head = getProperty<std::array<double, 3>>("headPosition");
+    pos += Vector3d{-head[0], head[1], head[2]};
 
     _calculateCameraVariables(u, v, w);
 

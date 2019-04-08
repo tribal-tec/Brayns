@@ -114,7 +114,7 @@ OptiXRenderer::OptiXRenderer(const AnimationParameters& animationParameters,
 
 void OptiXRenderer::render(FrameBufferPtr frameBuffer)
 {
-    if (!frameBuffer->getAccumulation())
+    if (!frameBuffer->getAccumulation() && frameBuffer->numAccumFrames() > 0)
         return;
 
     // Provide a random seed to the renderer
@@ -124,13 +124,13 @@ void OptiXRenderer::render(FrameBufferPtr frameBuffer)
                             (float)rand() / (float)RAND_MAX};
     auto context = OptiXContext::get().getOptixContext();
     context["jitter4"]->setFloat(jitter);
+    context["frame"]->setUint(frameBuffer->numAccumFrames());
 
     // Render
     frameBuffer->map();
     const auto size = frameBuffer->getSize();
     context->launch(0, size.x, size.y);
     frameBuffer->unmap();
-
     frameBuffer->markModified();
 }
 

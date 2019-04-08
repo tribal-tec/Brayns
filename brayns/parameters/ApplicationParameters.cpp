@@ -81,7 +81,7 @@ ApplicationParameters::ApplicationParameters()
         (PARAM_IMAGE_STREAM_FPS.c_str(), po::value<size_t>(&_imageStreamFPS),
          "Image stream FPS (60 default), [int]") //
         (PARAM_MAX_RENDER_FPS.c_str(), po::value<size_t>(&_maxRenderFPS),
-         "Max. render FPS");
+         "Max. render FPS")("fb", po::value<int>(&_fb), "which fb");
 
     _positionalArgs.add(PARAM_INPUT_PATHS.c_str(), -1);
 }

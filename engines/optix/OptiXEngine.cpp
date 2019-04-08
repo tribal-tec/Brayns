@@ -99,6 +99,8 @@ void OptiXEngine::_createCameras()
             properties.setProperty(stereoProperty);
             properties.setProperty(eyeSeparation);
         }
+        properties.setProperty(
+            {"headPosition", std::array<double, 3>{{0.0, 0.0, 0.0}}});
         addCameraType("perspective", properties);
     }
     {
@@ -239,10 +241,6 @@ CameraPtr OptiXEngine::createCamera() const
 void OptiXEngine::commit()
 {
     Engine::commit();
-}
-
-void OptiXEngine::preRender()
-{
 }
 
 Vector2ui OptiXEngine::getMinimumFrameSize() const

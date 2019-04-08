@@ -26,6 +26,10 @@ extern "C" {
 #include <lunchbox/monitor.h>
 #include <thread>
 
+#ifdef USE_NVPIPE
+#include <NvPipe.h>
+#endif
+
 namespace streamer
 {
 struct StreamerConfig
@@ -71,6 +75,7 @@ public:
     Streamer(const brayns::PropertyMap &props);
     ~Streamer();
     void init() final;
+    void preRender() final;
     void postRender() final;
 
 private:
@@ -80,7 +85,7 @@ private:
     void _runLoop();
     void encodeFrame(const int width, const int height,
                      const uint8_t *const data);
-    void stream_frame();
+    void stream_frame(const bool receivePkt = true);
     int threadingLevel() const;
 
     AVFormatContext *format_ctx{nullptr};
@@ -101,6 +106,10 @@ private:
     std::thread _sendThread;
     lunchbox::Monitor<int> _rgbas;
     lunchbox::Monitor<int> _pkts;
+
+#ifdef USE_NVPIPE
+    NvPipe *encoder{nullptr};
+#endif
 
     const brayns::PropertyMap _props;
 };

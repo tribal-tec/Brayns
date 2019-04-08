@@ -13,6 +13,7 @@ find_package(HighFive QUIET REQUIRED)
 find_package(FFMPEG REQUIRED)
 find_package(Lunchbox REQUIRED)
 find_package(ospray 1.7 REQUIRED)
+find_package(NvPipe)
 
 list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
 include(macros)
@@ -32,6 +33,10 @@ target_link_libraries(braynsStreamer
   PUBLIC braynsCommon braynsPluginAPI
   PRIVATE braynsEngine ${FFMPEG_LIBRARIES} Lunchbox ${OSPRAY_MPI_LIBRARIES}
 )
+if(TARGET NvPipe)
+  target_link_libraries(braynsStreamer PRIVATE NvPipe)
+  target_compile_definitions(braynsStreamer PRIVATE USE_NVPIPE)
+endif()
 set_target_properties(braynsStreamer PROPERTIES
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_VERSION})

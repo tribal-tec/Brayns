@@ -45,10 +45,16 @@ OptiXFrameBuffer::~OptiXFrameBuffer()
 void OptiXFrameBuffer::destroy()
 {
     if (_frameBuffer)
+    {
         _frameBuffer->destroy();
+        _frameBuffer = nullptr;
+    }
 
     if (_accumBuffer)
+    {
         _accumBuffer->destroy();
+        _accumBuffer = nullptr;
+    }
 }
 
 void OptiXFrameBuffer::resize(const Vector2ui& frameSize)
@@ -83,6 +89,7 @@ void OptiXFrameBuffer::_recreate()
         break;
     case FrameBufferFormat::rgba_i8:
     case FrameBufferFormat::bgra_i8:
+    case FrameBufferFormat::none:
         format = RT_FORMAT_UNSIGNED_BYTE4;
         break;
     case FrameBufferFormat::rgb_f32:
@@ -96,11 +103,21 @@ void OptiXFrameBuffer::_recreate()
     _frameBuffer = context->createBuffer(RT_BUFFER_OUTPUT, format, _frameSize.x,
                                          _frameSize.y);
 
-    _accumBuffer =
-        context->createBuffer(RT_BUFFER_INPUT_OUTPUT, RT_FORMAT_FLOAT4,
-                              _frameSize.x, _frameSize.y);
+    if (_accumulation)
+        _accumBuffer =
+            context->createBuffer(RT_BUFFER_INPUT_OUTPUT | RT_BUFFER_GPU_LOCAL,
+                                  RT_FORMAT_FLOAT4, _frameSize.x, _frameSize.y);
+    else
+        _accumBuffer =
+            context->createBuffer(RT_BUFFER_INPUT_OUTPUT | RT_BUFFER_GPU_LOCAL,
+                                  RT_FORMAT_FLOAT4, 1, 1);
     clear();
     BRAYNS_DEBUG << "Frame buffer created" << std::endl;
+}
+
+void* OptiXFrameBuffer::cudaBuffer()
+{
+    return _frameBuffer->getDevicePointer(0);
 }
 
 void OptiXFrameBuffer::map()
@@ -111,14 +128,16 @@ void OptiXFrameBuffer::map()
 
 void OptiXFrameBuffer::_mapUnsafe()
 {
-    rtBufferMap(_frameBuffer->get(), &_imageData);
-
     auto context = OptiXContext::get().getOptixContext();
-    const auto frame = _accumulation ? static_cast<size_t>(_accumFrames) : 0;
 
     context["output_buffer"]->set(_frameBuffer);
-    context["accum_buffer"]->set(_accumBuffer);
-    context["frame"]->setUint(frame);
+    if (_accumBuffer)
+        context["accum_buffer"]->set(_accumBuffer);
+
+    if (_frameBufferFormat == FrameBufferFormat::none)
+        return;
+
+    rtBufferMap(_frameBuffer->get(), &_imageData);
 
     switch (_frameBufferFormat)
     {
@@ -131,7 +150,6 @@ void OptiXFrameBuffer::_mapUnsafe()
     default:
         BRAYNS_ERROR << "Unsupported format" << std::endl;
     }
-    ++_accumFrames;
 }
 
 void OptiXFrameBuffer::unmap()

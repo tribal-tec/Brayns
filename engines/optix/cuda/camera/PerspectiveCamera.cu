@@ -137,10 +137,16 @@ RT_PROGRAM void perspectiveCamera()
         acc_val = make_float4(result, 1.f);
 
     output_buffer[launch_index] = make_color(make_float3(acc_val));
-    accum_buffer[launch_index] = acc_val;
+
+    if(accum_buffer.size().x > 1 && accum_buffer.size().y > 1)
+        accum_buffer[launch_index] = acc_val;
 }
 
 RT_PROGRAM void exception()
 {
+#if USE_DEBUG_EXCEPTIONS
+    const unsigned int code = rtGetExceptionCode();
+    rtPrintf("Exception code 0x%X at (%d, %d)\n", code, launch_index.x, launch_index.y);
+#endif
     output_buffer[launch_index] = make_color(bad_color);
 }

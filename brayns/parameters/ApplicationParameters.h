@@ -92,6 +92,7 @@ public:
 
     const strings& getInputPaths() const { return _inputPaths; }
     po::positional_options_description& posArgs() { return _positionalArgs; }
+    int fb() const { return _fb; }
 protected:
     void parse(const po::variables_map& vm) final;
 
@@ -109,6 +110,7 @@ protected:
     std::string _envMap;
 
     strings _inputPaths;
+    int _fb{0};
 
     po::positional_options_description _positionalArgs;
 

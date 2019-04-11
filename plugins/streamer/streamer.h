@@ -26,6 +26,8 @@ extern "C" {
 #include <lunchbox/monitor.h>
 #include <thread>
 
+#include <ospray/mpiCommon/MPIBcastFabric.h>
+
 #ifdef USE_NVPIPE
 #include <NvPipe.h>
 #endif
@@ -87,6 +89,7 @@ private:
                      const uint8_t *const data);
     void stream_frame(const bool receivePkt = true);
     int threadingLevel() const;
+    void _syncHeadPosition();
 
     AVFormatContext *format_ctx{nullptr};
     AVCodec *out_codec{nullptr};
@@ -112,6 +115,8 @@ private:
 #endif
 
     const brayns::PropertyMap _props;
+
+    std::unique_ptr<mpicommon::MPIBcastFabric> mpiFabric;
 };
 
 } // namespace streamer

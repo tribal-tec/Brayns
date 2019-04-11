@@ -79,10 +79,10 @@ public:
     void incrementAccumFrames() { ++_accumFrames; }
     size_t numAccumFrames() const { return _accumFrames; }
     freeimage::ImagePtr getImage();
-
+    void setName(const std::string& name) { _name = name; }
     virtual void* cudaBuffer() { return nullptr; }
 protected:
-    const std::string _name;
+    std::string _name;
     Vector2ui _frameSize;
     FrameBufferFormat _frameBufferFormat;
     bool _accumulation{true};

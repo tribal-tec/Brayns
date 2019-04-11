@@ -60,6 +60,11 @@ void OptiXCamera::commit()
     const auto head = getProperty<std::array<double, 3>>("headPosition");
     pos += Vector3d{-head[0], head[1], head[2]};
 
+    if (getBufferTarget() == "R")
+        pos.x += 0.0635f;
+    else if (getBufferTarget() == "L")
+        pos.x -= 0.0635f;
+
     _calculateCameraVariables(u, v, w);
 
     context[CUDA_ATTR_CAMERA_EYE]->setFloat(pos.x, pos.y, pos.z);

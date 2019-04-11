@@ -151,6 +151,15 @@ void Streamer::preRender()
         return;
     auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
     frameBuffer->setFormat(brayns::FrameBufferFormat::none);
+    switch (_props.getProperty<int>("eye"))
+    {
+    case 1:
+        frameBuffer->setName("L");
+        break;
+    case 2:
+        frameBuffer->setName("R");
+        break;
+    }
 #endif
 }
 
@@ -554,6 +563,7 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"mpi", false});
     props.setProperty({"threading", 0});
     props.setProperty({"verbose", false});
+    props.setProperty({"eye", 0});
 #ifdef USE_NVPIPE
     props.setProperty({"gpu", false});
 #endif

@@ -6,6 +6,7 @@
 #include <string>
 #include <unistd.h>
 
+#include <brayns/engine/Camera.h>
 #include <brayns/engine/Engine.h>
 #include <brayns/engine/FrameBuffer.h>
 #include <brayns/parameters/ParametersManager.h>
@@ -92,6 +93,14 @@ Streamer::Streamer(const brayns::PropertyMap &props)
     av_register_all();
 }
 
+constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 2.0, 0.0}};
+brayns::Property getHeadPositionProperty()
+{
+    brayns::Property headPosition{"headPosition", HEAD_INIT_POS};
+    // headPosition.markReadOnly();
+    return headPosition;
+}
+
 void Streamer::init()
 {
     StreamerConfig streamer_config{_props.getProperty<int>("width"),
@@ -101,6 +110,14 @@ void Streamer::init()
                                    _props.getProperty<std::string>("profile")};
     if (!init(streamer_config))
         return;
+
+    auto &camera = _api->getCamera();
+    if (!camera.hasProperty("headPosition"))
+    {
+        brayns::PropertyMap props;
+        props.setProperty(getHeadPositionProperty());
+        camera.updateProperties(props);
+    }
 
     _timer.start();
 
@@ -125,6 +142,7 @@ void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
 
 void Streamer::preRender()
 {
+//_syncHeadPosition();
 #ifdef USE_NVPIPE
     if (!_props.getProperty<bool>("gpu"))
         return;
@@ -138,6 +156,7 @@ void Streamer::preRender()
 
 void Streamer::postRender()
 {
+    _syncHeadPosition();
     const auto fps = config.fps;
     if (fps == 0)
         return;
@@ -270,7 +289,8 @@ void Streamer::stream_frame(const bool receivePkt)
 {
     if (_props.getProperty<bool>("mpi"))
     {
-        std::cout << "BARRIER" << mpicommon::world.rank << std::endl;
+        if (_props.getProperty<bool>("verbose"))
+            std::cout << "BARRIER" << mpicommon::world.rank << std::endl;
         mpicommon::world.barrier();
     }
 
@@ -289,6 +309,30 @@ void Streamer::stream_frame(const bool receivePkt)
 int Streamer::threadingLevel() const
 {
     return _props.getProperty<int>("threading");
+}
+
+void Streamer::_syncHeadPosition()
+{
+    if (_props.getProperty<bool>("mpi"))
+    {
+        auto &camera = _api->getCamera();
+        if (mpicommon::IamTheMaster())
+        {
+            const auto head =
+                camera.getProperty<std::array<double, 3>>("headPosition");
+            mpiFabric->send((void *)head.data(), sizeof(double) * 3);
+            BRAYNS_INFO << mpicommon::world.rank << " " << head[1] << std::endl;
+        }
+        else
+        {
+            double *ptr;
+            mpiFabric->read((void *&)ptr);
+            std::array<double, 3> head;
+            std::copy(ptr, ptr + 3, std::begin(head));
+            camera.updateProperty("headPosition", head);
+            BRAYNS_INFO << mpicommon::world.rank << " " << head[1] << std::endl;
+        }
+    }
 }
 
 void Streamer::_runLoop()
@@ -450,6 +494,44 @@ bool Streamer::init(const StreamerConfig &streamer_config)
     }
 
     pkt = av_packet_alloc();
+
+    if (_props.getProperty<bool>("mpi"))
+    {
+        mpicommon::world.barrier();
+        if (mpicommon::IamTheMaster())
+        {
+            MPI_CALL(Comm_split(mpicommon::world.comm, 1, mpicommon::world.rank,
+                                &mpicommon::app.comm));
+
+            mpicommon::app.makeIntraComm();
+
+            MPI_CALL(Intercomm_create(mpicommon::app.comm, 0,
+                                      mpicommon::world.comm, 1, 1,
+                                      &mpicommon::worker.comm));
+
+            mpicommon::worker.makeInterComm();
+            mpiFabric =
+                std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::worker,
+                                                            MPI_ROOT, 0);
+        }
+        else
+        {
+            MPI_CALL(Comm_split(mpicommon::world.comm, 0, mpicommon::world.rank,
+                                &mpicommon::worker.comm));
+
+            mpicommon::worker.makeIntraComm();
+
+            MPI_CALL(Intercomm_create(mpicommon::worker.comm, 0,
+                                      mpicommon::world.comm, 0, 1,
+                                      &mpicommon::app.comm));
+
+            mpicommon::app.makeInterComm();
+            mpiFabric =
+                std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::app,
+                                                            MPI_ROOT, 0);
+        }
+        mpicommon::world.barrier();
+    }
 
     return true;
 }

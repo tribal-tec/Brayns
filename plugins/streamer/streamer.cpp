@@ -14,6 +14,14 @@
 
 #include <ospray/mpiCommon/MPICommon.h>
 
+#define PRINTMSG(msg)                                   \
+    if (_props.getProperty<bool>("verbose"))            \
+    {                                                   \
+        if (_props.getProperty<bool>("mpi"))            \
+            std::cout << mpicommon::world.rank << ": "; \
+        std::cout << msg << std::endl;                  \
+    }
+
 // mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
 // mpv /tmp/test.sdp --profile=low-latency --vf=vflip
 namespace streamer
@@ -203,21 +211,28 @@ void Streamer::postRender()
                           gop > 0
                               ? framecnt % _props.getProperty<int>("gop") == 0
                               : false);
-        ++framecnt;
         timer.stop();
-        if (_props.getProperty<bool>("verbose"))
-            std::cout << "NVEncode " << timer.milliseconds() << std::endl;
+
+        PRINTMSG("NVEncode " << timer.milliseconds());
 
         av_init_packet(pkt);
         pkt->data = compressed.data();
         pkt->size = size;
-        pkt->pts = framecnt;
         pkt->pts = av_rescale_q(framecnt,
                                 AVRational{1, _props.getProperty<int>("fps")},
                                 out_stream->time_base);
         pkt->dts = pkt->pts;
-        // pkt->stream_index = out_stream->index;
-        stream_frame(false);
+        pkt->stream_index = out_stream->index;
+
+        if (!memcmp(compressed.data(), "\x00\x00\x00\x01\x67", 5))
+            pkt->flags |= AV_PKT_FLAG_KEY;
+
+        // stream_frame(false);
+        _barrier();
+        int ret = av_write_frame(format_ctx, pkt);
+        av_write_frame(format_ctx, NULL);
+        av_packet_unref(pkt);
+        ++framecnt;
         return;
     }
 #endif
@@ -296,13 +311,7 @@ Streamer::~Streamer()
 
 void Streamer::stream_frame(const bool receivePkt)
 {
-    if (_props.getProperty<bool>("mpi"))
-    {
-        if (_props.getProperty<bool>("verbose"))
-            std::cout << "BARRIER" << mpicommon::world.rank << std::endl;
-        mpicommon::world.barrier();
-    }
-
+    _barrier();
     if (receivePkt)
     {
         const auto ret = avcodec_receive_packet(out_codec_ctx, pkt);
@@ -330,7 +339,7 @@ void Streamer::_syncHeadPosition()
             const auto head =
                 camera.getProperty<std::array<double, 3>>("headPosition");
             mpiFabric->send((void *)head.data(), sizeof(double) * 3);
-            BRAYNS_INFO << mpicommon::world.rank << " " << head[1] << std::endl;
+            PRINTMSG("Head x " << head[0]);
         }
         else
         {
@@ -339,8 +348,17 @@ void Streamer::_syncHeadPosition()
             std::array<double, 3> head;
             std::copy(ptr, ptr + 3, std::begin(head));
             camera.updateProperty("headPosition", head);
-            BRAYNS_INFO << mpicommon::world.rank << " " << head[1] << std::endl;
+            PRINTMSG("Head x " << head[0]);
         }
+    }
+}
+
+void Streamer::_barrier()
+{
+    if (_props.getProperty<bool>("mpi"))
+    {
+        PRINTMSG("Barrier");
+        mpicommon::world.barrier();
     }
 }
 
@@ -368,8 +386,8 @@ void Streamer::encodeFrame(const int width, const int height,
     sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
               picture.frame->linesize);
     timer.stop();
-    if (_props.getProperty<bool>("verbose"))
-        std::cout << "Scale " << timer.milliseconds() << std::endl;
+
+    PRINTMSG("Scale " << timer.milliseconds());
     --_rgbas;
     picture.frame->pts +=
         av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
@@ -418,27 +436,21 @@ bool Streamer::init(const StreamerConfig &streamer_config)
             return false;
         }
     }
-
-    // use selected codec
-    AVCodecID codec_id = AV_CODEC_ID_H264;
-    out_codec = avcodec_find_encoder(codec_id);
-    if (!(out_codec))
-    {
-        fprintf(stderr, "Could not find encoder for '%s'\n",
-                avcodec_get_name(codec_id));
-        return false;
-    }
-
-    out_stream = avformat_new_stream(format_ctx, out_codec);
-    if (!out_stream)
-    {
-        fprintf(stderr, "Could not allocate stream\n");
-        return false;
-    }
-
 #ifdef USE_NVPIPE
     if (_props.getProperty<bool>("gpu"))
     {
+        format_ctx->oformat = fmt;
+        fmt->video_codec = AV_CODEC_ID_H264;
+
+        out_stream = avformat_new_stream(format_ctx, nullptr);
+        out_stream->id = 0;
+        out_stream->codecpar->codec_id = AV_CODEC_ID_H264;
+        out_stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+        out_stream->codecpar->width = config.dst_width;
+        out_stream->codecpar->height = config.dst_height;
+        out_stream->time_base.den = 1;
+        out_stream->time_base.num = config.fps;
+
         encoder = NvPipe_CreateEncoder(NVPIPE_RGBA32, NVPIPE_H264, NVPIPE_LOSSY,
                                        config.bitrate, config.fps,
                                        config.dst_width, config.dst_height);
@@ -446,9 +458,26 @@ bool Streamer::init(const StreamerConfig &streamer_config)
             std::cerr << "Failed to create encoder: " << NvPipe_GetError(NULL)
                       << std::endl;
     }
+    else
 #endif
-    // else
     {
+        // use selected codec
+        AVCodecID codec_id = AV_CODEC_ID_H264;
+        out_codec = avcodec_find_encoder(codec_id);
+        if (!(out_codec))
+        {
+            fprintf(stderr, "Could not find encoder for '%s'\n",
+                    avcodec_get_name(codec_id));
+            return false;
+        }
+
+        out_stream = avformat_new_stream(format_ctx, out_codec);
+        if (!out_stream)
+        {
+            fprintf(stderr, "Could not allocate stream\n");
+            return false;
+        }
+
         out_codec_ctx = avcodec_alloc_context3(out_codec);
         if (!out_codec_ctx)
         {
@@ -469,11 +498,12 @@ bool Streamer::init(const StreamerConfig &streamer_config)
             static_cast<uint8_t *>(av_mallocz(out_codec_ctx->extradata_size));
         memcpy(out_stream->codecpar->extradata, out_codec_ctx->extradata,
                out_codec_ctx->extradata_size);
+        picture.init(out_codec_ctx->pix_fmt, config.dst_width,
+                     config.dst_height);
     }
 
-    picture.init(out_codec_ctx->pix_fmt, config.dst_width, config.dst_height);
-
-    if (avformat_write_header(format_ctx, nullptr) < 0)
+    if (avformat_write_header(format_ctx, nullptr) !=
+        AVSTREAM_INIT_IN_WRITE_HEADER)
     {
         fprintf(stderr, "Could not write header!\n");
         return false;
@@ -506,7 +536,7 @@ bool Streamer::init(const StreamerConfig &streamer_config)
 
     if (_props.getProperty<bool>("mpi"))
     {
-        mpicommon::world.barrier();
+        _barrier();
         if (mpicommon::IamTheMaster())
         {
             MPI_CALL(Comm_split(mpicommon::world.comm, 1, mpicommon::world.rank,
@@ -539,7 +569,7 @@ bool Streamer::init(const StreamerConfig &streamer_config)
                 std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::app,
                                                             MPI_ROOT, 0);
         }
-        mpicommon::world.barrier();
+        _barrier();
     }
 
     return true;

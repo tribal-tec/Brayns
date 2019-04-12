@@ -90,6 +90,7 @@ private:
     void stream_frame(const bool receivePkt = true);
     int threadingLevel() const;
     void _syncHeadPosition();
+    void _barrier();
 
     AVFormatContext *format_ctx{nullptr};
     AVCodec *out_codec{nullptr};

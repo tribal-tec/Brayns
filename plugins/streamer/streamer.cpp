@@ -173,20 +173,10 @@ void Streamer::preRender()
 
 void Streamer::postRender()
 {
+    if (_syncFrame())
+        return;
+
     _syncHeadPosition();
-    const auto fps = config.fps;
-    if (fps == 0)
-        return;
-
-    const auto elapsed = _timer.elapsed() + _leftover;
-    const auto duration = 1.0 / fps;
-    if (elapsed < duration)
-        return;
-
-    _leftover = elapsed - duration;
-    for (; _leftover > duration;)
-        _leftover -= duration;
-    _timer.start();
 
     const auto &frameBuffers = _api->getEngine().getFrameBuffers();
     if (frameBuffers.size() < 1)
@@ -197,7 +187,6 @@ void Streamer::postRender()
     if (auto cudaBuffer = frameBuffer->cudaBuffer())
     {
         static std::vector<uint8_t> compressed;
-        static size_t framecnt = 0;
         if (compressed.empty())
             compressed.resize(frameBuffer->getSize().x *
                               frameBuffer->getSize().y * 4);
@@ -209,7 +198,7 @@ void Streamer::postRender()
                           compressed.data(), compressed.size(),
                           frameBuffer->getSize().x, frameBuffer->getSize().y,
                           gop > 0
-                              ? framecnt % _props.getProperty<int>("gop") == 0
+                              ? _frameCnt % _props.getProperty<int>("gop") == 0
                               : false);
         timer.stop();
 
@@ -218,7 +207,7 @@ void Streamer::postRender()
         av_init_packet(pkt);
         pkt->data = compressed.data();
         pkt->size = size;
-        pkt->pts = av_rescale_q(framecnt,
+        pkt->pts = av_rescale_q(_frameCnt,
                                 AVRational{1, _props.getProperty<int>("fps")},
                                 out_stream->time_base);
         pkt->dts = pkt->pts;
@@ -232,7 +221,6 @@ void Streamer::postRender()
         int ret = av_write_frame(format_ctx, pkt);
         av_write_frame(format_ctx, NULL);
         av_packet_unref(pkt);
-        ++framecnt;
         return;
     }
 #endif
@@ -353,6 +341,51 @@ void Streamer::_syncHeadPosition()
     }
 }
 
+bool Streamer::_syncFrame()
+{
+    if (_props.getProperty<bool>("mpi"))
+    {
+        bool skip = false;
+        if (mpicommon::IamTheMaster())
+        {
+            skip = _skipFrame();
+            if (!skip)
+                ++_frameCnt;
+            size_t data[2];
+            data[0] = skip ? 1 : 0;
+            data[1] = _frameCnt;
+            mpiFabric->send((void *)&data[0], sizeof(size_t) * 2);
+        }
+        else
+        {
+            size_t *ptr;
+            mpiFabric->read((void *&)ptr);
+            skip = ptr[0] == 1;
+            _frameCnt = ptr[1];
+        }
+        return skip;
+    }
+    return _skipFrame();
+}
+
+bool Streamer::_skipFrame()
+{
+    const auto fps = config.fps;
+    if (fps == 0)
+        return true;
+
+    const auto elapsed = _timer.elapsed() + _leftover;
+    const auto duration = 1.0 / fps;
+    if (elapsed < duration)
+        return true;
+
+    _leftover = elapsed - duration;
+    for (; _leftover > duration;)
+        _leftover -= duration;
+    _timer.start();
+    return false;
+}
+
 void Streamer::_barrier()
 {
     if (_props.getProperty<bool>("mpi"))
@@ -389,8 +422,11 @@ void Streamer::encodeFrame(const int width, const int height,
 
     PRINTMSG("Scale " << timer.milliseconds());
     --_rgbas;
-    picture.frame->pts +=
-        av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
+    picture.frame->pts =
+        av_rescale_q(_frameCnt, AVRational{1, _props.getProperty<int>("fps")},
+                     out_stream->time_base);
+    //    picture.frame->pts +=
+    //        av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
 
     if (avcodec_send_frame(out_codec_ctx, picture.frame) >= 0)
     {

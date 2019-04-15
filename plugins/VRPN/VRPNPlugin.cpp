@@ -88,7 +88,9 @@ void VRPNPlugin::init()
     BRAYNS_INFO << "VRPN successfully connected to " << _vrpnName << std::endl;
 
 #ifdef BRAYNSVRPN_USE_LIBUV
-    _setupIdleTimer();
+// don't do this in MPI mode, otherwise triggerRender() causes out-of-order
+// postRender
+//    _setupIdleTimer();
 #endif
 
     _vrpnTracker->register_change_handler(&(_api->getCamera()), trackerCallback,

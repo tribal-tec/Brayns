@@ -90,6 +90,8 @@ private:
     void stream_frame(const bool receivePkt = true);
     int threadingLevel() const;
     void _syncHeadPosition();
+    bool _syncFrame();
+    bool _skipFrame();
     void _barrier();
 
     AVFormatContext *format_ctx{nullptr};
@@ -116,6 +118,7 @@ private:
 #endif
 
     const brayns::PropertyMap _props;
+    size_t _frameCnt{0};
 
     std::unique_ptr<mpicommon::MPIBcastFabric> mpiFabric;
 };

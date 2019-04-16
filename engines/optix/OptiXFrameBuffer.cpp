@@ -40,16 +40,17 @@ OptiXFrameBuffer::~OptiXFrameBuffer()
     auto lock = getScopeLock();
     _unmapUnsafe();
     destroy();
+    _activeBuffer = _activeBuffer == 0 ? 1 : 0;
+    destroy();
 }
 
 void OptiXFrameBuffer::destroy()
 {
-    if (_frameBuffer)
+    if (_frameBuffer[_activeBuffer])
     {
-        _frameBuffer->destroy();
-        _frameBuffer = nullptr;
+        _frameBuffer[_activeBuffer]->destroy();
+        _frameBuffer[_activeBuffer] = nullptr;
     }
-
     if (_accumBuffer)
     {
         _accumBuffer->destroy();
@@ -62,7 +63,7 @@ void OptiXFrameBuffer::resize(const Vector2ui& frameSize)
     if (glm::compMul(frameSize) == 0)
         throw std::runtime_error("Invalid size for framebuffer resize");
 
-    if (_frameBuffer && getSize() == frameSize)
+    if (_frameBuffer[_activeBuffer] && getSize() == frameSize)
         return;
 
     _frameSize = frameSize;
@@ -75,7 +76,7 @@ void OptiXFrameBuffer::_recreate()
     BRAYNS_DEBUG << "Creating frame buffer..." << std::endl;
     auto lock = getScopeLock();
 
-    if (_frameBuffer)
+    if (_frameBuffer[_activeBuffer])
     {
         _unmapUnsafe();
         destroy();
@@ -100,8 +101,9 @@ void OptiXFrameBuffer::_recreate()
     }
 
     auto context = OptiXContext::get().getOptixContext();
-    _frameBuffer = context->createBuffer(RT_BUFFER_OUTPUT, format, _frameSize.x,
-                                         _frameSize.y);
+    _frameBuffer[_activeBuffer] =
+        context->createBuffer(RT_BUFFER_OUTPUT, format, _frameSize.x,
+                              _frameSize.y);
 
     if (_accumulation)
         _accumBuffer =
@@ -117,7 +119,9 @@ void OptiXFrameBuffer::_recreate()
 
 void* OptiXFrameBuffer::cudaBuffer()
 {
-    return _frameBuffer->getDevicePointer(0);
+    auto buf = _frameBuffer[_activeBuffer]->getDevicePointer(0);
+    _activeBuffer = _activeBuffer == 0 ? 1 : 0;
+    return buf;
 }
 
 void OptiXFrameBuffer::map()
@@ -130,14 +134,14 @@ void OptiXFrameBuffer::_mapUnsafe()
 {
     auto context = OptiXContext::get().getOptixContext();
 
-    context["output_buffer"]->set(_frameBuffer);
+    context["output_buffer"]->set(_frameBuffer[_activeBuffer]);
     if (_accumBuffer)
         context["accum_buffer"]->set(_accumBuffer);
 
     if (_frameBufferFormat == FrameBufferFormat::none)
         return;
 
-    rtBufferMap(_frameBuffer->get(), &_imageData);
+    rtBufferMap(_frameBuffer[_activeBuffer]->get(), &_imageData);
 
     switch (_frameBufferFormat)
     {
@@ -163,7 +167,7 @@ void OptiXFrameBuffer::_unmapUnsafe()
     if (_frameBufferFormat == FrameBufferFormat::none)
         return;
 
-    rtBufferUnmap(_frameBuffer->get());
+    rtBufferUnmap(_frameBuffer[_activeBuffer]->get());
     _colorBuffer = nullptr;
     _depthBuffer = nullptr;
 }

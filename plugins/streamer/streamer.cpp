@@ -35,6 +35,95 @@ inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
 }
 }
 
+namespace mpicommon
+{
+class MPIBcastFabric2 : public networking::Fabric
+{
+public:
+    MPIBcastFabric2(const Group &group, int sendRank, int recvRank)
+        : group(group)
+        , sendRank(sendRank)
+        , recvRank(recvRank)
+    {
+        if (!group.valid())
+            throw std::runtime_error(
+                "#osp:mpi: trying to set up an MPI fabric "
+                "with an invalid MPI communicator");
+    }
+
+    virtual ~MPIBcastFabric2() override = default;
+
+    /*! send exact number of bytes - the fabric can do that through
+      multiple smaller messages, but all bytes have to be
+      delivered */
+    virtual void send(const void *_mem, size_t size) override
+    {
+        assert(size < (1LL << 30));
+        uint32_t sz32 = size;
+
+        // Send the size of the bcast we're sending. Only this part must be
+        // non-blocking,
+        // after getting the size we know everyone will enter the blocking
+        // barrier and the
+        // blocking bcast where the buffer is sent out.
+        MPI_Request request;
+        MPI_CALL(Ibcast(&sz32, 1, MPI_INT, sendRank, group.comm, &request));
+
+        // Now do non-blocking test to see when this bcast is satisfied to avoid
+        // locking out the send/recv threads
+        waitForBcast(request);
+
+        // NOTE(jda) - UGH! MPI doesn't let us send const data!
+        void *mem = const_cast<void *>(_mem);
+        MPI_CALL(Bcast(mem, sz32, MPI_BYTE, sendRank, group.comm));
+    }
+
+    /*! receive some block of data - whatever the sender has sent -
+      and give us size and pointer to this data */
+    virtual size_t read(void *&mem) override
+    {
+        uint32_t sz32 = 0;
+        // Get the size of the bcast being sent to us. Only this part must be
+        // non-blocking,
+        // after getting the size we know everyone will enter the blocking
+        // barrier and the
+        // blocking bcast where the buffer is sent out.
+        MPI_Request request;
+        MPI_CALL(Ibcast(&sz32, 1, MPI_INT, recvRank, group.comm, &request));
+
+        // Now do non-blocking test to see when this bcast is satisfied to avoid
+        // locking out the send/recv threads
+        waitForBcast(request);
+
+        // TODO: Maybe at some point we should dump the buffer if it gets really
+        // large
+        buffer.resize(sz32);
+        mem = buffer.data();
+        MPI_CALL(Bcast(mem, sz32, MPI_BYTE, recvRank, group.comm));
+        return sz32;
+    }
+
+private:
+    // wait for Bcast with non-blocking test, and barrier
+    void waitForBcast(MPI_Request &request)
+    {
+        for (;;)
+        {
+            int size_bcast_done;
+            MPI_CALL(Test(&request, &size_bcast_done, MPI_STATUS_IGNORE));
+            if (size_bcast_done)
+                break;
+            std::this_thread::sleep_for(std::chrono::nanoseconds(250));
+        }
+        // group.barrier();
+    }
+
+    std::vector<byte_t> buffer;
+    Group group;
+    int sendRank, recvRank;
+};
+}
+
 #define PRINTMSG(msg)                                   \
     if (_props.getProperty<bool>("verbose"))            \
     {                                                   \
@@ -606,8 +695,8 @@ bool Streamer::init(const StreamerConfig &streamer_config)
 
             mpicommon::worker.makeInterComm();
             mpiFabric =
-                std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::worker,
-                                                            MPI_ROOT, 0);
+                std::make_unique<mpicommon::MPIBcastFabric2>(mpicommon::worker,
+                                                             MPI_ROOT, 0);
         }
         else
         {
@@ -622,8 +711,8 @@ bool Streamer::init(const StreamerConfig &streamer_config)
 
             mpicommon::app.makeInterComm();
             mpiFabric =
-                std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::app,
-                                                            MPI_ROOT, 0);
+                std::make_unique<mpicommon::MPIBcastFabric2>(mpicommon::app,
+                                                             MPI_ROOT, 0);
         }
         _barrier();
     }

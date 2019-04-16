@@ -219,6 +219,7 @@ void Streamer::postRender()
                               ? _frameCnt % _props.getProperty<int>("gop") == 0
                               : false);
         timer.stop();
+        encodeDuration = timer.elapsed();
 
         PRINTMSG("NVEncode " << timer.milliseconds());
 
@@ -350,9 +351,12 @@ bool Streamer::_syncFrame()
             const auto head =
                 camera.getProperty<std::array<double, 3>>("headPosition");
 
+            brayns::Timer timer;
+            timer.start();
             ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
             stream << head << skip << _frameCnt;
             stream.flush();
+            mpiDuration = timer.elapsed();
             PRINTMSG("Head x " << head[0]);
         }
         else
@@ -381,8 +385,15 @@ bool Streamer::_skipFrame()
     //    const auto duration = 1.0 / fps;
     //    if (elapsed < duration)
     //        return true;
-    std::cout << int(elapsed * 1000) << "ms; " << 1. / elapsed << " FPS"
-              << std::endl;
+    std::cout << '\r' << "MPI " << int(mpiDuration * 1000) << "ms | "
+              << "encode " << int(encodeDuration * 1000) << "ms | "
+              << "render " << int(_api->getEngine().renderDuration * 1000)
+              << "ms | "
+              << "total " << int(elapsed * 1000) << "ms | "
+              << "overhead "
+              << (elapsed - _api->getEngine().renderDuration) * 1000 << "ms |"
+              << 1. / elapsed << "/" << 1. / _api->getEngine().renderDuration
+              << " FPS" << std::flush;
 
     //    _leftover = elapsed - duration;
     //    for (; _leftover > duration;)
@@ -419,6 +430,8 @@ void Streamer::encodeFrame(const int width, const int height,
         sws_getCachedContext(sws_context, width, height, AV_PIX_FMT_RGBA,
                              config.dst_width, config.dst_height,
                              STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+    brayns::Timer encodeTimer;
+    encodeTimer.start();
     brayns::Timer timer;
     timer.start();
     sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
@@ -440,6 +453,8 @@ void Streamer::encodeFrame(const int width, const int height,
         else
             stream_frame();
     }
+    encodeTimer.stop();
+    encodeDuration = encodeTimer.elapsed();
 }
 
 bool Streamer::init(const StreamerConfig &streamer_config)

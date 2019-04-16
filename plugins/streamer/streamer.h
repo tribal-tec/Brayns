@@ -118,6 +118,8 @@ private:
 
     const brayns::PropertyMap _props;
     size_t _frameCnt{0};
+    double encodeDuration{0};
+    double mpiDuration{0};
 
     std::unique_ptr<mpicommon::MPIBcastFabric> mpiFabric;
 };

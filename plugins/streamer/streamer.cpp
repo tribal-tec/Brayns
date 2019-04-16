@@ -115,7 +115,7 @@ private:
                 break;
             std::this_thread::sleep_for(std::chrono::nanoseconds(250));
         }
-        // group.barrier();
+        group.barrier();
     }
 
     std::vector<byte_t> buffer;
@@ -293,42 +293,11 @@ void Streamer::postRender()
 #ifdef USE_NVPIPE
     if (auto cudaBuffer = frameBuffer->cudaBuffer())
     {
-        static std::vector<uint8_t> compressed;
-        if (compressed.empty())
-            compressed.resize(frameBuffer->getSize().x *
-                              frameBuffer->getSize().y * 4);
-        const auto gop = _props.getProperty<int>("gop");
-        brayns::Timer timer;
-        timer.start();
-        uint64_t size =
-            NvPipe_Encode(encoder, cudaBuffer, frameBuffer->getSize().x * 4,
-                          compressed.data(), compressed.size(),
-                          frameBuffer->getSize().x, frameBuffer->getSize().y,
-                          gop > 0
-                              ? _frameCnt % _props.getProperty<int>("gop") == 0
-                              : false);
-        timer.stop();
-        encodeDuration = timer.elapsed();
-
-        PRINTMSG("NVEncode " << timer.milliseconds());
-
-        av_init_packet(pkt);
-        pkt->data = compressed.data();
-        pkt->size = size;
-        pkt->pts = av_rescale_q(_frameCnt,
-                                AVRational{1, _props.getProperty<int>("fps")},
-                                out_stream->time_base);
-        pkt->dts = pkt->pts;
-        pkt->stream_index = out_stream->index;
-
-        if (!memcmp(compressed.data(), "\x00\x00\x00\x01\x67", 5))
-            pkt->flags |= AV_PKT_FLAG_KEY;
-
-        // stream_frame(false);
-        //_barrier();
-        int ret = av_write_frame(format_ctx, pkt);
-        av_write_frame(format_ctx, NULL);
-        av_packet_unref(pkt);
+        _barrier();
+        if (threadingLevel() == 1)
+            _cudaQueue.push(cudaBuffer);
+        else
+            compressAndSend(cudaBuffer, frameBuffer);
         return;
     }
 #endif
@@ -355,6 +324,47 @@ void Streamer::postRender()
     }
     frameBuffer->unmap();
 }
+
+#ifdef USE_NVPIPE
+void Streamer::compressAndSend(void *cudaBuffer,
+                               brayns::FrameBufferPtr frameBuffer)
+{
+    static std::vector<uint8_t> compressed;
+    if (compressed.empty())
+        compressed.resize(frameBuffer->getSize().x * frameBuffer->getSize().y *
+                          4);
+    const auto gop = _props.getProperty<int>("gop");
+    brayns::Timer timer;
+    timer.start();
+    uint64_t size =
+        NvPipe_Encode(encoder, cudaBuffer, frameBuffer->getSize().x * 4,
+                      compressed.data(), compressed.size(),
+                      frameBuffer->getSize().x, frameBuffer->getSize().y,
+                      gop > 0 ? _frameCnt % _props.getProperty<int>("gop") == 0
+                              : false);
+    timer.stop();
+    encodeDuration = timer.elapsed();
+
+    PRINTMSG("NVEncode " << timer.milliseconds());
+
+    av_init_packet(pkt);
+    pkt->data = compressed.data();
+    pkt->size = size;
+    pkt->pts =
+        av_rescale_q(_frameCnt, AVRational{1, _props.getProperty<int>("fps")},
+                     out_stream->time_base);
+    pkt->dts = pkt->pts;
+    pkt->stream_index = out_stream->index;
+
+    if (!memcmp(compressed.data(), "\x00\x00\x00\x01\x67", 5))
+        pkt->flags |= AV_PKT_FLAG_KEY;
+
+    // stream_frame(false);
+    int ret = av_write_frame(format_ctx, pkt);
+    av_write_frame(format_ctx, NULL);
+    av_packet_unref(pkt);
+}
+#endif
 
 void Streamer::cleanup()
 {
@@ -504,10 +514,23 @@ void Streamer::_runLoop()
 {
     while (_api->getEngine().getKeepRunning())
     {
-        _pkts.waitGT(0);
-        --_pkts;
+#ifdef USE_NVPIPE
+        if (encoder)
+        {
+            auto cudaBuffer = _cudaQueue.pop();
+            compressAndSend(
+                cudaBuffer,
+                _api->getEngine()
+                    .getFrameBuffers()[_props.getProperty<int>("fb")]);
+        }
+        else
+#endif
+        {
+            _pkts.waitGT(0);
+            --_pkts;
 
-        stream_frame();
+            stream_frame();
+        }
     }
 }
 

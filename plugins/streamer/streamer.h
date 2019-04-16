@@ -24,6 +24,7 @@ extern "C" {
 #include <brayns/pluginapi/ExtensionPlugin.h>
 
 #include <lunchbox/monitor.h>
+#include <lunchbox/mtQueue.h>
 #include <thread>
 
 #include <ospray/mpiCommon/MPIBcastFabric.h>
@@ -114,6 +115,8 @@ private:
 
 #ifdef USE_NVPIPE
     NvPipe *encoder{nullptr};
+    void compressAndSend(void *cudaBuffer, brayns::FrameBufferPtr frameBuffer);
+    lunchbox::MTQueue<void *> _cudaQueue;
 #endif
 
     const brayns::PropertyMap _props;

@@ -121,7 +121,7 @@ private:
     double encodeDuration{0};
     double mpiDuration{0};
 
-    std::unique_ptr<mpicommon::MPIBcastFabric> mpiFabric;
+    std::unique_ptr<ospcommon::networking::Fabric> mpiFabric;
 };
 
 } // namespace streamer

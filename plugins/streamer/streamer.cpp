@@ -13,6 +13,27 @@
 #include <brayns/pluginapi/PluginAPI.h>
 
 #include <ospray/mpiCommon/MPICommon.h>
+#include <ospray/ospcommon/networking/BufferedDataStreaming.h>
+
+namespace ospcommon
+{
+namespace networking
+{
+template <typename T>
+inline WriteStream &operator<<(WriteStream &buf, const std::array<T, 3> &rh)
+{
+    buf.write((const byte_t *)rh.data(), sizeof(T) * 3);
+    return buf;
+}
+
+template <typename T>
+inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
+{
+    buf.read((byte_t *)rh.data(), sizeof(T) * 3);
+    return buf;
+}
+}
+}
 
 #define PRINTMSG(msg)                                   \
     if (_props.getProperty<bool>("verbose"))            \
@@ -150,7 +171,6 @@ void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
 
 void Streamer::preRender()
 {
-//_syncHeadPosition();
 #ifdef USE_NVPIPE
     if (!_props.getProperty<bool>("gpu"))
         return;
@@ -175,8 +195,6 @@ void Streamer::postRender()
 {
     if (_syncFrame())
         return;
-
-    _syncHeadPosition();
 
     const auto &frameBuffers = _api->getEngine().getFrameBuffers();
     if (frameBuffers.size() < 1)
@@ -217,7 +235,7 @@ void Streamer::postRender()
             pkt->flags |= AV_PKT_FLAG_KEY;
 
         // stream_frame(false);
-        _barrier();
+        //_barrier();
         int ret = av_write_frame(format_ctx, pkt);
         av_write_frame(format_ctx, NULL);
         av_packet_unref(pkt);
@@ -317,55 +335,40 @@ int Streamer::threadingLevel() const
     return _props.getProperty<int>("threading");
 }
 
-void Streamer::_syncHeadPosition()
-{
-    if (_props.getProperty<bool>("mpi"))
-    {
-        auto &camera = _api->getCamera();
-        if (mpicommon::IamTheMaster())
-        {
-            const auto head =
-                camera.getProperty<std::array<double, 3>>("headPosition");
-            mpiFabric->send((void *)head.data(), sizeof(double) * 3);
-            PRINTMSG("Head x " << head[0]);
-        }
-        else
-        {
-            double *ptr;
-            mpiFabric->read((void *&)ptr);
-            std::array<double, 3> head;
-            std::copy(ptr, ptr + 3, std::begin(head));
-            camera.updateProperty("headPosition", head);
-            PRINTMSG("Head x " << head[0]);
-        }
-    }
-}
-
 bool Streamer::_syncFrame()
 {
     if (_props.getProperty<bool>("mpi"))
     {
+        auto &camera = _api->getCamera();
         bool skip = false;
         if (mpicommon::IamTheMaster())
         {
             skip = _skipFrame();
             if (!skip)
                 ++_frameCnt;
-            size_t data[2];
-            data[0] = skip ? 1 : 0;
-            data[1] = _frameCnt;
-            mpiFabric->send((void *)&data[0], sizeof(size_t) * 2);
+
+            const auto head =
+                camera.getProperty<std::array<double, 3>>("headPosition");
+
+            ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
+            stream << head << skip << _frameCnt;
+            stream.flush();
+            PRINTMSG("Head x " << head[0]);
         }
         else
         {
-            size_t *ptr;
-            mpiFabric->read((void *&)ptr);
-            skip = ptr[0] == 1;
-            _frameCnt = ptr[1];
+            std::array<double, 3> head;
+            ospcommon::networking::BufferedReadStream stream(*mpiFabric);
+            stream >> head >> skip >> _frameCnt;
+            camera.updateProperty("headPosition", head);
+            PRINTMSG("Head x " << head[0]);
         }
         return skip;
     }
-    return _skipFrame();
+    const auto skip = _skipFrame();
+    if (!skip)
+        ++_frameCnt;
+    return skip;
 }
 
 bool Streamer::_skipFrame()
@@ -375,13 +378,15 @@ bool Streamer::_skipFrame()
         return true;
 
     const auto elapsed = _timer.elapsed() + _leftover;
-    const auto duration = 1.0 / fps;
-    if (elapsed < duration)
-        return true;
+    //    const auto duration = 1.0 / fps;
+    //    if (elapsed < duration)
+    //        return true;
+    std::cout << int(elapsed * 1000) << "ms; " << 1. / elapsed << " FPS"
+              << std::endl;
 
-    _leftover = elapsed - duration;
-    for (; _leftover > duration;)
-        _leftover -= duration;
+    //    _leftover = elapsed - duration;
+    //    for (; _leftover > duration;)
+    //        _leftover -= duration;
     _timer.start();
     return false;
 }

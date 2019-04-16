@@ -89,7 +89,6 @@ private:
                      const uint8_t *const data);
     void stream_frame(const bool receivePkt = true);
     int threadingLevel() const;
-    void _syncHeadPosition();
     bool _syncFrame();
     bool _skipFrame();
     void _barrier();

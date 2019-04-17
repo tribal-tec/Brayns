@@ -123,6 +123,7 @@ public:
      * commit() and render() are called individually.
      */
     BRAYNS_API void postRender();
+    void preRender();
     //@}
 
     /**

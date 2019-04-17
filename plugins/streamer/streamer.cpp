@@ -35,103 +35,6 @@ inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
 }
 }
 
-namespace mpicommon
-{
-class MPIBcastFabric2 : public networking::Fabric
-{
-public:
-    MPIBcastFabric2(const Group &group, int sendRank, int recvRank)
-        : group(group)
-        , sendRank(sendRank)
-        , recvRank(recvRank)
-    {
-        if (!group.valid())
-            throw std::runtime_error(
-                "#osp:mpi: trying to set up an MPI fabric "
-                "with an invalid MPI communicator");
-    }
-
-    virtual ~MPIBcastFabric2() override = default;
-
-    /*! send exact number of bytes - the fabric can do that through
-      multiple smaller messages, but all bytes have to be
-      delivered */
-    virtual void send(const void *_mem, size_t size) override
-    {
-        assert(size < (1LL << 30));
-        uint32_t sz32 = size;
-
-        // Send the size of the bcast we're sending. Only this part must be
-        // non-blocking,
-        // after getting the size we know everyone will enter the blocking
-        // barrier and the
-        // blocking bcast where the buffer is sent out.
-        MPI_Request request;
-        MPI_CALL(Ibcast(&sz32, 1, MPI_INT, sendRank, group.comm, &request));
-
-        // Now do non-blocking test to see when this bcast is satisfied to avoid
-        // locking out the send/recv threads
-        waitForBcast(request);
-
-        // NOTE(jda) - UGH! MPI doesn't let us send const data!
-        void *mem = const_cast<void *>(_mem);
-        MPI_CALL(Bcast(mem, sz32, MPI_BYTE, sendRank, group.comm));
-    }
-
-    /*! receive some block of data - whatever the sender has sent -
-      and give us size and pointer to this data */
-    virtual size_t read(void *&mem) override
-    {
-        uint32_t sz32 = 0;
-        // Get the size of the bcast being sent to us. Only this part must be
-        // non-blocking,
-        // after getting the size we know everyone will enter the blocking
-        // barrier and the
-        // blocking bcast where the buffer is sent out.
-        MPI_Request request;
-        MPI_CALL(Ibcast(&sz32, 1, MPI_INT, recvRank, group.comm, &request));
-
-        // Now do non-blocking test to see when this bcast is satisfied to avoid
-        // locking out the send/recv threads
-        waitForBcast(request);
-
-        // TODO: Maybe at some point we should dump the buffer if it gets really
-        // large
-        buffer.resize(sz32);
-        mem = buffer.data();
-        MPI_CALL(Bcast(mem, sz32, MPI_BYTE, recvRank, group.comm));
-        return sz32;
-    }
-
-private:
-    // wait for Bcast with non-blocking test, and barrier
-    void waitForBcast(MPI_Request &request)
-    {
-        for (;;)
-        {
-            int size_bcast_done;
-            MPI_CALL(Test(&request, &size_bcast_done, MPI_STATUS_IGNORE));
-            if (size_bcast_done)
-                break;
-            std::this_thread::sleep_for(std::chrono::nanoseconds(250));
-        }
-        group.barrier();
-    }
-
-    std::vector<byte_t> buffer;
-    Group group;
-    int sendRank, recvRank;
-};
-}
-
-#define PRINTMSG(msg)                                   \
-    if (_props.getProperty<bool>("verbose"))            \
-    {                                                   \
-        if (_props.getProperty<bool>("mpi"))            \
-            std::cout << mpicommon::world.rank << ": "; \
-        std::cout << msg << std::endl;                  \
-    }
-
 // mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
 // mpv /tmp/test.sdp --profile=low-latency --vf=vflip
 namespace streamer
@@ -260,6 +163,8 @@ void _copyToImage(Image &image, brayns::FrameBuffer &frameBuffer)
 
 void Streamer::preRender()
 {
+    _syncFrame();
+
 #ifdef USE_NVPIPE
     if (!_props.getProperty<bool>("gpu"))
         return;
@@ -282,9 +187,6 @@ void Streamer::preRender()
 
 void Streamer::postRender()
 {
-    if (_syncFrame())
-        return;
-
     const auto &frameBuffers = _api->getEngine().getFrameBuffers();
     if (frameBuffers.size() < 1)
         return;
@@ -293,59 +195,58 @@ void Streamer::postRender()
 #ifdef USE_NVPIPE
     if (auto cudaBuffer = frameBuffer->cudaBuffer())
     {
-        _barrier();
         if (threadingLevel() == 1)
             _cudaQueue.push(cudaBuffer);
         else
-            compressAndSend(cudaBuffer, frameBuffer);
-        return;
+            compressAndSend(cudaBuffer, frameBuffer->getSize());
     }
+    else
 #endif
-    frameBuffer->map();
-    if (frameBuffer->getColorBuffer())
     {
-        if (threadingLevel() == 2)
+        frameBuffer->map();
+        if (frameBuffer->getColorBuffer())
         {
-            if (_rgbas == 0)
+            if (threadingLevel() == 2)
             {
-                _copyToImage(image, *frameBuffer);
-                ++_rgbas;
+                if (_rgbas == 0)
+                {
+                    _copyToImage(image, *frameBuffer);
+                    ++_rgbas;
+                }
+            }
+            else
+            {
+                const int width = frameBuffer->getSize().x;
+                const int height = frameBuffer->getSize().y;
+                auto data = reinterpret_cast<const uint8_t *const>(
+                    frameBuffer->getColorBuffer());
+
+                encodeFrame(width, height, data);
             }
         }
-        else
-        {
-            const int width = frameBuffer->getSize().x;
-            const int height = frameBuffer->getSize().y;
-            auto data = reinterpret_cast<const uint8_t *const>(
-                frameBuffer->getColorBuffer());
-
-            encodeFrame(width, height, data);
-        }
+        frameBuffer->unmap();
     }
-    frameBuffer->unmap();
+    if (_props.getProperty<bool>("stats"))
+        printStats();
 }
 
 #ifdef USE_NVPIPE
 void Streamer::compressAndSend(void *cudaBuffer,
-                               brayns::FrameBufferPtr frameBuffer)
+                               const brayns::Vector2ui &fbSize)
 {
     static std::vector<uint8_t> compressed;
-    if (compressed.empty())
-        compressed.resize(frameBuffer->getSize().x * frameBuffer->getSize().y *
-                          4);
+    const auto bufSize = fbSize.x * fbSize.y * 4;
+    if (compressed.size() < bufSize)
+        compressed.resize(bufSize);
+
     const auto gop = _props.getProperty<int>("gop");
     brayns::Timer timer;
     timer.start();
     uint64_t size =
-        NvPipe_Encode(encoder, cudaBuffer, frameBuffer->getSize().x * 4,
-                      compressed.data(), compressed.size(),
-                      frameBuffer->getSize().x, frameBuffer->getSize().y,
-                      gop > 0 ? _frameCnt % _props.getProperty<int>("gop") == 0
-                              : false);
-    timer.stop();
+        NvPipe_Encode(encoder, cudaBuffer, fbSize.x * 4, compressed.data(),
+                      compressed.size(), fbSize.x, fbSize.y,
+                      gop > 0 ? _frameCnt % gop == 0 : false);
     encodeDuration = timer.elapsed();
-
-    PRINTMSG("NVEncode " << timer.milliseconds());
 
     av_init_packet(pkt);
     pkt->data = compressed.data();
@@ -360,6 +261,7 @@ void Streamer::compressAndSend(void *cudaBuffer,
         pkt->flags |= AV_PKT_FLAG_KEY;
 
     // stream_frame(false);
+    _barrier();
     int ret = av_write_frame(format_ctx, pkt);
     av_write_frame(format_ctx, NULL);
     av_packet_unref(pkt);
@@ -435,78 +337,85 @@ int Streamer::threadingLevel() const
     return _props.getProperty<int>("threading");
 }
 
-bool Streamer::_syncFrame()
+void Streamer::printStats()
 {
+    bool flushOnly = true;
     if (_props.getProperty<bool>("mpi"))
     {
-        auto &camera = _api->getCamera();
-        bool skip = false;
-        if (mpicommon::IamTheMaster())
+        if (_props.getProperty<bool>("master-stats"))
         {
-            skip = _skipFrame();
-            if (!skip)
-                ++_frameCnt;
-
-            const auto head =
-                camera.getProperty<std::array<double, 3>>("headPosition");
-
-            brayns::Timer timer;
-            timer.start();
-            ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
-            stream << head << skip << _frameCnt;
-            stream.flush();
-            mpiDuration = timer.elapsed();
-            PRINTMSG("Head x " << head[0]);
+            if (!mpicommon::IamTheMaster())
+                return;
+            std::cout << '\r';
         }
         else
         {
-            std::array<double, 3> head;
-            ospcommon::networking::BufferedReadStream stream(*mpiFabric);
-            stream >> head >> skip >> _frameCnt;
-            camera.updateProperty("headPosition", head);
-            PRINTMSG("Head x " << head[0]);
+            std::cout << mpicommon::world.rank << ": ";
+            flushOnly = false;
         }
-        return skip;
+        std::cout << "MPI " << int(mpiDuration * 1000) << "ms | "
+                  << "Barrier " << int(barrierDuration * 1000) << "ms | ";
     }
-    const auto skip = _skipFrame();
-    if (!skip)
-        ++_frameCnt;
-    return skip;
-}
+    else
+    {
+        std::cout << '\r';
+    }
 
-bool Streamer::_skipFrame()
-{
-    const auto fps = config.fps;
-    if (fps == 0)
-        return true;
-
-    const auto elapsed = _timer.elapsed() + _leftover;
-    //    const auto duration = 1.0 / fps;
-    //    if (elapsed < duration)
-    //        return true;
-    std::cout << '\r' << "MPI " << int(mpiDuration * 1000) << "ms | "
-              << "encode " << int(encodeDuration * 1000) << "ms | "
+    const auto elapsed = _timer.elapsed();
+    _timer.start();
+    std::cout << "encode " << int(encodeDuration * 1000) << "ms | "
               << "render " << int(_api->getEngine().renderDuration * 1000)
               << "ms | "
               << "total " << int(elapsed * 1000) << "ms | "
               << "overhead "
-              << (elapsed - _api->getEngine().renderDuration) * 1000 << "ms |"
+              << (elapsed - _api->getEngine().renderDuration) * 1000 << "ms | "
               << 1. / elapsed << "/" << 1. / _api->getEngine().renderDuration
-              << " FPS" << std::flush;
+              << " FPS";
+    if (flushOnly)
+        std::cout << std::flush;
+    else
+        std::cout << std::endl;
+}
 
-    //    _leftover = elapsed - duration;
-    //    for (; _leftover > duration;)
-    //        _leftover -= duration;
-    _timer.start();
-    return false;
+void Streamer::_syncFrame()
+{
+    if (!_props.getProperty<bool>("mpi"))
+    {
+        ++_frameCnt;
+        return;
+    }
+
+    brayns::Timer timer;
+    timer.start();
+    auto &camera = _api->getCamera();
+    if (mpicommon::IamTheMaster())
+    {
+        ++_frameCnt;
+        const auto head =
+            camera.getProperty<std::array<double, 3>>("headPosition");
+
+        ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
+        stream << head << _frameCnt;
+        stream.flush();
+    }
+    else
+    {
+        std::array<double, 3> head;
+        ospcommon::networking::BufferedReadStream stream(*mpiFabric);
+        stream >> head >> _frameCnt;
+        camera.updateProperty("headPosition", head);
+    }
+    mpiDuration = timer.elapsed();
 }
 
 void Streamer::_barrier()
 {
     if (_props.getProperty<bool>("mpi"))
     {
-        PRINTMSG("Barrier");
+        brayns::Timer timer;
+        timer.start();
         mpicommon::world.barrier();
+        barrierDuration = timer.elapsed();
     }
 }
 
@@ -521,7 +430,8 @@ void Streamer::_runLoop()
             compressAndSend(
                 cudaBuffer,
                 _api->getEngine()
-                    .getFrameBuffers()[_props.getProperty<int>("fb")]);
+                    .getFrameBuffers()[_props.getProperty<int>("fb")]
+                    ->getSize());
         }
         else
 #endif
@@ -544,13 +454,9 @@ void Streamer::encodeFrame(const int width, const int height,
                              STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
     brayns::Timer encodeTimer;
     encodeTimer.start();
-    brayns::Timer timer;
-    timer.start();
     sws_scale(sws_context, &data, stride, 0, height, picture.frame->data,
               picture.frame->linesize);
-    timer.stop();
 
-    PRINTMSG("Scale " << timer.milliseconds());
     --_rgbas;
     picture.frame->pts =
         av_rescale_q(_frameCnt, AVRational{1, _props.getProperty<int>("fps")},
@@ -565,7 +471,6 @@ void Streamer::encodeFrame(const int width, const int height,
         else
             stream_frame();
     }
-    encodeTimer.stop();
     encodeDuration = encodeTimer.elapsed();
 }
 
@@ -718,8 +623,8 @@ bool Streamer::init(const StreamerConfig &streamer_config)
 
             mpicommon::worker.makeInterComm();
             mpiFabric =
-                std::make_unique<mpicommon::MPIBcastFabric2>(mpicommon::worker,
-                                                             MPI_ROOT, 0);
+                std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::worker,
+                                                            MPI_ROOT, 0);
         }
         else
         {
@@ -734,8 +639,8 @@ bool Streamer::init(const StreamerConfig &streamer_config)
 
             mpicommon::app.makeInterComm();
             mpiFabric =
-                std::make_unique<mpicommon::MPIBcastFabric2>(mpicommon::app,
-                                                             MPI_ROOT, 0);
+                std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::app,
+                                                            MPI_ROOT, 0);
         }
         _barrier();
     }
@@ -756,11 +661,12 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"height", 1080});
     props.setProperty({"profile", std::string("high444")});
     props.setProperty({"fb", 0});
-    props.setProperty({"gop", 5});
+    props.setProperty({"gop", 60});
     props.setProperty({"rtsp", false});
     props.setProperty({"mpi", false});
     props.setProperty({"threading", 0});
-    props.setProperty({"verbose", false});
+    props.setProperty({"stats", false});
+    props.setProperty({"master-stats", false});
     props.setProperty({"eye", 0});
 #ifdef USE_NVPIPE
     props.setProperty({"gpu", false});

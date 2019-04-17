@@ -136,6 +136,12 @@ void OptiXRenderer::render(FrameBufferPtr frameBuffer)
 
 void OptiXRenderer::commit()
 {
+    if (!_renderingParameters.isModified() && !_scene->isModified() &&
+        !isModified())
+    {
+        return;
+    }
+
     const bool rendererChanged =
         _renderingParameters.getCurrentRenderer() != _currentRenderer;
 

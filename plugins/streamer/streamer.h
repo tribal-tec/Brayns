@@ -90,9 +90,9 @@ private:
                      const uint8_t *const data);
     void stream_frame(const bool receivePkt = true);
     int threadingLevel() const;
-    bool _syncFrame();
-    bool _skipFrame();
+    void _syncFrame();
     void _barrier();
+    void printStats();
 
     AVFormatContext *format_ctx{nullptr};
     AVCodec *out_codec{nullptr};
@@ -115,7 +115,7 @@ private:
 
 #ifdef USE_NVPIPE
     NvPipe *encoder{nullptr};
-    void compressAndSend(void *cudaBuffer, brayns::FrameBufferPtr frameBuffer);
+    void compressAndSend(void *cudaBuffer, const brayns::Vector2ui &size);
     lunchbox::MTQueue<void *> _cudaQueue;
 #endif
 
@@ -123,6 +123,7 @@ private:
     size_t _frameCnt{0};
     double encodeDuration{0};
     double mpiDuration{0};
+    double barrierDuration{0};
 
     std::unique_ptr<ospcommon::networking::Fabric> mpiFabric;
 };

@@ -105,9 +105,12 @@ private:
         });
 
         // start accum rendering when we have no more other events
-        _checkIdleRendering->on<uvw::CheckEvent>([& accumRendering =
-                                                      _accumRendering](
-            const auto&, auto&) { accumRendering->start(); });
+        _checkIdleRendering->on<uvw::CheckEvent>(
+            [& accumRendering = _accumRendering,
+             &brayns = _brayns ](const auto&, auto&) {
+                brayns->preRender();
+                accumRendering->start();
+            });
 
         // accumulation rendering on idle; re-triggered by _checkIdleRendering
         _accumRendering->on<uvw::IdleEvent>([&](const auto&, auto&) {

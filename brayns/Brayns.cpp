@@ -111,7 +111,7 @@ struct Brayns::Impl : public PluginAPI
         if (!lock.try_lock())
             return false;
 
-        _pluginManager.preRender();
+        //_pluginManager.preRender();
 
         auto& scene = _engine->getScene();
         auto& lightManager = scene.getLightManager();
@@ -264,7 +264,7 @@ struct Brayns::Impl : public PluginAPI
         _actionInterface = interface;
     }
     Scene& getScene() final { return _engine->getScene(); }
-private:
+    // private:
     void _createEngine()
     {
         auto engineName =
@@ -809,6 +809,10 @@ bool Brayns::commit()
 void Brayns::render()
 {
     return _impl->render();
+}
+void Brayns::preRender()
+{
+    _impl->_pluginManager.preRender();
 }
 void Brayns::postRender()
 {

@@ -11,12 +11,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(FFMPEG REQUIRED)
 find_package(Lunchbox REQUIRED)
-find_package(ospray 1.7 REQUIRED)
+find_package(ospray 1.7)
 find_package(NvPipe)
 
-list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
-include(macros)
-OSPRAY_CONFIGURE_MPI()
+set(OSPRAY_FOUND ${OSPRAY_MPI_LIBRARIES})
+if(OSPRAY_FOUND)
+  list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
+  include(macros)
+  OSPRAY_CONFIGURE_MPI()
+endif()
 
 set(STREAMER_SOURCES
   streamer.cpp
@@ -30,11 +33,17 @@ add_library(braynsStreamer SHARED ${STREAMER_SOURCES} ${STREAMER_HEADERS})
 target_include_directories(braynsStreamer PRIVATE ${FFMPEG_INCLUDE_DIR})
 target_link_libraries(braynsStreamer
   PUBLIC braynsCommon braynsPluginAPI
-  PRIVATE braynsEngine ${FFMPEG_LIBRARIES} Lunchbox ${OSPRAY_COMMON_LIBRARY} ${OSPRAY_MPI_LIBRARIES}
+  PRIVATE braynsEngine ${FFMPEG_LIBRARIES} Lunchbox
 )
 if(TARGET NvPipe)
   target_link_libraries(braynsStreamer PRIVATE NvPipe)
   target_compile_definitions(braynsStreamer PRIVATE USE_NVPIPE)
+endif()
+if(OSPRAY_FOUND)
+  target_link_libraries(braynsStreamer PRIVATE ${OSPRAY_COMMON_LIBRARY}
+                                               ${OSPRAY_MPI_LIBRARIES}
+                                               ${MPI_C_LIBRARIES})
+  target_compile_definitions(braynsStreamer PRIVATE USE_MPI)
 endif()
 set_target_properties(braynsStreamer PROPERTIES
   VERSION ${PROJECT_VERSION}

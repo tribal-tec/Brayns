@@ -228,6 +228,9 @@ void Streamer::postRender()
     }
     if (_props.getProperty<bool>("stats"))
         printStats();
+
+    if (!_props.getProperty<bool>("mpi") || mpicommon::IamTheMaster())
+        _nextFrame();
 }
 
 #ifdef USE_NVPIPE
@@ -361,8 +364,7 @@ void Streamer::printStats()
         std::cout << '\r';
     }
 
-    const auto elapsed = _timer.elapsed();
-    _timer.start();
+    const auto elapsed = _timer.elapsed() + double(_waitTime) / 1e6;
     std::cout << "encode " << int(encodeDuration * 1000) << "ms | "
               << "render " << int(_api->getEngine().renderDuration * 1000)
               << "ms | "
@@ -380,17 +382,13 @@ void Streamer::printStats()
 void Streamer::_syncFrame()
 {
     if (!_props.getProperty<bool>("mpi"))
-    {
-        ++_frameCnt;
         return;
-    }
 
     brayns::Timer timer;
-    timer.start();
     auto &camera = _api->getCamera();
     if (mpicommon::IamTheMaster())
     {
-        ++_frameCnt;
+        timer.start();
         const auto head =
             camera.getProperty<std::array<double, 3>>("headPosition");
 
@@ -400,12 +398,24 @@ void Streamer::_syncFrame()
     }
     else
     {
+        timer.start();
         std::array<double, 3> head;
         ospcommon::networking::BufferedReadStream stream(*mpiFabric);
         stream >> head >> _frameCnt;
         camera.updateProperty("headPosition", head);
     }
     mpiDuration = timer.elapsed();
+}
+
+void Streamer::_nextFrame()
+{
+    _timer.stop();
+    _waitTime = std::max(0., (1.0 / config.fps) * 1e6 - _timer.microseconds());
+    if (_waitTime > 0)
+        std::this_thread::sleep_for(std::chrono::microseconds(_waitTime));
+
+    _timer.start();
+    ++_frameCnt;
 }
 
 void Streamer::_barrier()

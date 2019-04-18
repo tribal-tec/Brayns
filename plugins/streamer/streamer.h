@@ -24,26 +24,19 @@ extern "C" {
 #include <brayns/pluginapi/ExtensionPlugin.h>
 
 #include <lunchbox/monitor.h>
-#include <lunchbox/mtQueue.h>
 #include <thread>
 
+#ifdef USE_MPI
 #include <ospray/mpiCommon/MPIBcastFabric.h>
+#endif
 
 #ifdef USE_NVPIPE
 #include <NvPipe.h>
+#include <lunchbox/mtQueue.h>
 #endif
 
 namespace streamer
 {
-struct StreamerConfig
-{
-    int dst_width{0};
-    int dst_height{0};
-    int fps{0};
-    int bitrate{0};
-    std::string profile;
-};
-
 class Picture
 {
 public:
@@ -82,14 +75,19 @@ public:
     void postRender() final;
 
 private:
-    bool init(const StreamerConfig &streamer_config);
-    void cleanup();
+    auto width() const { return _props.getProperty<int>("width"); }
+    auto height() const { return _props.getProperty<int>("height"); }
+    auto fps() const { return _props.getProperty<int>("fps"); }
+    auto bitrate() const { return _props.getProperty<int>("bitrate"); }
+    auto gop() const { return _props.getProperty<int>("gop"); }
+    auto profile() const { return _props.getProperty<std::string>("profile"); }
+    auto threadingLevel() const { return _props.getProperty<int>("threading"); }
+
     void _runCopyLoop();
     void _runLoop();
     void encodeFrame(const int width, const int height,
                      const uint8_t *const data);
     void stream_frame(const bool receivePkt = true);
-    int threadingLevel() const;
     void _syncFrame();
     void _barrier();
     void _nextFrame();
@@ -103,11 +101,8 @@ private:
     SwsContext *sws_context{nullptr};
     Picture picture;
 
-    StreamerConfig config;
-
     brayns::Timer _timer;
     int64_t _waitTime{0};
-    float _leftover{0.f};
 
     Image image;
     std::thread _copyThread;
@@ -124,10 +119,13 @@ private:
     const brayns::PropertyMap _props;
     size_t _frameCnt{0};
     double encodeDuration{0};
+#ifdef USE_MPI
+    void _initMPI();
     double mpiDuration{0};
     double barrierDuration{0};
 
     std::unique_ptr<ospcommon::networking::Fabric> mpiFabric;
+#endif
 };
 
 } // namespace streamer

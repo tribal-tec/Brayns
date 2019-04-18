@@ -92,6 +92,7 @@ private:
     int threadingLevel() const;
     void _syncFrame();
     void _barrier();
+    void _nextFrame();
     void printStats();
 
     AVFormatContext *format_ctx{nullptr};
@@ -105,6 +106,7 @@ private:
     StreamerConfig config;
 
     brayns::Timer _timer;
+    int64_t _waitTime{0};
     float _leftover{0.f};
 
     Image image;

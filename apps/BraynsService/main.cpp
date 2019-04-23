@@ -100,6 +100,7 @@ private:
             }
 
             // rendering
+            _brayns->preRender();
             if (_brayns->commit())
                 _triggerRendering->send();
         });

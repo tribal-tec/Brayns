@@ -80,7 +80,7 @@ public:
     size_t numAccumFrames() const { return _accumFrames; }
     freeimage::ImagePtr getImage();
     void setName(const std::string& name) { _name = name; }
-    virtual void* cudaBuffer() { return nullptr; }
+    virtual const void* cudaBuffer() { return nullptr; }
 protected:
     std::string _name;
     Vector2ui _frameSize;

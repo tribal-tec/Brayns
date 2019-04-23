@@ -50,7 +50,7 @@ public:
     }
     const uint8_t* getColorBuffer() const final { return _colorBuffer; }
     const float* getDepthBuffer() const final { return 0; }
-    void* cudaBuffer() override;
+    const void* cudaBuffer() override;
 
 private:
     void destroy();

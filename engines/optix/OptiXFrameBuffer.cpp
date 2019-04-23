@@ -117,7 +117,7 @@ void OptiXFrameBuffer::_recreate()
     BRAYNS_DEBUG << "Frame buffer created" << std::endl;
 }
 
-void* OptiXFrameBuffer::cudaBuffer()
+const void* OptiXFrameBuffer::cudaBuffer()
 {
     auto buf = _frameBuffer[_activeBuffer]->getDevicePointer(0);
     _activeBuffer = _activeBuffer == 0 ? 1 : 0;

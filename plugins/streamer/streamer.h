@@ -1,5 +1,4 @@
-#ifndef STREAMER_HPP
-#define STREAMER_HPP
+#pragma once
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -84,7 +83,7 @@ private:
     auto width() const { return _props.getProperty<int>("width"); }
     auto height() const { return _props.getProperty<int>("height"); }
     auto fps() const { return _props.getProperty<int>("fps"); }
-    auto bitrate() const { return _props.getProperty<int>("bitrate"); }
+    auto bitrate() const { return _props.getProperty<int>("bitrate") * 1e6; }
     auto gop() const { return _props.getProperty<int>("gop"); }
     auto profile() const { return _props.getProperty<std::string>("profile"); }
     auto asyncEncode() const
@@ -100,16 +99,18 @@ private:
     void _runAsyncEncode();
     void _runAsyncEncodeFinish();
     void encodeFrame(const int width, const int height, const void *data);
-    void stream_frame(const bool receivePkt = true);
+    void streamFrame(const bool finishEncode = true);
     void _syncFrame();
     void _barrier();
     void _nextFrame();
     void printStats();
 
-    AVFormatContext *format_ctx{nullptr};
-    AVCodec *out_codec{nullptr};
-    AVStream *out_stream{nullptr};
-    AVCodecContext *out_codec_ctx{nullptr};
+    AVFormatContext *streamContext{nullptr};
+    AVStream *stream{nullptr};
+
+    AVCodecContext *codecContext{nullptr};
+    AVCodec *codec{nullptr};
+
     AVPacket *pkt{nullptr};
     SwsContext *sws_context{nullptr};
     Picture picture;
@@ -138,6 +139,4 @@ private:
     std::unique_ptr<ospcommon::networking::Fabric> mpiFabric;
 #endif
 };
-
-} // namespace streamer
-#endif
+}

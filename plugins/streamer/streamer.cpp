@@ -16,6 +16,9 @@
 #include <ospray/mpiCommon/MPICommon.h>
 #include <ospray/ospcommon/networking/BufferedDataStreaming.h>
 
+// mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
+// mpv /tmp/test.sdp --profile=low-latency --vf=vflip
+
 namespace ospcommon
 {
 namespace networking
@@ -57,72 +60,6 @@ brayns::Property getHeadPositionProperty()
     return headPosition;
 }
 
-int set_options_and_open_encoder(AVFormatContext *fctx, AVStream *stream,
-                                 AVCodecContext *codec_ctx, AVCodec *codec,
-                                 std::string codec_profile, double width,
-                                 double height, int fps, int bitrate, int gop,
-                                 AVCodecID codec_id)
-{
-    const AVRational dst_fps = {fps, 1};
-
-    codec_ctx->codec_tag = 0;
-    codec_ctx->codec_id = codec_id;
-    codec_ctx->codec_type = AVMEDIA_TYPE_VIDEO;
-    codec_ctx->width = width;
-    codec_ctx->height = height;
-    codec_ctx->gop_size = gop;
-    codec_ctx->pix_fmt = STREAM_PIX_FMT;
-    codec_ctx->framerate = dst_fps;
-    codec_ctx->time_base = av_inv_q(dst_fps);
-    codec_ctx->bit_rate = bitrate;
-    codec_ctx->max_b_frames = 0;
-
-    //    codec_ctx->rc_max_rate = 0;
-    //    codec_ctx->rc_buffer_size = 0;
-    //    codec_ctx->qmin = 10;
-    //    codec_ctx->qmax = 51;
-    //    codec_ctx->me_subpel_quality = 5;
-    //    codec_ctx->i_quant_factor = 0.71;
-    //    codec_ctx->qcompress = 0.6;
-    //    codec_ctx->max_qdiff = 4;
-
-    if (fctx->oformat->flags & AVFMT_GLOBALHEADER)
-    {
-        codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
-
-    stream->time_base = codec_ctx->time_base; // will be set afterwards by
-                                              // avformat_write_header to 1/1000
-
-    int ret = avcodec_parameters_from_context(stream->codecpar, codec_ctx);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Could not initialize stream codec parameters!\n");
-        return 1;
-    }
-
-    stream->codecpar->video_delay = 0;
-
-    AVDictionary *codec_options = nullptr;
-    av_dict_set(&codec_options, "profile", codec_profile.c_str(), 0);
-    av_dict_set(&codec_options, "preset", "ultrafast", 0);
-    av_dict_set(&codec_options, "tune", "zerolatency", 0);
-    //    av_dict_set(&codec_options, "crf", "0", 0);
-    //    av_opt_set(codec_ctx->priv_data, "crf", "0", AV_OPT_SEARCH_CHILDREN);
-    //    av_opt_set(codec_ctx->priv_data, "preset", "slow",
-    //    AV_OPT_SEARCH_CHILDREN);
-
-    // open video encoder
-    ret = avcodec_open2(codec_ctx, codec, &codec_options);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Could not open video encoder!\n");
-        return 1;
-    }
-    av_dict_free(&codec_options);
-    return 0;
-}
-
 void _copyToImage(streamer::Image &image, brayns::FrameBuffer &frameBuffer)
 {
     const auto &size = frameBuffer.getSize();
@@ -136,8 +73,6 @@ void _copyToImage(streamer::Image &image, brayns::FrameBuffer &frameBuffer)
 }
 }
 
-// mpv /tmp/test.sdp --no-cache --untimed --vd-lavc-threads=1 -vf=flip
-// mpv /tmp/test.sdp --profile=low-latency --vf=vflip
 namespace streamer
 {
 Streamer::Streamer(const brayns::PropertyMap &props)
@@ -164,17 +99,17 @@ Streamer::~Streamer()
 
     if (pkt)
         av_packet_free(&pkt);
-    if (out_codec_ctx)
+    if (codecContext)
     {
-        avcodec_close(out_codec_ctx);
-        avcodec_free_context(&out_codec_ctx);
+        avcodec_close(codecContext);
+        avcodec_free_context(&codecContext);
     }
 
-    if (format_ctx)
+    if (streamContext)
     {
-        if (format_ctx->pb)
-            avio_close(format_ctx->pb);
-        avformat_free_context(format_ctx);
+        if (streamContext->pb)
+            avio_close(streamContext->pb);
+        avformat_free_context(streamContext);
     }
     avformat_network_deinit();
 }
@@ -186,90 +121,99 @@ void Streamer::init()
         THROW("Could not init stream network");
 
     const bool useRTP = !_props.getProperty<bool>("rtsp");
-    AVOutputFormat *fmt = av_guess_format(useRTP ? "rtp" : "rtsp", NULL, NULL);
-    const char *fmt_name = "h264";
-    std::string fileBla =
+    const std::string filename =
         useRTP
             ? "rtp://" + _props.getProperty<std::string>("host")
             : "rtsp://" + _props.getProperty<std::string>("host") + "/test.sdp";
-    const char *filename = fileBla.c_str();
 
-    // initialize format context for output with flv and no filename
-    avformat_alloc_output_context2(&format_ctx, fmt, fmt_name, filename);
-    if (!format_ctx)
-        THROW("Could not open output context");
+    AVOutputFormat *fmt =
+        av_guess_format(useRTP ? "rtp" : "rtsp", nullptr, nullptr);
+    avformat_alloc_output_context2(&streamContext, fmt, "h264",
+                                   filename.c_str());
+    if (!streamContext)
+        THROW("Could not open format context");
 
-    // AVIOContext for accessing the resource indicated by url
-    if (!(format_ctx->oformat->flags & AVFMT_NOFILE))
+    if (!(streamContext->oformat->flags & AVFMT_NOFILE))
     {
-        int avopen_ret = avio_open2(&format_ctx->pb, format_ctx->filename,
-                                    AVIO_FLAG_WRITE, nullptr, nullptr);
-        if (avopen_ret < 0)
+        if (avio_open2(&streamContext->pb, streamContext->filename,
+                       AVIO_FLAG_WRITE, nullptr, nullptr) < 0)
             THROW("Failed to open stream output context, stream will not work");
     }
 
+    AVCodecID codecID = AV_CODEC_ID_H264;
+    codec = avcodec_find_encoder(codecID);
+    if (!(codec))
+        THROW("Could not find encoder for "
+              << std::quoted(avcodec_get_name(codecID)));
+
+    stream = avformat_new_stream(streamContext, codec);
+    if (!stream)
+        THROW("Could not allocate stream");
+
+    const AVRational avFPS = {fps(), 1};
+    stream->time_base = av_inv_q(avFPS);
+
     if (useGPU())
     {
-        format_ctx->oformat = fmt;
-        fmt->video_codec = AV_CODEC_ID_H264;
-
-        out_stream = avformat_new_stream(format_ctx, nullptr);
-        out_stream->id = 0;
-        out_stream->codecpar->codec_id = AV_CODEC_ID_H264;
-        out_stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
-        out_stream->codecpar->width = width();
-        out_stream->codecpar->height = height();
-        out_stream->time_base.den = 1;
-        out_stream->time_base.num = fps();
+        stream->codecpar->codec_id = AV_CODEC_ID_H264;
+        stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+        stream->codecpar->width = width();
+        stream->codecpar->height = height();
 
 #ifdef USE_NVPIPE
         encoder = NvPipe_CreateEncoder(NVPIPE_RGBA32, NVPIPE_H264, NVPIPE_LOSSY,
                                        bitrate(), fps(), width(), height());
         if (!encoder)
-            THROW("Failed to create encoder: " << NvPipe_GetError(NULL));
+            THROW("Failed to create encoder: " << NvPipe_GetError(nullptr));
 #endif
     }
     else
     {
-        // use selected codec
-        AVCodecID codec_id = AV_CODEC_ID_H264;
-        out_codec = avcodec_find_encoder(codec_id);
-        if (!(out_codec))
-            THROW("Could not find encoder for "
-                  << std::quoted(avcodec_get_name(codec_id)));
-
-        out_stream = avformat_new_stream(format_ctx, out_codec);
-        if (!out_stream)
-            THROW("Could not allocate stream")
-
-        out_codec_ctx = avcodec_alloc_context3(out_codec);
-        if (!out_codec_ctx)
+        codecContext = avcodec_alloc_context3(codec);
+        if (!codecContext)
             THROW("Could not allocate video codec context");
 
-        if (set_options_and_open_encoder(format_ctx, out_stream, out_codec_ctx,
-                                         out_codec, profile(), width(),
-                                         height(), fps(), bitrate(), gop(),
-                                         codec_id))
-        {
-            THROW("Could not open encoder");
-        }
+        codecContext->codec_tag = 0;
+        codecContext->codec_id = codecID;
+        codecContext->codec_type = AVMEDIA_TYPE_VIDEO;
+        codecContext->width = width();
+        codecContext->height = height();
+        codecContext->gop_size = gop();
+        codecContext->pix_fmt = STREAM_PIX_FMT;
+        codecContext->framerate = avFPS;
+        codecContext->time_base = av_inv_q(avFPS);
+        codecContext->bit_rate = bitrate();
+        codecContext->max_b_frames = 0;
 
-        out_stream->codecpar->extradata_size = out_codec_ctx->extradata_size;
-        out_stream->codecpar->extradata =
-            static_cast<uint8_t *>(av_mallocz(out_codec_ctx->extradata_size));
-        memcpy(out_stream->codecpar->extradata, out_codec_ctx->extradata,
-               out_codec_ctx->extradata_size);
-        picture.init(out_codec_ctx->pix_fmt, width(), height());
+        if (streamContext->oformat->flags & AVFMT_GLOBALHEADER)
+            codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+        if (avcodec_parameters_from_context(stream->codecpar, codecContext) < 0)
+            THROW("Could not initialize stream codec parameters!");
+
+        AVDictionary *codec_options = nullptr;
+        av_dict_set(&codec_options, "profile", profile().c_str(), 0);
+        av_dict_set(&codec_options, "preset", "ultrafast", 0);
+        av_dict_set(&codec_options, "tune", "zerolatency", 0);
+
+        if (avcodec_open2(codecContext, codec, &codec_options) < 0)
+            THROW("Could not open video encoder!");
+        av_dict_free(&codec_options);
+
+        stream->codecpar->extradata_size = codecContext->extradata_size;
+        stream->codecpar->extradata =
+            static_cast<uint8_t *>(av_mallocz(codecContext->extradata_size));
+        memcpy(stream->codecpar->extradata, codecContext->extradata,
+               codecContext->extradata_size);
+
+        picture.init(codecContext->pix_fmt, width(), height());
     }
 
-    if (avformat_write_header(format_ctx, nullptr) !=
+    if (avformat_write_header(streamContext, nullptr) !=
         AVSTREAM_INIT_IN_WRITE_HEADER)
     {
         THROW("Could not write stream header")
     }
-
-    printf("stream time base = %d / %d \n", out_stream->time_base.num,
-           out_stream->time_base.den);
 
 #ifdef USE_MPI
     _initMPI();
@@ -278,10 +222,9 @@ void Streamer::init()
     if (useRTP)
     {
         char buf[200000];
-        AVFormatContext *ac[] = {format_ctx};
+        AVFormatContext *ac[] = {streamContext};
         av_sdp_create(ac, 1, buf, 20000);
 
-        printf("sdp:\n%s\n", buf);
         std::stringstream outFile;
         outFile << "/tmp/test";
 #ifdef USE_MPI
@@ -383,6 +326,86 @@ void Streamer::postRender()
         _nextFrame();
 }
 
+void Streamer::encodeFrame(const int srcWidth, const int srcHeight,
+                           const void *data)
+{
+    brayns::Timer encodeTimer;
+    encodeTimer.start();
+
+    const auto pts =
+        av_rescale_q(_frameCnt, AVRational{1, fps()}, stream->time_base);
+
+    if (useGPU())
+    {
+        static std::vector<uint8_t> compressed;
+        const size_t bufSize = srcWidth * srcHeight * 4;
+        if (compressed.size() < bufSize)
+            compressed.resize(bufSize);
+
+        uint64_t size =
+#ifdef USE_NVPIPE
+            NvPipe_Encode(encoder, data, srcWidth * 4, compressed.data(),
+                          compressed.size(), srcWidth, srcHeight,
+                          gop() > 0 ? _frameCnt % gop() == 0 : false);
+#else
+            0;
+#endif
+        av_init_packet(pkt);
+        pkt->data = compressed.data();
+        pkt->size = size;
+        pkt->pts = pts;
+        pkt->dts = pts;
+        pkt->stream_index = stream->index;
+
+        if (!memcmp(compressed.data(), "\x00\x00\x00\x01\x67", 5))
+            pkt->flags |= AV_PKT_FLAG_KEY;
+    }
+    else
+    {
+        sws_context =
+            sws_getCachedContext(sws_context, srcWidth, srcHeight,
+                                 AV_PIX_FMT_RGBA, width(), height(),
+                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
+        const int stride[] = {4 * srcWidth};
+        auto cdata = reinterpret_cast<const uint8_t *const>(data);
+        sws_scale(sws_context, &cdata, stride, 0, srcHeight,
+                  picture.frame->data, picture.frame->linesize);
+        picture.frame->pts = pts;
+
+        if (avcodec_send_frame(codecContext, picture.frame) < 0)
+            return;
+    }
+
+    encodeDuration = encodeTimer.elapsed();
+
+    if (asyncEncode() && !useGPU())
+        ++_pkts;
+    else
+        streamFrame(!useGPU());
+}
+
+void Streamer::streamFrame(const bool finishEncode)
+{
+    if (finishEncode)
+    {
+        brayns::Timer timer;
+        timer.start();
+        const auto ret = avcodec_receive_packet(codecContext, pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            return;
+        encodeDuration += timer.elapsed();
+    }
+
+    _barrier();
+#if 0
+    av_write_frame(format_ctx, pkt);
+    av_write_frame(format_ctx, nullptr);
+#else
+    av_interleaved_write_frame(streamContext, pkt);
+#endif
+    av_packet_unref(pkt);
+}
+
 bool Streamer::useGPU() const
 {
 #ifdef USE_NVPIPE
@@ -418,68 +441,6 @@ bool Streamer::isLocalOrMaster() const
 #endif
 }
 
-void Streamer::encodeFrame(const int srcWidth, const int srcHeight,
-                           const void *data)
-{
-    brayns::Timer encodeTimer;
-    encodeTimer.start();
-
-    if (useGPU())
-    {
-        static std::vector<uint8_t> compressed;
-        const size_t bufSize = srcWidth * srcHeight * 4;
-        if (compressed.size() < bufSize)
-            compressed.resize(bufSize);
-
-        uint64_t size =
-#ifdef USE_NVPIPE
-            NvPipe_Encode(encoder, data, srcWidth * 4, compressed.data(),
-                          compressed.size(), srcWidth, srcHeight,
-                          gop() > 0 ? _frameCnt % gop() == 0 : false);
-#else
-            0;
-#endif
-        encodeDuration = encodeTimer.elapsed();
-
-        av_init_packet(pkt);
-        pkt->data = compressed.data();
-        pkt->size = size;
-        pkt->pts = av_rescale_q(_frameCnt, AVRational{1, fps()},
-                                out_stream->time_base);
-        pkt->dts = pkt->pts;
-        pkt->stream_index = out_stream->index;
-
-        if (!memcmp(compressed.data(), "\x00\x00\x00\x01\x67", 5))
-            pkt->flags |= AV_PKT_FLAG_KEY;
-
-        stream_frame(false);
-        return;
-    }
-
-    const int stride[] = {4 * srcWidth};
-    sws_context =
-        sws_getCachedContext(sws_context, srcWidth, srcHeight, AV_PIX_FMT_RGBA,
-                             width(), height(), STREAM_PIX_FMT,
-                             SWS_FAST_BILINEAR, 0, 0, 0);
-    auto cdata = reinterpret_cast<const uint8_t *const>(data);
-    sws_scale(sws_context, &cdata, stride, 0, srcHeight, picture.frame->data,
-              picture.frame->linesize);
-    picture.frame->pts =
-        av_rescale_q(_frameCnt, AVRational{1, fps()}, out_stream->time_base);
-    //    picture.frame->pts +=
-    //        av_rescale_q(1, out_codec_ctx->time_base, out_stream->time_base);
-
-    const auto ret = avcodec_send_frame(out_codec_ctx, picture.frame);
-    encodeDuration = encodeTimer.elapsed();
-    if (ret >= 0)
-    {
-        if (asyncEncode())
-            ++_pkts;
-        else
-            stream_frame();
-    }
-}
-
 void Streamer::_runAsyncEncode()
 {
     while (_api->getEngine().getKeepRunning())
@@ -501,31 +462,9 @@ void Streamer::_runAsyncEncodeFinish()
     while (_api->getEngine().getKeepRunning())
     {
         _pkts.waitGT(0);
-        stream_frame();
+        streamFrame();
         --_pkts;
     }
-}
-
-void Streamer::stream_frame(const bool receivePkt)
-{
-    _barrier();
-    if (receivePkt)
-    {
-        brayns::Timer timer;
-        timer.start();
-        const auto ret = avcodec_receive_packet(out_codec_ctx, pkt);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-            return;
-        encodeDuration += timer.elapsed();
-    }
-
-#if 0
-    av_write_frame(format_ctx, pkt);
-    av_write_frame(format_ctx, NULL);
-#else
-    av_interleaved_write_frame(format_ctx, pkt);
-    av_packet_unref(pkt);
-#endif
 }
 
 void Streamer::printStats()
@@ -660,8 +599,7 @@ void Streamer::_initMPI()
     _barrier();
 }
 #endif
-
-} // namespace streamer
+}
 
 extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
                                                          const char **argv)
@@ -669,7 +607,7 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     brayns::PropertyMap props;
     props.setProperty({"host", std::string("localhost:49990")});
     props.setProperty({"fps", 60});
-    props.setProperty({"bitrate", 10000000});
+    props.setProperty({"bitrate", 10, {"Bitrate", "in MBit/s"}});
     props.setProperty({"width", 1920});
     props.setProperty({"height", 1080});
     props.setProperty({"profile", std::string("high444")});

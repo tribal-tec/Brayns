@@ -41,8 +41,8 @@ if(TARGET NvPipe)
 endif()
 if(OSPRAY_FOUND)
   target_link_libraries(braynsStreamer PRIVATE ${OSPRAY_COMMON_LIBRARY}
-                                               ${OSPRAY_MPI_LIBRARIES}
-                                               ${MPI_C_LIBRARIES})
+                                               ${MPI_LIBRARIES}
+                                               ${OSPRAY_MPI_LIBRARIES})
   target_compile_definitions(braynsStreamer PRIVATE USE_MPI)
 endif()
 set_target_properties(braynsStreamer PROPERTIES

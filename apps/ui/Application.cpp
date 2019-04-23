@@ -215,7 +215,10 @@ void Application::run()
         m_timer.start();
 
         if (m_exit)
+        {
+            m_brayns.getEngine().setKeepRunning(false);
             break;
+        }
 
         toggleFullscreen();
         reshape();

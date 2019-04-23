@@ -24,6 +24,7 @@ extern "C" {
 #include <brayns/pluginapi/ExtensionPlugin.h>
 
 #include <lunchbox/monitor.h>
+#include <lunchbox/mtQueue.h>
 #include <thread>
 
 #ifdef USE_MPI
@@ -32,7 +33,6 @@ extern "C" {
 
 #ifdef USE_NVPIPE
 #include <NvPipe.h>
-#include <lunchbox/mtQueue.h>
 #endif
 
 namespace streamer
@@ -60,9 +60,15 @@ public:
 
 struct Image
 {
+    Image() = default;
+    Image(const void *buffer_, const brayns::Vector2ui &size_)
+        : buffer(buffer_)
+        , size(size_)
+    {
+    }
     std::vector<char> data;
+    const void *buffer{nullptr};
     brayns::Vector2ui size;
-    brayns::FrameBufferFormat format;
 };
 
 class Streamer : public brayns::ExtensionPlugin
@@ -81,12 +87,19 @@ private:
     auto bitrate() const { return _props.getProperty<int>("bitrate"); }
     auto gop() const { return _props.getProperty<int>("gop"); }
     auto profile() const { return _props.getProperty<std::string>("profile"); }
-    auto threadingLevel() const { return _props.getProperty<int>("threading"); }
+    auto asyncEncode() const
+    {
+        return _props.getProperty<bool>("async-encode");
+    }
+    auto asyncCopy() const { return _props.getProperty<bool>("async-copy"); }
+    bool useGPU() const;
+    bool useMPI() const;
+    bool useCudaBuffer() const;
+    bool isLocalOrMaster() const;
 
-    void _runCopyLoop();
-    void _runLoop();
-    void encodeFrame(const int width, const int height,
-                     const uint8_t *const data);
+    void _runAsyncEncode();
+    void _runAsyncEncodeFinish();
+    void encodeFrame(const int width, const int height, const void *data);
     void stream_frame(const bool receivePkt = true);
     void _syncFrame();
     void _barrier();
@@ -104,17 +117,15 @@ private:
     brayns::Timer _timer;
     int64_t _waitTime{0};
 
-    Image image;
-    std::thread _copyThread;
-    std::thread _sendThread;
-    lunchbox::Monitor<int> _rgbas;
+    std::thread _encodeThread;
+    std::thread _encodeFinishThread; // CPU only
+    lunchbox::MTQueue<Image> _images;
     lunchbox::Monitor<int> _pkts;
 
 #ifdef USE_NVPIPE
     NvPipe *encoder{nullptr};
-    void compressAndSend(void *cudaBuffer, const brayns::Vector2ui &size);
-    lunchbox::MTQueue<void *> _cudaQueue;
 #endif
+    bool _fbModified{false};
 
     const brayns::PropertyMap _props;
     size_t _frameCnt{0};

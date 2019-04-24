@@ -132,6 +132,7 @@ private:
 #ifdef USE_NVPIPE
     NvPipe *encoder{nullptr};
 #endif
+    bool _fbModified{false};
     brayns::FrameBufferPtr frameBuffers[2];
     int currentFB{0};
 

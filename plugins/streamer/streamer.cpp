@@ -49,6 +49,8 @@ inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
 
 #define STREAM_PIX_FMT AV_PIX_FMT_YUV420P
 
+#define USE_CUDA_HACK
+
 namespace
 {
 constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 2.0, 0.0}};
@@ -258,7 +260,9 @@ void Streamer::init()
                 std::thread(std::bind(&Streamer::_runAsyncEncodeFinish, this));
     }
 
+#ifndef USE_CUDA_HACK
     _createFrameBuffers();
+#endif
 
     _timer.start();
 }
@@ -277,7 +281,12 @@ void Streamer::postRender()
 
     frameBuffer->map();
 
+#ifdef USE_CUDA_HACK
+    const void *buffer = useCudaBuffer() ? frameBuffer->cudaBuffer()
+                                         : frameBuffer->getColorBuffer();
+#else
     const void *buffer = frameBuffer->getColorBuffer();
+#endif
     if (asyncEncode())
     {
         if (useGPU())
@@ -531,6 +540,26 @@ brayns::FrameBufferPtr Streamer::_getFrameBuffer() const
 
 void Streamer::_swapFrameBuffer()
 {
+#ifdef USE_CUDA_HACK
+    if (!useCudaBuffer() || _fbModified)
+        return;
+
+    const auto &frameBuffers = _api->getEngine().getFrameBuffers();
+    if (frameBuffers.size() < 1)
+        return;
+    auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
+    frameBuffer->setFormat(brayns::FrameBufferFormat::none);
+    switch (_props.getProperty<int>("eye"))
+    {
+    case 1:
+        frameBuffer->setName("L");
+        break;
+    case 2:
+        frameBuffer->setName("R");
+        break;
+    }
+    _fbModified = true;
+#else
     if (!useCudaBuffer() || !asyncEncode())
         return;
 
@@ -538,6 +567,7 @@ void Streamer::_swapFrameBuffer()
     engine.removeFrameBuffer(frameBuffers[currentFB]);
     currentFB = 1 - currentFB;
     engine.addFrameBuffer(frameBuffers[currentFB]);
+#endif
 }
 
 void Streamer::_syncFrame()

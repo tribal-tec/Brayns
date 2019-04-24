@@ -258,39 +258,22 @@ void Streamer::init()
                 std::thread(std::bind(&Streamer::_runAsyncEncodeFinish, this));
     }
 
+    _createFrameBuffers();
+
     _timer.start();
 }
 
 void Streamer::preRender()
 {
+    _swapFrameBuffer();
     _syncFrame();
-
-    if (!useCudaBuffer() || _fbModified)
-        return;
-
-    const auto &frameBuffers = _api->getEngine().getFrameBuffers();
-    if (frameBuffers.size() < 1)
-        return;
-    auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
-    frameBuffer->setFormat(brayns::FrameBufferFormat::none);
-    switch (_props.getProperty<int>("eye"))
-    {
-    case 1:
-        frameBuffer->setName("L");
-        break;
-    case 2:
-        frameBuffer->setName("R");
-        break;
-    }
-    _fbModified = true;
 }
 
 void Streamer::postRender()
 {
-    const auto &frameBuffers = _api->getEngine().getFrameBuffers();
-    if (frameBuffers.size() < 1)
+    auto frameBuffer = _getFrameBuffer();
+    if (!frameBuffer)
         return;
-    auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
 
     frameBuffer->map();
 
@@ -504,6 +487,57 @@ void Streamer::printStats()
         std::cout << std::flush;
     else
         std::cout << std::endl;
+}
+
+void Streamer::_createFrameBuffers()
+{
+    // in the CPU/ospray case, the OpenDeckPlugin creates the buffers for us
+    if (_api->getParametersManager().getApplicationParameters().getEngine() !=
+        "optix")
+        return;
+
+    auto &engine = _api->getEngine();
+
+    auto format = brayns::FrameBufferFormat::rgba_i8;
+    if (useCudaBuffer())
+        format = brayns::FrameBufferFormat::none;
+    std::string name;
+    switch (_props.getProperty<int>("eye"))
+    {
+    case 1:
+        name = "L";
+        break;
+    case 2:
+        name = "R";
+        break;
+    }
+    frameBuffers[0] =
+        engine.createFrameBuffer(name, {width(), height()}, format);
+    engine.addFrameBuffer(frameBuffers[0]);
+
+    if (useCudaBuffer())
+        frameBuffers[1] =
+            engine.createFrameBuffer(name, {width(), height()}, format);
+}
+
+brayns::FrameBufferPtr Streamer::_getFrameBuffer() const
+{
+    const size_t fbIndex = useCudaBuffer() ? 0 : _props.getProperty<int>("fb");
+    const auto &frameBuffers = _api->getEngine().getFrameBuffers();
+    if (fbIndex >= frameBuffers.size())
+        return brayns::FrameBufferPtr();
+    return frameBuffers[fbIndex];
+}
+
+void Streamer::_swapFrameBuffer()
+{
+    if (!useCudaBuffer() || !asyncEncode())
+        return;
+
+    auto &engine = _api->getEngine();
+    engine.removeFrameBuffer(frameBuffers[currentFB]);
+    currentFB = 1 - currentFB;
+    engine.addFrameBuffer(frameBuffers[currentFB]);
 }
 
 void Streamer::_syncFrame()

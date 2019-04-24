@@ -107,6 +107,9 @@ private:
     void _barrier();
     void _nextFrame();
     void printStats();
+    void _createFrameBuffers();
+    brayns::FrameBufferPtr _getFrameBuffer() const;
+    void _swapFrameBuffer();
 
     AVFormatContext *streamContext{nullptr};
     AVStream *stream{nullptr};
@@ -129,7 +132,8 @@ private:
 #ifdef USE_NVPIPE
     NvPipe *encoder{nullptr};
 #endif
-    bool _fbModified{false};
+    brayns::FrameBufferPtr frameBuffers[2];
+    int currentFB{0};
 
     const brayns::PropertyMap _props;
     size_t _frameNumber{0};

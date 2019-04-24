@@ -56,8 +56,7 @@ private:
     void _mapUnsafe();
     void _unmapUnsafe();
 
-    int _activeBuffer = 0;
-    optix::Buffer _frameBuffer[2];
+    optix::Buffer _frameBuffer{nullptr};
     optix::Buffer _accumBuffer{nullptr};
     void* _colorBuffer{nullptr};
     float* _depthBuffer{nullptr};

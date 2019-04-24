@@ -292,13 +292,10 @@ void Streamer::postRender()
     if (frameBuffers.size() < 1)
         return;
     auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
-    const int width = frameBuffer->getSize().x;
-    const int height = frameBuffer->getSize().y;
 
     frameBuffer->map();
 
-    const void *buffer = useCudaBuffer() ? frameBuffer->cudaBuffer()
-                                         : frameBuffer->getColorBuffer();
+    const void *buffer = frameBuffer->getColorBuffer();
     if (asyncEncode())
     {
         if (useGPU())
@@ -312,22 +309,16 @@ void Streamer::postRender()
                 _images.push(img);
             }
             else
-                encodeFrame(width, height, buffer);
+                encodeFrame(frameBuffer->getSize(), buffer);
         }
     }
     else
-        encodeFrame(width, height, buffer);
+        encodeFrame(frameBuffer->getSize(), buffer);
 
     frameBuffer->unmap();
-    if (_props.getProperty<bool>("stats"))
-        printStats();
-
-    if (isLocalOrMaster())
-        _nextFrame();
 }
 
-void Streamer::encodeFrame(const int srcWidth, const int srcHeight,
-                           const void *data)
+void Streamer::encodeFrame(const brayns::Vector2ui &size, const void *data)
 {
     brayns::Timer encodeTimer;
     encodeTimer.start();
@@ -338,21 +329,21 @@ void Streamer::encodeFrame(const int srcWidth, const int srcHeight,
     if (useGPU())
     {
         static std::vector<uint8_t> compressed;
-        const size_t bufSize = srcWidth * srcHeight * 4;
+        const size_t bufSize = size.x * size.y * 4;
         if (compressed.size() < bufSize)
             compressed.resize(bufSize);
 
-        uint64_t size =
+        const auto compressedSize =
 #ifdef USE_NVPIPE
-            NvPipe_Encode(encoder, data, srcWidth * 4, compressed.data(),
-                          compressed.size(), srcWidth, srcHeight,
+            NvPipe_Encode(encoder, data, size.x * 4, compressed.data(),
+                          compressed.size(), size.x, size.y,
                           gop() > 0 ? _frameCnt % gop() == 0 : false);
 #else
             0;
 #endif
         av_init_packet(pkt);
         pkt->data = compressed.data();
-        pkt->size = size;
+        pkt->size = compressedSize;
         pkt->pts = pts;
         pkt->dts = pts;
         pkt->stream_index = stream->index;
@@ -363,13 +354,13 @@ void Streamer::encodeFrame(const int srcWidth, const int srcHeight,
     else
     {
         sws_context =
-            sws_getCachedContext(sws_context, srcWidth, srcHeight,
-                                 AV_PIX_FMT_RGBA, width(), height(),
-                                 STREAM_PIX_FMT, SWS_FAST_BILINEAR, 0, 0, 0);
-        const int stride[] = {4 * srcWidth};
+            sws_getCachedContext(sws_context, size.x, size.y, AV_PIX_FMT_RGBA,
+                                 width(), height(), STREAM_PIX_FMT,
+                                 SWS_FAST_BILINEAR, 0, 0, 0);
+        const int stride[] = {4 * (int)size.x};
         auto cdata = reinterpret_cast<const uint8_t *const>(data);
-        sws_scale(sws_context, &cdata, stride, 0, srcHeight,
-                  picture.frame->data, picture.frame->linesize);
+        sws_scale(sws_context, &cdata, stride, 0, size.y, picture.frame->data,
+                  picture.frame->linesize);
         picture.frame->pts = pts;
 
         if (avcodec_send_frame(codecContext, picture.frame) < 0)
@@ -377,6 +368,12 @@ void Streamer::encodeFrame(const int srcWidth, const int srcHeight,
     }
 
     encodeDuration = encodeTimer.elapsed();
+
+    if (_props.getProperty<bool>("stats"))
+        printStats();
+
+    if (isLocalOrMaster())
+        _nextFrame();
 
     if (asyncEncode() && !useGPU())
         ++_pkts;
@@ -426,10 +423,10 @@ bool Streamer::useMPI() const
 
 bool Streamer::useCudaBuffer() const
 {
-    return _api->getParametersManager()
+    return useGPU() &&
+           _api->getParametersManager()
                    .getApplicationParameters()
-                   .getEngine() == "optix" &&
-           useGPU();
+                   .getEngine() == "optix";
 }
 
 bool Streamer::isLocalOrMaster() const
@@ -446,14 +443,13 @@ void Streamer::_runAsyncEncode()
     while (_api->getEngine().getKeepRunning())
     {
         Image img = _images.pop();
-        const int width = img.size[0];
         const int height = img.size[1];
         const void *data = img.buffer;
         if (!img.data.empty())
             data = reinterpret_cast<const uint8_t *const>(img.data.data());
         if (!data)
             break;
-        encodeFrame(width, height, data);
+        encodeFrame(img.size, data);
     }
 }
 
@@ -513,9 +509,9 @@ void Streamer::_syncFrame()
 
     brayns::Timer timer;
     auto &camera = _api->getCamera();
+    timer.start();
     if (mpicommon::IamTheMaster())
     {
-        timer.start();
         const auto head =
             camera.getProperty<std::array<double, 3>>("headPosition");
 
@@ -525,7 +521,6 @@ void Streamer::_syncFrame()
     }
     else
     {
-        timer.start();
         std::array<double, 3> head;
         ospcommon::networking::BufferedReadStream stream(*mpiFabric);
         stream >> head >> _frameCnt;

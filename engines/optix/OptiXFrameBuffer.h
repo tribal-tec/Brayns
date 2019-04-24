@@ -48,10 +48,8 @@ public:
     {
         return std::unique_lock<std::mutex>(_mapMutex);
     }
-    const uint8_t* getColorBuffer() const final { return _colorBuffer; }
+    const void* getColorBuffer() const final { return _colorBuffer; }
     const float* getDepthBuffer() const final { return 0; }
-    const void* cudaBuffer() override;
-
 private:
     void destroy();
     void _recreate();
@@ -61,7 +59,7 @@ private:
     int _activeBuffer = 0;
     optix::Buffer _frameBuffer[2];
     optix::Buffer _accumBuffer{nullptr};
-    uint8_t* _colorBuffer{nullptr};
+    void* _colorBuffer{nullptr};
     float* _depthBuffer{nullptr};
     void* _imageData{nullptr};
 

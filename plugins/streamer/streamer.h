@@ -98,7 +98,7 @@ private:
 
     void _runAsyncEncode();
     void _runAsyncEncodeFinish();
-    void encodeFrame(const int width, const int height, const void *data);
+    void encodeFrame(const brayns::Vector2ui &size, const void *data);
     void streamFrame(const bool finishEncode = true);
     void _syncFrame();
     void _barrier();

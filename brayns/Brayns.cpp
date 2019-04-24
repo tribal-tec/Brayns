@@ -221,7 +221,7 @@ struct Brayns::Impl : public PluginAPI
         FrameBuffer& frameBuffer = _engine->getFrameBuffer();
         frameBuffer.map();
         const Vector2i& frameSize = frameBuffer.getSize();
-        const auto colorBuffer = frameBuffer.getColorBuffer();
+        const auto colorBuffer = (const uint8_t*)frameBuffer.getColorBuffer();
         if (colorBuffer)
         {
             const size_t size =

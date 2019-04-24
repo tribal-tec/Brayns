@@ -85,13 +85,15 @@ void VRPNPlugin::init()
 {
     _vrpnTracker = std::make_unique<vrpn_Tracker_Remote>(_vrpnName.c_str());
     if (!_vrpnTracker->connectionPtr()->doing_okay())
-        throw std::runtime_error("VRPN couldn't connect to: " + _vrpnName +
-                                 " tracker");
+        return;
 
     _vrpnAnalog = std::make_unique<vrpn_Analog_Remote>(_vrpnName.c_str());
     if (!_vrpnAnalog->connectionPtr()->doing_okay())
-        throw std::runtime_error("VRPN couldn't connect to: " + _vrpnName +
-                                 " analog");
+        return;
+
+    _vrpnAnalog = std::make_unique<vrpn_Analog_Remote>(_vrpnName.c_str());
+    if (!_vrpnAnalog->connectionPtr()->doing_okay())
+        return;
 
     BRAYNS_INFO << "VRPN successfully connected to " << _vrpnName << std::endl;
 
@@ -110,6 +112,9 @@ void VRPNPlugin::init()
 
 void VRPNPlugin::preRender()
 {
+    if (!_vrpnTracker->connectionPtr()->doing_okay())
+        return;
+
     _timer.stop();
     _vrpnTracker->mainloop();
 

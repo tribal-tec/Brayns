@@ -15,6 +15,7 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include <atomic>
 #include <string>
 
 #include <brayns/common/PropertyMap.h>
@@ -60,14 +61,15 @@ public:
 struct Image
 {
     Image() = default;
-    Image(const void *buffer_, const brayns::Vector2ui &size_)
-        : buffer(buffer_)
+    Image(const size_t frameNumber_, const brayns::Vector2ui &size_)
+        : frameNumber(frameNumber_)
         , size(size_)
     {
     }
+    const size_t frameNumber{0};
+    const brayns::Vector2ui size;
     std::vector<char> data;
     const void *buffer{nullptr};
-    brayns::Vector2ui size;
 };
 
 class Streamer : public brayns::ExtensionPlugin
@@ -98,7 +100,8 @@ private:
 
     void _runAsyncEncode();
     void _runAsyncEncodeFinish();
-    void encodeFrame(const brayns::Vector2ui &size, const void *data);
+    void encodeFrame(const size_t frameNumber, const brayns::Vector2ui &size,
+                     const void *data);
     void streamFrame(const bool finishEncode = true);
     void _syncFrame();
     void _barrier();
@@ -129,8 +132,8 @@ private:
     bool _fbModified{false};
 
     const brayns::PropertyMap _props;
-    size_t _frameCnt{0};
-    double encodeDuration{0};
+    size_t _frameNumber{0};
+    std::atomic<double> encodeDuration{0};
 #ifdef USE_MPI
     void _initMPI();
     double mpiDuration{0};

@@ -33,6 +33,9 @@ OptiXFrameBuffer::OptiXFrameBuffer(const std::string& name,
     : FrameBuffer(name, frameSize, frameBufferFormat)
 {
     resize(frameSize);
+    _activeBuffer = 1 - _activeBuffer;
+    resize(frameSize);
+    _activeBuffer = 1 - _activeBuffer;
 }
 
 OptiXFrameBuffer::~OptiXFrameBuffer()
@@ -40,7 +43,7 @@ OptiXFrameBuffer::~OptiXFrameBuffer()
     auto lock = getScopeLock();
     _unmapUnsafe();
     destroy();
-    _activeBuffer = _activeBuffer == 0 ? 1 : 0;
+    _activeBuffer = 1 - _activeBuffer;
     destroy();
 }
 
@@ -117,13 +120,6 @@ void OptiXFrameBuffer::_recreate()
     BRAYNS_DEBUG << "Frame buffer created" << std::endl;
 }
 
-const void* OptiXFrameBuffer::cudaBuffer()
-{
-    auto buf = _frameBuffer[_activeBuffer]->getDevicePointer(0);
-    _activeBuffer = _activeBuffer == 0 ? 1 : 0;
-    return buf;
-}
-
 void OptiXFrameBuffer::map()
 {
     _mapMutex.lock();
@@ -139,7 +135,11 @@ void OptiXFrameBuffer::_mapUnsafe()
         context["accum_buffer"]->set(_accumBuffer);
 
     if (_frameBufferFormat == FrameBufferFormat::none)
+    {
+        _colorBuffer = _frameBuffer[_activeBuffer]->getDevicePointer(0);
+        _activeBuffer = 1 - _activeBuffer;
         return;
+    }
 
     rtBufferMap(_frameBuffer[_activeBuffer]->get(), &_imageData);
 
@@ -164,10 +164,8 @@ void OptiXFrameBuffer::unmap()
 
 void OptiXFrameBuffer::_unmapUnsafe()
 {
-    if (_frameBufferFormat == FrameBufferFormat::none)
-        return;
-
-    rtBufferUnmap(_frameBuffer[_activeBuffer]->get());
+    if (_frameBufferFormat != FrameBufferFormat::none)
+        rtBufferUnmap(_frameBuffer[_activeBuffer]->get());
     _colorBuffer = nullptr;
     _depthBuffer = nullptr;
 }

@@ -50,7 +50,7 @@ public:
     {
         return std::unique_lock<std::mutex>(_mapMutex);
     }
-    const uint8_t* getColorBuffer() const final { return _colorBuffer; }
+    const void* getColorBuffer() const final { return _colorBuffer; }
     const float* getDepthBuffer() const final { return _depthBuffer; }
     OSPFrameBuffer impl() { return _currentFB(); }
     void createPixelOp(const std::string& name) final;
@@ -67,7 +67,7 @@ private:
 
     OSPFrameBuffer _frameBuffer{nullptr};
     OSPFrameBuffer _subsamplingFrameBuffer{nullptr};
-    uint8_t* _colorBuffer{nullptr};
+    void* _colorBuffer{nullptr};
     float* _depthBuffer{nullptr};
     OSPPixelOp _pixelOp{nullptr};
     size_t _subsamplingFactor{1};

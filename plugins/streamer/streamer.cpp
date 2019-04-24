@@ -69,7 +69,6 @@ void _copyToImage(streamer::Image &image, brayns::FrameBuffer &frameBuffer)
     if (image.data.size() < bufferSize)
         image.data.resize(bufferSize);
     memcpy(image.data.data(), data, bufferSize);
-    image.size = size;
 }
 }
 
@@ -299,32 +298,42 @@ void Streamer::postRender()
     if (asyncEncode())
     {
         if (useGPU())
-            _images.push(Image(buffer, frameBuffer->getSize()));
+        {
+            Image img(_frameNumber, frameBuffer->getSize());
+            img.buffer = buffer;
+            _images.push(img);
+        }
         else
         {
             if (asyncCopy())
             {
-                Image img;
+                Image img(_frameNumber, frameBuffer->getSize());
                 _copyToImage(img, *frameBuffer);
                 _images.push(img);
             }
             else
-                encodeFrame(frameBuffer->getSize(), buffer);
+                encodeFrame(_frameNumber, frameBuffer->getSize(), buffer);
         }
     }
     else
-        encodeFrame(frameBuffer->getSize(), buffer);
+        encodeFrame(_frameNumber, frameBuffer->getSize(), buffer);
 
     frameBuffer->unmap();
+
+    if (_props.getProperty<bool>("stats"))
+        printStats();
+    if (isLocalOrMaster())
+        _nextFrame();
 }
 
-void Streamer::encodeFrame(const brayns::Vector2ui &size, const void *data)
+void Streamer::encodeFrame(const size_t frameNumber,
+                           const brayns::Vector2ui &size, const void *data)
 {
     brayns::Timer encodeTimer;
     encodeTimer.start();
 
     const auto pts =
-        av_rescale_q(_frameCnt, AVRational{1, fps()}, stream->time_base);
+        av_rescale_q(frameNumber, AVRational{1, fps()}, stream->time_base);
 
     if (useGPU())
     {
@@ -337,7 +346,7 @@ void Streamer::encodeFrame(const brayns::Vector2ui &size, const void *data)
 #ifdef USE_NVPIPE
             NvPipe_Encode(encoder, data, size.x * 4, compressed.data(),
                           compressed.size(), size.x, size.y,
-                          gop() > 0 ? _frameCnt % gop() == 0 : false);
+                          gop() > 0 ? frameNumber % gop() == 0 : false);
 #else
             0;
 #endif
@@ -369,12 +378,6 @@ void Streamer::encodeFrame(const brayns::Vector2ui &size, const void *data)
 
     encodeDuration = encodeTimer.elapsed();
 
-    if (_props.getProperty<bool>("stats"))
-        printStats();
-
-    if (isLocalOrMaster())
-        _nextFrame();
-
     if (asyncEncode() && !useGPU())
         ++_pkts;
     else
@@ -390,7 +393,10 @@ void Streamer::streamFrame(const bool finishEncode)
         const auto ret = avcodec_receive_packet(codecContext, pkt);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
             return;
-        encodeDuration += timer.elapsed();
+        // encodeDuration += timer.elapsed();
+        for (double g = encodeDuration;
+             !encodeDuration.compare_exchange_strong(g, g + timer.elapsed());)
+            ;
     }
 
     _barrier();
@@ -443,13 +449,12 @@ void Streamer::_runAsyncEncode()
     while (_api->getEngine().getKeepRunning())
     {
         Image img = _images.pop();
-        const int height = img.size[1];
         const void *data = img.buffer;
         if (!img.data.empty())
             data = reinterpret_cast<const uint8_t *const>(img.data.data());
         if (!data)
             break;
-        encodeFrame(img.size, data);
+        encodeFrame(img.frameNumber, img.size, data);
     }
 }
 
@@ -516,14 +521,14 @@ void Streamer::_syncFrame()
             camera.getProperty<std::array<double, 3>>("headPosition");
 
         ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
-        stream << head << _frameCnt;
+        stream << head << _frameNumber;
         stream.flush();
     }
     else
     {
         std::array<double, 3> head;
         ospcommon::networking::BufferedReadStream stream(*mpiFabric);
-        stream >> head >> _frameCnt;
+        stream >> head >> _frameNumber;
         camera.updateProperty("headPosition", head);
     }
     mpiDuration = timer.elapsed();
@@ -538,7 +543,7 @@ void Streamer::_nextFrame()
         std::this_thread::sleep_for(std::chrono::microseconds(_waitTime));
 
     _timer.start();
-    ++_frameCnt;
+    ++_frameNumber;
 }
 
 void Streamer::_barrier()

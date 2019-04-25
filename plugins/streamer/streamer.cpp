@@ -122,6 +122,7 @@ void Streamer::init()
         THROW("Could not init stream network");
 
     const bool useRTP = !_props.getProperty<bool>("rtsp");
+    const bool useHEVC = _props.getProperty<bool>("hevc");
     const std::string filename =
         useRTP
             ? "rtp://" + _props.getProperty<std::string>("host")
@@ -129,8 +130,8 @@ void Streamer::init()
 
     AVOutputFormat *fmt =
         av_guess_format(useRTP ? "rtp" : "rtsp", nullptr, nullptr);
-    avformat_alloc_output_context2(&streamContext, fmt, "h264",
-                                   filename.c_str());
+    avformat_alloc_output_context2(&streamContext, fmt,
+                                   useHEVC ? "hevc" : "h264", filename.c_str());
     if (!streamContext)
         THROW("Could not open format context");
 
@@ -141,9 +142,9 @@ void Streamer::init()
             THROW("Failed to open stream output context, stream will not work");
     }
 
-    AVCodecID codecID = AV_CODEC_ID_H264;
+    AVCodecID codecID = useHEVC ? AV_CODEC_ID_HEVC : AV_CODEC_ID_H264;
     codec = avcodec_find_encoder(codecID);
-    if (!(codec))
+    if (!codec)
         THROW("Could not find encoder for "
               << std::quoted(avcodec_get_name(codecID)));
 
@@ -156,14 +157,16 @@ void Streamer::init()
 
     if (useGPU())
     {
-        stream->codecpar->codec_id = AV_CODEC_ID_H264;
+        stream->codecpar->codec_id = codecID;
         stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
         stream->codecpar->width = width();
         stream->codecpar->height = height();
 
 #ifdef USE_NVPIPE
-        encoder = NvPipe_CreateEncoder(NVPIPE_RGBA32, NVPIPE_H264, NVPIPE_LOSSY,
-                                       bitrate(), fps(), width(), height());
+        encoder = NvPipe_CreateEncoder(NVPIPE_RGBA32,
+                                       useHEVC ? NVPIPE_HEVC : NVPIPE_H264,
+                                       NVPIPE_LOSSY, bitrate(), fps(), width(),
+                                       height());
         if (!encoder)
             THROW("Failed to create encoder: " << NvPipe_GetError(nullptr));
 #endif
@@ -393,8 +396,8 @@ void Streamer::streamFrame(const bool finishEncode)
 
     _barrier();
 #if 0
-    av_write_frame(format_ctx, pkt);
-    av_write_frame(format_ctx, nullptr);
+    av_write_frame(streamContext, pkt);
+    av_write_frame(streamContext, nullptr);
 #else
     av_interleaved_write_frame(streamContext, pkt);
 #endif
@@ -484,14 +487,13 @@ void Streamer::printStats()
         std::cout << '\r';
 
     const auto elapsed = _timer.elapsed() + double(_waitTime) / 1e6;
+    const auto renderDuration = _api->getEngine().renderDuration;
+    const auto overhead = _timer.elapsed() - _api->getEngine().renderDuration;
     std::cout << "encode " << int(encodeDuration * 1000) << "ms | "
-              << "render " << int(_api->getEngine().renderDuration * 1000)
-              << "ms | "
+              << "render " << int(renderDuration * 1000) << "ms | "
               << "total " << int(elapsed * 1000) << "ms | "
-              << "overhead "
-              << (elapsed - _api->getEngine().renderDuration) * 1000 << "ms | "
-              << 1. / elapsed << "/" << 1. / _api->getEngine().renderDuration
-              << " FPS";
+              << "overhead " << int(overhead * 1000) << "ms | " << 1. / elapsed
+              << "/" << 1. / renderDuration << " FPS";
     if (flushOnly)
         std::cout << std::flush;
     else
@@ -674,10 +676,11 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"bitrate", 10, {"Bitrate", "in MBit/s"}});
     props.setProperty({"width", 1920});
     props.setProperty({"height", 1080});
-    props.setProperty({"profile", std::string("high444")});
+    props.setProperty({"profile", std::string("main")});
     props.setProperty({"fb", 0});
     props.setProperty({"gop", 60});
     props.setProperty({"rtsp", false});
+    props.setProperty({"hevc", false});
     props.setProperty({"async-encode", false});
     props.setProperty({"async-copy", false}); // CPU only (sws_scale)
     props.setProperty({"stats", false});

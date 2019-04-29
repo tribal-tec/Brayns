@@ -53,12 +53,19 @@ inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
 
 namespace
 {
-constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 2.0, 0.0}};
+const std::string HEAD_POSITION_PROP = "headPosition";
+const std::string HEAD_ROTATION_PROP = "headRotation";
+constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 0.0, 0.0}};
+constexpr std::array<double, 4> HEAD_INIT_ROT{{0.0, 0.0, 0.0, 1.0}};
 
 brayns::Property getHeadPositionProperty()
 {
-    brayns::Property headPosition{"headPosition", HEAD_INIT_POS};
-    // headPosition.markReadOnly();
+    brayns::Property headPosition{HEAD_POSITION_PROP, HEAD_INIT_POS};
+    return headPosition;
+}
+brayns::Property getHeadRotationProperty()
+{
+    brayns::Property headPosition{HEAD_ROTATION_PROP, HEAD_INIT_ROT};
     return headPosition;
 }
 
@@ -247,12 +254,7 @@ void Streamer::init()
     pkt = av_packet_alloc();
 
     auto &camera = _api->getCamera();
-    if (!camera.hasProperty("headPosition"))
-    {
-        brayns::PropertyMap props;
-        props.setProperty(getHeadPositionProperty());
-        camera.updateProperties(props);
-    }
+    camera.updateProperty("segment", _props.getProperty<int>("segment"));
 
     if (asyncEncode())
     {
@@ -512,23 +514,12 @@ void Streamer::_createFrameBuffers()
     auto format = brayns::FrameBufferFormat::rgba_i8;
     if (useCudaBuffer())
         format = brayns::FrameBufferFormat::none;
-    std::string name;
-    switch (_props.getProperty<int>("eye"))
-    {
-    case 1:
-        name = "L";
-        break;
-    case 2:
-        name = "R";
-        break;
-    }
-    frameBuffers[0] =
-        engine.createFrameBuffer(name, {width(), height()}, format);
+    frameBuffers[0] = engine.createFrameBuffer("", {width(), height()}, format);
     engine.addFrameBuffer(frameBuffers[0]);
 
     if (useCudaBuffer())
         frameBuffers[1] =
-            engine.createFrameBuffer(name, {width(), height()}, format);
+            engine.createFrameBuffer("", {width(), height()}, format);
 }
 
 brayns::FrameBufferPtr Streamer::_getFrameBuffer() const
@@ -551,15 +542,6 @@ void Streamer::_swapFrameBuffer()
         return;
     auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
     frameBuffer->setFormat(brayns::FrameBufferFormat::none);
-    switch (_props.getProperty<int>("eye"))
-    {
-    case 1:
-        frameBuffer->setName("L");
-        break;
-    case 2:
-        frameBuffer->setName("R");
-        break;
-    }
     _fbModified = true;
 #else
     if (!useCudaBuffer() || !asyncEncode())
@@ -583,19 +565,23 @@ void Streamer::_syncFrame()
     timer.start();
     if (mpicommon::IamTheMaster())
     {
-        const auto head =
-            camera.getProperty<std::array<double, 3>>("headPosition");
+        const auto headPos =
+            camera.getProperty<std::array<double, 3>>(HEAD_POSITION_PROP);
+        const auto headRot =
+            camera.getProperty<std::array<double, 4>>(HEAD_ROTATION_PROP);
 
         ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
-        stream << head << _frameNumber;
+        stream << headPos << headRot << _frameNumber;
         stream.flush();
     }
     else
     {
-        std::array<double, 3> head;
+        std::array<double, 3> headPos;
+        std::array<double, 4> headRot;
         ospcommon::networking::BufferedReadStream stream(*mpiFabric);
-        stream >> head >> _frameNumber;
-        camera.updateProperty("headPosition", head);
+        stream >> headPos >> headRot >> _frameNumber;
+        camera.updateProperty(HEAD_POSITION_PROP, headPos);
+        camera.updateProperty(HEAD_ROTATION_PROP, headRot);
     }
     mpiDuration = timer.elapsed();
 #endif
@@ -684,7 +670,7 @@ extern "C" brayns::ExtensionPlugin *brayns_plugin_create(int argc,
     props.setProperty({"async-encode", false});
     props.setProperty({"async-copy", false}); // CPU only (sws_scale)
     props.setProperty({"stats", false});
-    props.setProperty({"eye", 0});
+    props.setProperty({"segment", 0});
 #ifdef USE_NVPIPE
     props.setProperty({"gpu", false});
 #endif

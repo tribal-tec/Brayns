@@ -100,6 +100,9 @@ void OptiXEngine::_createCameras()
         }
         properties.setProperty(
             {"headPosition", std::array<double, 3>{{0.0, 0.0, 0.0}}});
+        properties.setProperty(
+            {"headRotation", std::array<double, 4>{{0.0, 0.0, 0.0, 1.0}}});
+        properties.setProperty({"segment", 0});
         addCameraType("perspective", properties);
     }
     {

@@ -56,14 +56,7 @@ void OptiXCamera::commit()
 
     Vector3d u, v, w;
 
-    Vector3d pos = getPosition();
-    const auto head = getProperty<std::array<double, 3>>("headPosition");
-    pos += Vector3d{-head[0], head[1], head[2]};
-
-    if (getBufferTarget() == "R")
-        pos.x += 0.0635f;
-    else if (getBufferTarget() == "L")
-        pos.x -= 0.0635f;
+    const Vector3d& pos = getPosition();
 
     _calculateCameraVariables(u, v, w);
 
@@ -77,6 +70,18 @@ void OptiXCamera::commit()
         getPropertyOrValue<double>("focusDistance", 1.0));
     context[CUDA_ATTR_CAMERA_BAD_COLOR]->setFloat(1.f, 0.f, 1.f);
     context[CUDA_ATTR_CAMERA_OFFSET]->setFloat(0, 0);
+
+    const auto headPos = getProperty<std::array<double, 3>>("headPosition");
+    const auto headRotation =
+        getProperty<std::array<double, 4>>("headRotation");
+    const auto segment = getProperty<int>("segment");
+
+    context["headPos"]->setFloat(headPos[0], headPos[1], headPos[2]);
+    context["segmentID"]->setUint(segment);
+    auto headRot = glm::rotate(Quaterniond(headRotation[3], headRotation[0],
+                                           headRotation[1], headRotation[2]),
+                               Vector3d(1., 0., 0.));
+    context["headUVec"]->setFloat(headRot.x, headRot.y, headRot.z);
 
     if (_clipPlanesBuffer)
         _clipPlanesBuffer->destroy();

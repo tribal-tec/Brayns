@@ -80,7 +80,8 @@ ApplicationParameters::ApplicationParameters()
         (PARAM_MAX_RENDER_FPS.c_str(), po::value<size_t>(&_maxRenderFPS),
          "Max. render FPS") //
         (PARAM_ENV_MAP.c_str(), po::value<std::string>(&_envMap),
-         "Path to environment map")("fb", po::value<int>(&_fb), "which fb");
+         "Path to environment map")("fb", po::value<int>(&_fb), "which fb")("eventdriven",
+                                        po::value<bool>(&_eventDriven));
 
     _positionalArgs.add(PARAM_INPUT_PATHS.c_str(), -1);
 }

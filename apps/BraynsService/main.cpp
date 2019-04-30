@@ -49,12 +49,17 @@ public:
 
         _brayns = std::make_unique<brayns::Brayns>(argc, argv);
 
-        // events from rockets, trigger rendering
-        _brayns->getEngine().triggerRender =
-            [& eventRendering = _eventRendering]
+        if (_brayns->getParametersManager()
+                .getApplicationParameters()
+                .eventDriven())
         {
-            eventRendering->start();
-        };
+            // events from rockets, trigger rendering
+            _brayns->getEngine().triggerRender =
+                [& eventRendering = _eventRendering]
+            {
+                eventRendering->start();
+            };
+        }
 
         // launch first frame; after that, only events will trigger that
         _eventRendering->start();

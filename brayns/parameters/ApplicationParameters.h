@@ -93,6 +93,7 @@ public:
     const strings& getInputPaths() const { return _inputPaths; }
     po::positional_options_description& posArgs() { return _positionalArgs; }
     int fb() const { return _fb; }
+    bool eventDriven() const { return _eventDriven; }
 protected:
     void parse(const po::variables_map& vm) final;
 
@@ -108,6 +109,7 @@ protected:
     bool _parallelRendering{false};
     bool _dynamicLoadBalancer{false};
     std::string _envMap;
+    bool _eventDriven{false};
 
     strings _inputPaths;
     int _fb{0};

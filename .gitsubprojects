@@ -16,3 +16,5 @@ endif()
 if(BRAYNS_BBIC_ENABLED)
   git_subproject(HighFive https://github.com/BlueBrain/HighFive.git 68fbe8e)
 endif()
+
+git_subproject(Lunchbox https://github.com/Eyescale/Lunchbox.git master)

@@ -561,28 +561,11 @@ void Streamer::_syncFrame()
         return;
 
     brayns::Timer timer;
-    auto &camera = _api->getCamera();
     timer.start();
     if (mpicommon::IamTheMaster())
-    {
-        const auto headPos =
-            camera.getProperty<std::array<double, 3>>(HEAD_POSITION_PROP);
-        const auto headRot =
-            camera.getProperty<std::array<double, 4>>(HEAD_ROTATION_PROP);
-
-        ospcommon::networking::BufferedWriteStream stream(*mpiFabric);
-        stream << headPos << headRot << _frameNumber;
-        stream.flush();
-    }
+        _frameData->serialize(_frameNumber);
     else
-    {
-        std::array<double, 3> headPos;
-        std::array<double, 4> headRot;
-        ospcommon::networking::BufferedReadStream stream(*mpiFabric);
-        stream >> headPos >> headRot >> _frameNumber;
-        camera.updateProperty(HEAD_POSITION_PROP, headPos);
-        camera.updateProperty(HEAD_ROTATION_PROP, headRot);
-    }
+        _frameData->deserialize(_frameNumber);
     mpiDuration = timer.elapsed();
 #endif
 }
@@ -648,7 +631,66 @@ void Streamer::_initMPI()
         mpiFabric = std::make_unique<mpicommon::MPIBcastFabric>(mpicommon::app,
                                                                 MPI_ROOT, 0);
     }
+    _frameData = std::make_unique<FrameData>(*mpiFabric, *_api);
     _barrier();
+}
+
+Streamer::FrameData::FrameData(ospcommon::networking::Fabric &mpiFabric_,
+                               brayns::PluginAPI &api)
+    : mpiFabric(mpiFabric_)
+    , rp(api.getParametersManager().getRenderingParameters())
+    , camera(api.getCamera())
+{
+}
+
+void Streamer::FrameData::serialize(const size_t frameNumber) const
+{
+    ospcommon::networking::BufferedWriteStream stream(mpiFabric);
+    stream << frameNumber << rp.isModified() << camera.isModified();
+    if (camera.isModified())
+    {
+        const auto headPos =
+            camera.getPropertyOrValue<std::array<double, 3>>(HEAD_POSITION_PROP,
+                                                             {{0.0, 0.0, 0.0}});
+        const auto headRot = camera.getPropertyOrValue<std::array<double, 4>>(
+            HEAD_ROTATION_PROP, {{0.0, 0.0, 0.0, 1.0}});
+
+        stream << camera.getTarget() << camera.getPosition()
+               << camera.getOrientation() << headPos << headRot;
+    }
+    if (rp.isModified())
+    {
+        stream << rp.getSamplesPerPixel();
+    }
+    stream.flush();
+}
+
+void Streamer::FrameData::deserialize(size_t &frameNumber)
+{
+    ospcommon::networking::BufferedReadStream stream(mpiFabric);
+    bool rpModified, camModified;
+    stream >> frameNumber >> rpModified >> camModified;
+    if (camModified)
+    {
+        brayns::Vector3d target, position;
+        brayns::Quaterniond orientation;
+        std::array<double, 3> headPos;
+        std::array<double, 4> headRot;
+
+        stream >> target >> position >> orientation >> headPos >> headRot;
+
+        camera.setTarget(target);
+        camera.setPosition(position);
+        camera.setOrientation(orientation);
+        camera.updateProperty(HEAD_POSITION_PROP, headPos);
+        camera.updateProperty(HEAD_ROTATION_PROP, headRot);
+    }
+    if (rpModified)
+    {
+        uint32_t spp;
+        stream >> spp;
+        rp.setSamplesPerPixel(spp);
+    }
 }
 #endif
 }

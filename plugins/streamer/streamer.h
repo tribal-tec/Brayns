@@ -145,6 +145,18 @@ private:
     double barrierDuration{0};
 
     std::unique_ptr<ospcommon::networking::Fabric> mpiFabric;
+
+    struct FrameData
+    {
+        FrameData(ospcommon::networking::Fabric &mpiFabric_,
+                  brayns::PluginAPI &api);
+        void serialize(const size_t frameNumber) const;
+        void deserialize(size_t &frameNumber);
+        ospcommon::networking::Fabric &mpiFabric;
+        brayns::RenderingParameters &rp;
+        brayns::Camera &camera;
+    };
+    std::unique_ptr<FrameData> _frameData;
 #endif
 };
 }

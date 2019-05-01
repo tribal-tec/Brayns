@@ -543,6 +543,8 @@ void Streamer::_swapFrameBuffer()
     auto &frameBuffer = frameBuffers[_props.getProperty<int>("fb")];
     frameBuffer->setFormat(brayns::FrameBufferFormat::none);
     _fbModified = true;
+
+    _api->getCamera().setInitialState({0, 0, 0}, {1, 0, 0, 0});
 #else
     if (!useCudaBuffer() || !asyncEncode())
         return;
@@ -643,7 +645,7 @@ Streamer::FrameData::FrameData(ospcommon::networking::Fabric &mpiFabric_,
 {
 }
 
-void Streamer::FrameData::serialize(const size_t frameNumber) const
+bool Streamer::FrameData::serialize(const size_t frameNumber) const
 {
     ospcommon::networking::BufferedWriteStream stream(mpiFabric);
     stream << frameNumber << rp.isModified() << camera.isModified();
@@ -660,12 +662,13 @@ void Streamer::FrameData::serialize(const size_t frameNumber) const
     }
     if (rp.isModified())
     {
-        stream << rp.getSamplesPerPixel();
+        stream << rp.getSamplesPerPixel() << rp.getBackgroundColor();
     }
     stream.flush();
+    return rp.isModified();
 }
 
-void Streamer::FrameData::deserialize(size_t &frameNumber)
+bool Streamer::FrameData::deserialize(size_t &frameNumber)
 {
     ospcommon::networking::BufferedReadStream stream(mpiFabric);
     bool rpModified, camModified;
@@ -688,9 +691,12 @@ void Streamer::FrameData::deserialize(size_t &frameNumber)
     if (rpModified)
     {
         uint32_t spp;
-        stream >> spp;
+        brayns::Vector3d bgColor;
+        stream >> spp >> bgColor;
         rp.setSamplesPerPixel(spp);
+        rp.setBackgroundColor(bgColor);
     }
+    return rpModified;
 }
 #endif
 }

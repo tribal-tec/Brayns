@@ -115,6 +115,7 @@ private:
             [& accumRendering = _accumRendering,
              &brayns = _brayns ](const auto&, auto&) {
                 brayns->preRender();
+                brayns->commit();
                 accumRendering->start();
             });
 

@@ -150,8 +150,8 @@ private:
     {
         FrameData(ospcommon::networking::Fabric &mpiFabric_,
                   brayns::PluginAPI &api);
-        void serialize(const size_t frameNumber) const;
-        void deserialize(size_t &frameNumber);
+        bool serialize(const size_t frameNumber) const;
+        bool deserialize(size_t &frameNumber);
         ospcommon::networking::Fabric &mpiFabric;
         brayns::RenderingParameters &rp;
         brayns::Camera &camera;

@@ -39,6 +39,13 @@ constexpr int VRPN_REPEAT_TIMEOUT_MS = 16;
 const std::string HEAD_POSITION_PROP = "headPosition";
 const std::string HEAD_ROTATION_PROP = "headRotation";
 
+constexpr vrpn_int32 BUTTON_TRIGGER = 0;
+constexpr vrpn_int32 BUTTON_JOYSTICK = 5;
+constexpr vrpn_int32 BUTTON_1 = 4;
+constexpr vrpn_int32 BUTTON_2 = 3;
+constexpr vrpn_int32 BUTTON_3 = 2;
+constexpr vrpn_int32 BUTTON_4 = 1;
+
 constexpr std::array<double, 3> to_array_3d(const vrpn_float64* pos)
 {
     return {{pos[0], pos[1], pos[2]}};
@@ -68,6 +75,12 @@ void joystickCallback(void* userData, const vrpn_ANALOGCB joystick)
     states->axisX = joystick.channel[0];
     states->axisZ = joystick.channel[1];
 }
+
+void buttonCallback(void* userData, const vrpn_BUTTONCB button)
+{
+    auto& functable = *static_cast<FuncTable*>(userData);
+    functable[button.button]();
+}
 }
 
 VRPNPlugin::VRPNPlugin(const std::string& vrpnName)
@@ -79,6 +92,8 @@ VRPNPlugin::~VRPNPlugin()
 {
     _vrpnTracker->unregister_change_handler(&(_api->getCamera()),
                                             trackerCallback, HEAD_SENSOR_ID);
+    _vrpnAnalog->unregister_change_handler(&_states, joystickCallback);
+    _vrpnButton->unregister_change_handler(&_buttonFuncs, buttonCallback);
 }
 
 void VRPNPlugin::init()
@@ -91,8 +106,8 @@ void VRPNPlugin::init()
     if (!_vrpnAnalog->connectionPtr()->doing_okay())
         return;
 
-    _vrpnAnalog = std::make_unique<vrpn_Analog_Remote>(_vrpnName.c_str());
-    if (!_vrpnAnalog->connectionPtr()->doing_okay())
+    _vrpnButton = std::make_unique<vrpn_Button_Remote>(_vrpnName.c_str());
+    if (!_vrpnButton->connectionPtr()->doing_okay())
         return;
 
     BRAYNS_INFO << "VRPN successfully connected to " << _vrpnName << std::endl;
@@ -108,6 +123,17 @@ void VRPNPlugin::init()
     _vrpnTracker->register_change_handler(&_states, flyStickCallback,
                                           HEAD_SENSOR_ID);
     _vrpnAnalog->register_change_handler(&_states, joystickCallback);
+    _vrpnButton->register_change_handler(&_buttonFuncs, buttonCallback);
+
+    _buttonFuncs[BUTTON_JOYSTICK] = [& camera = _api->getCamera()]
+    {
+        camera.reset();
+    };
+    _buttonFuncs[BUTTON_TRIGGER] = [] {};
+    _buttonFuncs[BUTTON_1] = [] {};
+    _buttonFuncs[BUTTON_2] = [] {};
+    _buttonFuncs[BUTTON_3] = [] {};
+    _buttonFuncs[BUTTON_4] = [] {};
 }
 
 void VRPNPlugin::preRender()
@@ -117,6 +143,8 @@ void VRPNPlugin::preRender()
 
     _timer.stop();
     _vrpnTracker->mainloop();
+    _vrpnAnalog->mainloop();
+    _vrpnButton->mainloop();
 
     double frameTime = _timer.seconds();
 

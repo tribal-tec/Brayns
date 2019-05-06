@@ -257,5 +257,46 @@ static __host__ __device__ __inline__ optix::float3 tonemap(
     return mapped_rgb;
 }
 
+static __device__ inline float3 tonemap2(float3 ldrColor, const float gamma,
+                                         const float whitePoint,
+                                         const float burnHighlights,
+                                         float crushBlacks,
+                                         const float saturation,
+                                         const float brightness)
+{
+    const float invGamma = 1.0f / gamma;
+    const float invWhitePoint = brightness / whitePoint;
+    crushBlacks = crushBlacks + crushBlacks + 1.0f;
+
+    ldrColor = invWhitePoint * ldrColor;
+    ldrColor *= (ldrColor * optix::make_float3(burnHighlights) +
+                 optix::make_float3(1.0f)) /
+                (ldrColor + optix::make_float3(1.0f));
+
+    float luminance =
+        optix::dot(ldrColor, optix::make_float3(0.3f, 0.59f, 0.11f));
+    ldrColor = optix::lerp(optix::make_float3(luminance), ldrColor,
+                           saturation); // This can generate negative values for
+                                        // saturation > 1.0f!
+    ldrColor = optix::fmaxf(optix::make_float3(0.0f),
+                            ldrColor); // Prevent negative values.
+
+    luminance = optix::dot(ldrColor, make_float3(0.3f, 0.59f, 0.11f));
+    if (luminance < 1.0f)
+    {
+        const float3 crushed =
+            optix::make_float3(powf(ldrColor.x, crushBlacks),
+                               powf(ldrColor.y, crushBlacks),
+                               powf(ldrColor.z, crushBlacks));
+        ldrColor = optix::lerp(crushed, ldrColor, sqrtf(luminance));
+        ldrColor = optix::fmaxf(optix::make_float3(0.0f),
+                                ldrColor); // Prevent negative values.
+    }
+    ldrColor = optix::make_float3(powf(ldrColor.x, invGamma),
+                                  powf(ldrColor.y, invGamma),
+                                  powf(ldrColor.z, invGamma));
+    return ldrColor;
+}
+
 #define OPTIX_DUMP_FLOAT(VALUE) rtPrintf(#VALUE " %f\n", VALUE)
 #define OPTIX_DUMP_INT(VALUE) rtPrintf(#VALUE " %i\n", VALUE)

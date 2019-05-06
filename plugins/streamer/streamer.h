@@ -155,6 +155,8 @@ private:
         ospcommon::networking::Fabric &mpiFabric;
         brayns::RenderingParameters &rp;
         brayns::Camera &camera;
+        brayns::Scene &scene;
+        brayns::Renderer &renderer;
     };
     std::unique_ptr<FrameData> _frameData;
 #endif

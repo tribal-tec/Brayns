@@ -134,40 +134,16 @@ void OptiXEngine::_createRenderers()
         _parametersManager.getRenderingParameters());
     _renderer->setScene(_scene);
 
-    { // Advanced renderer
-        const std::string CUDA_ADVANCED_SIMULATION =
-            braynsOptixEngine_generated_AdvancedSimulation_cu_ptx;
+    PropertyMap properties;
 
-        OptiXContext& context = OptiXContext::get();
-
-        OptixShaderProgram osp;
-        osp.closest_hit = context.getOptixContext()->createProgramFromPTXString(
-            CUDA_ADVANCED_SIMULATION, "closest_hit_radiance");
-        osp.closest_hit_textured =
-            context.getOptixContext()->createProgramFromPTXString(
-                CUDA_ADVANCED_SIMULATION, "closest_hit_radiance_textured");
-        osp.any_hit = context.getOptixContext()->createProgramFromPTXString(
-            CUDA_ADVANCED_SIMULATION, "any_hit_shadow");
-
-        context.addRenderer("advanced_simulation", osp);
-
-        PropertyMap properties;
-        properties.setProperty({"shadingEnabled", true, {"Shading enabled"}});
-        properties.setProperty(
-            {"electronShadingEnabled", true, {"Electron shading enabled"}});
-        properties.setProperty({"shadows", 0., 0., 1., {"Shadow strength"}});
-        properties.setProperty(
-            {"softShadows", 0., 0., 1., {"Soft shadow strength"}});
-        properties.setProperty({"ambientOcclusionStrength",
-                                0.,
-                                0.,
-                                1.,
-                                {"Ambient occlusion strength"}});
-        properties.setProperty(
-            {"maxDepth", 10, 0, 20, {"Max ray recursion depth"}});
-
-        addRendererType("advanced_simulation", properties);
-    }
+    properties.setProperty({"tonemapping", false, {"Use tonemapping"}});
+    properties.setProperty({"mygamma", 2.2, 0.01, 10.0, {"Gamma"}});
+    properties.setProperty({"white_point", 1.0, 0.01, 255.0, {"White Point"}});
+    properties.setProperty(
+        {"highlights", 0.8, 0.0, 10.0, {"Burn Hightlights"}});
+    properties.setProperty({"blacks", 0.2, 0.0, 1.0, {"Crush Blacks"}});
+    properties.setProperty({"saturation", 1.2, 0.0, 10.0, {"Saturation"}});
+    properties.setProperty({"brightness", 0.8, 0.0, 100.0, {"Brightness"}});
 
     { // Basic simulation / Basic renderer
         const std::string CUDA_BASIC_SIMULATION_RENDERER =
@@ -185,10 +161,44 @@ void OptiXEngine::_createRenderers()
             CUDA_BASIC_SIMULATION_RENDERER, "any_hit_shadow");
 
         context.addRenderer("basic_simulation", osp);
-        addRendererType("basic_simulation");
+        addRendererType("basic_simulation", properties);
 
         context.addRenderer("basic", osp);
-        addRendererType("basic");
+        addRendererType("basic", properties);
+    }
+
+    { // Advanced renderer
+        const std::string CUDA_ADVANCED_SIMULATION =
+            braynsOptixEngine_generated_AdvancedSimulation_cu_ptx;
+
+        OptiXContext& context = OptiXContext::get();
+
+        OptixShaderProgram osp;
+        osp.closest_hit = context.getOptixContext()->createProgramFromPTXString(
+            CUDA_ADVANCED_SIMULATION, "closest_hit_radiance");
+        osp.closest_hit_textured =
+            context.getOptixContext()->createProgramFromPTXString(
+                CUDA_ADVANCED_SIMULATION, "closest_hit_radiance_textured");
+        osp.any_hit = context.getOptixContext()->createProgramFromPTXString(
+            CUDA_ADVANCED_SIMULATION, "any_hit_shadow");
+
+        context.addRenderer("advanced_simulation", osp);
+
+        properties.setProperty({"shadingEnabled", true, {"Shading enabled"}});
+        properties.setProperty(
+            {"electronShadingEnabled", true, {"Electron shading enabled"}});
+        properties.setProperty({"shadows", 0., 0., 1., {"Shadow strength"}});
+        properties.setProperty(
+            {"softShadows", 0., 0., 1., {"Soft shadow strength"}});
+        properties.setProperty({"ambientOcclusionStrength",
+                                0.,
+                                0.,
+                                1.,
+                                {"Ambient occlusion strength"}});
+        properties.setProperty(
+            {"maxDepth", 10, 0, 20, {"Max ray recursion depth"}});
+
+        addRendererType("advanced_simulation", properties);
     }
 }
 

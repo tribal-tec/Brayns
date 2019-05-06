@@ -9,6 +9,8 @@
 #include <brayns/engine/Camera.h>
 #include <brayns/engine/Engine.h>
 #include <brayns/engine/FrameBuffer.h>
+#include <brayns/engine/Renderer.h>
+#include <brayns/engine/Scene.h>
 #include <brayns/parameters/ParametersManager.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
@@ -34,6 +36,128 @@ template <typename T>
 inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
 {
     buf.read((byte_t *)rh.data(), sizeof(T) * 3);
+    return buf;
+}
+
+inline WriteStream &operator<<(WriteStream &buf, const brayns::PropertyMap &rh)
+{
+    using namespace brayns;
+    buf << rh.getProperties().size();
+    for (auto prop : rh.getProperties())
+    {
+        buf << prop->type << prop->name;
+        switch (prop->type)
+        {
+        case brayns::Property::Type::Double:
+            buf << prop->get<double>();
+            break;
+        case Property::Type::Int:
+            buf << prop->get<int32_t>();
+            break;
+        case Property::Type::String:
+            buf << prop->get<std::string>();
+            break;
+        case Property::Type::Bool:
+            buf << prop->get<bool>();
+            break;
+        case Property::Type::Vec2d:
+            buf << prop->get<std::array<double, 2>>();
+            break;
+        case Property::Type::Vec2i:
+            buf << prop->get<std::array<int32_t, 2>>();
+            break;
+        case Property::Type::Vec3d:
+            buf << prop->get<std::array<int32_t, 3>>();
+            break;
+        case Property::Type::Vec3i:
+            buf << prop->get<std::array<double, 3>>();
+            break;
+        case Property::Type::Vec4d:
+            buf << prop->get<std::array<double, 3>>();
+            break;
+        }
+    }
+    return buf;
+}
+
+inline ReadStream &operator>>(ReadStream &buf, brayns::PropertyMap &rh)
+{
+    using namespace brayns;
+    size_t sz;
+    buf >> sz;
+    for (size_t i = 0; i < sz; ++i)
+    {
+        Property::Type type;
+        std::string name;
+        buf >> type >> name;
+        switch (type)
+        {
+        case brayns::Property::Type::Double:
+        {
+            double val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Int:
+        {
+            int32_t val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::String:
+        {
+            std::string val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Bool:
+        {
+            bool val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec2d:
+        {
+            std::array<double, 2> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec2i:
+        {
+            std::array<int32_t, 2> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec3d:
+        {
+            std::array<double, 3> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec3i:
+        {
+            std::array<int32_t, 3> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec4d:
+        {
+            std::array<double, 4> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        }
+    }
+
     return buf;
 }
 }
@@ -645,13 +769,16 @@ Streamer::FrameData::FrameData(ospcommon::networking::Fabric &mpiFabric_,
     : mpiFabric(mpiFabric_)
     , rp(api.getParametersManager().getRenderingParameters())
     , camera(api.getCamera())
+    , scene(api.getScene())
+    , renderer(api.getRenderer())
 {
 }
 
 bool Streamer::FrameData::serialize(const size_t frameNumber) const
 {
     ospcommon::networking::BufferedWriteStream stream(mpiFabric);
-    stream << frameNumber << rp.isModified() << camera.isModified();
+    stream << frameNumber << rp.isModified() << camera.isModified()
+           << scene.isModified() << renderer.isModified();
     if (camera.isModified())
     {
         const auto headPos =
@@ -667,6 +794,10 @@ bool Streamer::FrameData::serialize(const size_t frameNumber) const
     {
         stream << rp.getSamplesPerPixel() << rp.getBackgroundColor();
     }
+    if (scene.isModified())
+        stream << scene.getEnvironmentMap();
+    if (renderer.isModified())
+        stream << renderer.getPropertyMap();
     stream.flush();
     return rp.isModified();
 }
@@ -674,8 +805,9 @@ bool Streamer::FrameData::serialize(const size_t frameNumber) const
 bool Streamer::FrameData::deserialize(size_t &frameNumber)
 {
     ospcommon::networking::BufferedReadStream stream(mpiFabric);
-    bool rpModified, camModified;
-    stream >> frameNumber >> rpModified >> camModified;
+    bool rpModified, camModified, sceneModified, rendererModified;
+    stream >> frameNumber >> rpModified >> camModified >> sceneModified >>
+        rendererModified;
     if (camModified)
     {
         brayns::Vector3d target, position;
@@ -699,7 +831,20 @@ bool Streamer::FrameData::deserialize(size_t &frameNumber)
         rp.setSamplesPerPixel(spp);
         rp.setBackgroundColor(bgColor);
     }
-    return rpModified;
+    if (sceneModified)
+    {
+        std::string envMap;
+        stream >> envMap;
+        scene.setEnvironmentMap(envMap);
+    }
+    if (rendererModified)
+    {
+        brayns::PropertyMap props;
+        stream >> props;
+        renderer.updateProperties(props);
+    }
+
+    return rpModified || camModified || sceneModified;
 }
 #endif
 }

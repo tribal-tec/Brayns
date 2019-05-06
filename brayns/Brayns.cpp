@@ -281,6 +281,8 @@ struct Brayns::Impl : public PluginAPI
 
         _engine->getCamera().setCurrentType(
             _parametersManager.getRenderingParameters().getCurrentCamera());
+        _engine->getRenderer().setCurrentType(
+            _parametersManager.getRenderingParameters().getCurrentRenderer());
     }
 
     void _createFrameBuffer()

@@ -52,6 +52,14 @@ rtDeclareVariable(unsigned int, samples_per_pixel, , );
 rtBuffer<float4, 1> clip_planes;
 rtDeclareVariable(unsigned int, nb_clip_planes, , );
 
+rtDeclareVariable(uint, tonemapping, , );
+rtDeclareVariable(float, mygamma, , );
+rtDeclareVariable(float, white_point, , );
+rtDeclareVariable(float, highlights, , );
+rtDeclareVariable(float, blacks, , );
+rtDeclareVariable(float, saturation, , );
+rtDeclareVariable(float, brightness, , );
+
 __device__ void getClippingValues(const float3& ray_origin,
                                   const float3& ray_direction, float& near,
                                   float& far)
@@ -142,7 +150,10 @@ RT_PROGRAM void perspectiveCamera()
     else
         acc_val = make_float4(result, 1.f);
 
-    output_buffer[launch_index] = make_color(make_float3(acc_val));
+    float3 color = make_float3(acc_val);
+    if(tonemapping != 0)
+        color = tonemap2(color, mygamma, white_point, highlights, blacks, saturation, brightness);
+    output_buffer[launch_index] = make_color(color);
 
     if(accum_buffer.size().x > 1 && accum_buffer.size().y > 1)
         accum_buffer[launch_index] = acc_val;

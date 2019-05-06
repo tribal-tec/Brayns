@@ -319,8 +319,8 @@ void Streamer::postRender()
 
     if (_props.getProperty<bool>("stats"))
         printStats();
-    if (isLocalOrMaster())
-        _nextFrame();
+
+    _nextFrame();
 }
 
 void Streamer::encodeFrame(const size_t frameNumber,
@@ -575,12 +575,15 @@ void Streamer::_syncFrame()
 void Streamer::_nextFrame()
 {
     _timer.stop();
-    _waitTime = std::max(0., (1.0 / fps()) * 1e6 - _timer.microseconds());
-    if (_waitTime > 0)
-        std::this_thread::sleep_for(std::chrono::microseconds(_waitTime));
+    if (isLocalOrMaster())
+    {
+        _waitTime = std::max(0., (1.0 / fps()) * 1e6 - _timer.microseconds());
+        if (_waitTime > 0)
+            std::this_thread::sleep_for(std::chrono::microseconds(_waitTime));
+        ++_frameNumber;
+    }
 
     _timer.start();
-    ++_frameNumber;
 }
 
 void Streamer::_barrier()

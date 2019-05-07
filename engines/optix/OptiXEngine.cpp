@@ -137,13 +137,13 @@ void OptiXEngine::_createRenderers()
     PropertyMap properties;
 
     properties.setProperty({"tonemapping", false, {"Use tonemapping"}});
-    properties.setProperty({"mygamma", 2.2, 0.01, 10.0, {"Gamma"}});
-    properties.setProperty({"white_point", 1.0, 0.01, 255.0, {"White Point"}});
-    properties.setProperty(
-        {"highlights", 0.8, 0.0, 10.0, {"Burn Hightlights"}});
-    properties.setProperty({"blacks", 0.2, 0.0, 1.0, {"Crush Blacks"}});
-    properties.setProperty({"saturation", 1.2, 0.0, 10.0, {"Saturation"}});
-    properties.setProperty({"brightness", 0.8, 0.0, 100.0, {"Brightness"}});
+    properties.setProperty({"exposure", 1.0, {"Exposure"}});
+    properties.setProperty({"a", 1.6773, 0.0001, 10.0, {"Contrast"}});
+    properties.setProperty({"d", 0.9714, 0.0001, 1.0, {"Shoulder"}});
+    properties.setProperty({"m", 0.18, 0.0001, 1.0, {"Mid in"}});
+    properties.setProperty({"n", 0.18, 0.0001, 1.0, {"Mid out"}});
+    properties.setProperty({"w", 1.0, 1.0, 10.0, {"HDR max"}});
+    properties.setProperty({"acesColor", false, {"Use ACES color"}});
 
     { // Basic simulation / Basic renderer
         const std::string CUDA_BASIC_SIMULATION_RENDERER =

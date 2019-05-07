@@ -298,5 +298,78 @@ static __device__ inline float3 tonemap2(float3 ldrColor, const float gamma,
     return ldrColor;
 }
 
+// static const Matrix3x3 acesInputMat = {
+//  {0.5972782409, 0.0760130499, 0.0284085382},
+//  {0.3545713181, 0.9083220973, 0.1338243154},
+//  {0.0482176639, 0.0156579968, 0.8375684636}
+//};
+
+//// ACES output transform matrix = XYZ_2_REC709_PRI_MAT * D60_2_D65_CAT *
+///AP1_2_XYZ_MAT * ODT_SAT_MAT
+// static const uniform LinearSpace3f acesOutputMat = {
+//  { 1.6047539945, -0.1020831870, -0.0032670420},
+//  {-0.5310794927,  1.1081322801, -0.0727552477},
+//  {-0.0736720338, -0.0060518756,  1.0760219533}
+//};
+
+static __device__ inline float3 hableTonemap(float3 x)
+{
+    float hA = 0.15;
+    float hB = 0.50;
+    float hC = 0.10;
+    float hD = 0.20;
+    float hE = 0.02;
+    float hF = 0.30;
+
+    return ((x * (hA * x + hC * hB) + hD * hE) /
+            (x * (hA * x + hB) + hD * hF)) -
+           hE / hF;
+}
+
+static __host__ __device__ __inline__ optix::float3 linear2srgb(
+    const optix::float3& x)
+{
+    return make_float3(pow(x.x, 1.f / 2.2f), pow(x.y, 1.f / 2.2f),
+                       pow(x.z, 1.f / 2.2f));
+}
+
+static __device__ inline float3 aces_tonemap(float3 color, float exposure,
+                                             float a, float b, float c, float d,
+                                             uint acesColor)
+{
+    float3 x = color * exposure;
+    if (acesColor != 0)
+        x = x.x * make_float3(0.5972782409, 0.0760130499, 0.0284085382) +
+            x.y * make_float3(0.3545713181, 0.9083220973, 0.1338243154) +
+            x.z * make_float3(0.0482176639, 0.0156579968, 0.8375684636);
+
+    //    x = hableTonemap(x);
+    //    float3 hW = make_float3(11.2f);
+    //    float3 whiteScale = make_float3(1.0f) / hableTonemap(hW);
+    //    x = x * whiteScale;
+
+    x.x = pow(x.x, a) / (pow(x.x, a * d) * b + c);
+    x.y = pow(x.y, a) / (pow(x.y, a * d) * b + c);
+    x.z = pow(x.z, a) / (pow(x.z, a * d) * b + c);
+
+    // float3 aa = x * (x + 0.0245786f) - 0.000090537f;
+    // float3 bb = x * (0.983729f * x + 0.4329510f) + 0.238081f;
+    // x = aa / bb;
+
+    //    float aa = 2.51f;
+    //    float bb = 0.03f;
+    //    float cc = 2.43f;
+    //    float dd = 0.59f;
+    //    float ee = 0.14f;
+    //    x = ((x*(aa*x+bb))/(x*(cc*x+dd)+ee));
+
+    if (acesColor != 0)
+        x = x.x * make_float3(1.6047539945, -0.1020831870, -0.0032670420) +
+            x.y * make_float3(-0.5310794927, 1.1081322801, -0.0727552477) +
+            x.z * make_float3(-0.0736720338, -0.0060518756, 1.0760219533);
+    x = optix::clamp(linear2srgb(x), make_float3(0.f), make_float3(1.f));
+    return x;
+}
+
 #define OPTIX_DUMP_FLOAT(VALUE) rtPrintf(#VALUE " %f\n", VALUE)
 #define OPTIX_DUMP_INT(VALUE) rtPrintf(#VALUE " %i\n", VALUE)

@@ -185,6 +185,27 @@ void OptiXRenderer::commit()
     context["samples_per_pixel"]->setUint(samples_per_pixel);
 
     toOptiXProperties(getPropertyMap());
+
+    auto a = getProperty<double>("a");
+    auto d = getProperty<double>("d");
+    auto m = getProperty<double>("m");
+    auto n = getProperty<double>("n");
+    auto w = getProperty<double>("w");
+
+    // Solve b and c
+    auto b = -((std::pow(m, -a * d) *
+                (-std::pow(m, a) +
+                 (n * (std::pow(m, a * d) * n * std::pow(w, a) -
+                       std::pow(m, a) * std::pow(w, a * d))) /
+                     (std::pow(m, a * d) * n - n * std::pow(w, a * d)))) /
+               n);
+    auto c = std::max((std::pow(m, a * d) * n * std::pow(w, a) -
+                       std::pow(m, a) * std::pow(w, a * d)) /
+                          (std::pow(m, a * d) * n - n * std::pow(w, a * d)),
+                      0.);
+    context["b"]->setFloat(b);
+    context["c"]->setFloat(c);
+
     _currentRenderer = _renderingParameters.getCurrentRenderer();
 }
 

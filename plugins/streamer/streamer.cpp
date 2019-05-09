@@ -14,6 +14,8 @@
 #include <brayns/parameters/ParametersManager.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
+#include <brayns/common/light/DirectionalLight.h>
+
 #ifdef USE_MPI
 #include <ospray/mpiCommon/MPICommon.h>
 #include <ospray/ospcommon/networking/BufferedDataStreaming.h>
@@ -693,6 +695,25 @@ void Streamer::_syncFrame()
     else
         _frameData->deserialize(_frameNumber);
     mpiDuration = timer.elapsed();
+
+    if (_api->getCamera().isModified())
+    {
+        const auto headRot =
+            _api->getCamera().getPropertyOrValue<std::array<double, 4>>(
+                HEAD_ROTATION_PROP, {{0.0, 0.0, 0.0, 1.0}});
+
+        auto sunLight = _api->getScene().getLight(0);
+        auto sun =
+            std::dynamic_pointer_cast<brayns::DirectionalLight>(sunLight);
+        if (sun)
+        {
+            sun->setDirection(
+                glm::rotate(brayns::Quaterniond(headRot[3], headRot[0],
+                                                headRot[1], headRot[2]),
+                            brayns::Vector3d(0, 0, -1)));
+            _api->getScene().commitLights();
+        }
+    }
 #endif
 }
 

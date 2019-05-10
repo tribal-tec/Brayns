@@ -49,17 +49,12 @@ public:
 
         _brayns = std::make_unique<brayns::Brayns>(argc, argv);
 
-        if (_brayns->getParametersManager()
-                .getApplicationParameters()
-                .eventDriven())
+        // events from rockets, trigger rendering
+        _brayns->getEngine().triggerRender =
+            [& eventRendering = _eventRendering]
         {
-            // events from rockets, trigger rendering
-            _brayns->getEngine().triggerRender =
-                [& eventRendering = _eventRendering]
-            {
-                eventRendering->start();
-            };
-        }
+            eventRendering->start();
+        };
 
         // launch first frame; after that, only events will trigger that
         _eventRendering->start();
@@ -105,19 +100,14 @@ private:
             }
 
             // rendering
-            _brayns->preRender();
             if (_brayns->commit())
                 _triggerRendering->send();
         });
 
         // start accum rendering when we have no more other events
-        _checkIdleRendering->on<uvw::CheckEvent>(
-            [& accumRendering = _accumRendering,
-             &brayns = _brayns ](const auto&, auto&) {
-                brayns->preRender();
-                brayns->commit();
-                accumRendering->start();
-            });
+        _checkIdleRendering->on<uvw::CheckEvent>([& accumRendering =
+                                                      _accumRendering](
+            const auto&, auto&) { accumRendering->start(); });
 
         // accumulation rendering on idle; re-triggered by _checkIdleRendering
         _accumRendering->on<uvw::IdleEvent>([&](const auto&, auto&) {

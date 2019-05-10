@@ -38,6 +38,128 @@ inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
     buf.read((byte_t *)rh.data(), sizeof(T) * 3);
     return buf;
 }
+
+inline WriteStream &operator<<(WriteStream &buf, const brayns::PropertyMap &rh)
+{
+    using namespace brayns;
+    buf << rh.getProperties().size();
+    for (auto prop : rh.getProperties())
+    {
+        buf << prop->type << prop->name;
+        switch (prop->type)
+        {
+        case brayns::Property::Type::Double:
+            buf << prop->get<double>();
+            break;
+        case Property::Type::Int:
+            buf << prop->get<int32_t>();
+            break;
+        case Property::Type::String:
+            buf << prop->get<std::string>();
+            break;
+        case Property::Type::Bool:
+            buf << prop->get<bool>();
+            break;
+        case Property::Type::Vec2d:
+            buf << prop->get<std::array<double, 2>>();
+            break;
+        case Property::Type::Vec2i:
+            buf << prop->get<std::array<int32_t, 2>>();
+            break;
+        case Property::Type::Vec3d:
+            buf << prop->get<std::array<double, 3>>();
+            break;
+        case Property::Type::Vec3i:
+            buf << prop->get<std::array<int32_t, 3>>();
+            break;
+        case Property::Type::Vec4d:
+            buf << prop->get<std::array<double, 4>>();
+            break;
+        }
+    }
+    return buf;
+}
+
+inline ReadStream &operator>>(ReadStream &buf, brayns::PropertyMap &rh)
+{
+    using namespace brayns;
+    size_t sz;
+    buf >> sz;
+    for (size_t i = 0; i < sz; ++i)
+    {
+        Property::Type type;
+        std::string name;
+        buf >> type >> name;
+        switch (type)
+        {
+        case brayns::Property::Type::Double:
+        {
+            double val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Int:
+        {
+            int32_t val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::String:
+        {
+            std::string val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Bool:
+        {
+            bool val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec2d:
+        {
+            std::array<double, 2> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec2i:
+        {
+            std::array<int32_t, 2> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec3d:
+        {
+            std::array<double, 3> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec3i:
+        {
+            std::array<int32_t, 3> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        case Property::Type::Vec4d:
+        {
+            std::array<double, 4> val;
+            buf >> val;
+            rh.setProperty({name, val});
+            break;
+        }
+        }
+    }
+
+    return buf;
+}
 }
 }
 #endif
@@ -55,22 +177,6 @@ inline ReadStream &operator>>(ReadStream &buf, std::array<T, 3> &rh)
 
 namespace
 {
-const std::string HEAD_POSITION_PROP = "headPosition";
-const std::string HEAD_ROTATION_PROP = "headRotation";
-constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 0.0, 0.0}};
-constexpr std::array<double, 4> HEAD_INIT_ROT{{0.0, 0.0, 0.0, 1.0}};
-
-brayns::Property getHeadPositionProperty()
-{
-    brayns::Property headPosition{HEAD_POSITION_PROP, HEAD_INIT_POS};
-    return headPosition;
-}
-brayns::Property getHeadRotationProperty()
-{
-    brayns::Property headPosition{HEAD_ROTATION_PROP, HEAD_INIT_ROT};
-    return headPosition;
-}
-
 void _copyToImage(streamer::Image &image, brayns::FrameBuffer &frameBuffer)
 {
     const auto &size = frameBuffer.getSize();
@@ -576,7 +682,7 @@ void Streamer::_syncFrame()
     {
         const auto headRot =
             _api->getCamera().getPropertyOrValue<std::array<double, 4>>(
-                HEAD_ROTATION_PROP, {{0.0, 0.0, 0.0, 1.0}});
+                "headRotation", {{0.0, 0.0, 0.0, 1.0}});
 
         auto sunLight = _api->getScene().getLight(0);
         auto sun =
@@ -675,18 +781,13 @@ bool Streamer::FrameData::serialize(const size_t frameNumber) const
     stream << frameNumber << rp.isModified() << camera.isModified();
     if (camera.isModified())
     {
-        const auto headPos =
-            camera.getPropertyOrValue<std::array<double, 3>>(HEAD_POSITION_PROP,
-                                                             {{0.0, 0.0, 0.0}});
-        const auto headRot = camera.getPropertyOrValue<std::array<double, 4>>(
-            HEAD_ROTATION_PROP, {{0.0, 0.0, 0.0, 1.0}});
-
         stream << camera.getTarget() << camera.getPosition()
-               << camera.getOrientation() << headPos << headRot;
+               << camera.getOrientation() << camera.getPropertyMap();
     }
     if (rp.isModified())
     {
-        stream << rp.getSamplesPerPixel() << rp.getBackgroundColor();
+        stream << rp.getCurrentRenderer() << rp.getSamplesPerPixel()
+               << rp.getBackgroundColor();
     }
     stream.flush();
     return rp.isModified();
@@ -701,22 +802,22 @@ bool Streamer::FrameData::deserialize(size_t &frameNumber)
     {
         brayns::Vector3d target, position;
         brayns::Quaterniond orientation;
-        std::array<double, 3> headPos;
-        std::array<double, 4> headRot;
+        brayns::PropertyMap props;
 
-        stream >> target >> position >> orientation >> headPos >> headRot;
+        stream >> target >> position >> orientation >> props;
 
         camera.setTarget(target);
         camera.setPosition(position);
         camera.setOrientation(orientation);
-        camera.updateProperty(HEAD_POSITION_PROP, headPos);
-        camera.updateProperty(HEAD_ROTATION_PROP, headRot);
+        camera.updateProperties(props);
     }
     if (rpModified)
     {
+        std::string renderer;
         uint32_t spp;
         brayns::Vector3d bgColor;
-        stream >> spp >> bgColor;
+        stream >> renderer >> spp >> bgColor;
+        rp.setCurrentRenderer(renderer);
         rp.setSamplesPerPixel(spp);
         rp.setBackgroundColor(bgColor);
     }

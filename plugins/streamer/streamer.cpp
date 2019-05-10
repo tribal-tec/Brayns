@@ -69,13 +69,13 @@ inline WriteStream &operator<<(WriteStream &buf, const brayns::PropertyMap &rh)
             buf << prop->get<std::array<int32_t, 2>>();
             break;
         case Property::Type::Vec3d:
-            buf << prop->get<std::array<int32_t, 3>>();
+            buf << prop->get<std::array<double, 3>>();
             break;
         case Property::Type::Vec3i:
-            buf << prop->get<std::array<double, 3>>();
+            buf << prop->get<std::array<int32_t, 3>>();
             break;
         case Property::Type::Vec4d:
-            buf << prop->get<std::array<double, 3>>();
+            buf << prop->get<std::array<double, 4>>();
             break;
         }
     }
@@ -179,22 +179,6 @@ inline ReadStream &operator>>(ReadStream &buf, brayns::PropertyMap &rh)
 
 namespace
 {
-const std::string HEAD_POSITION_PROP = "headPosition";
-const std::string HEAD_ROTATION_PROP = "headRotation";
-constexpr std::array<double, 3> HEAD_INIT_POS{{0.0, 0.0, 0.0}};
-constexpr std::array<double, 4> HEAD_INIT_ROT{{0.0, 0.0, 0.0, 1.0}};
-
-brayns::Property getHeadPositionProperty()
-{
-    brayns::Property headPosition{HEAD_POSITION_PROP, HEAD_INIT_POS};
-    return headPosition;
-}
-brayns::Property getHeadRotationProperty()
-{
-    brayns::Property headPosition{HEAD_ROTATION_PROP, HEAD_INIT_ROT};
-    return headPosition;
-}
-
 void _copyToImage(streamer::Image &image, brayns::FrameBuffer &frameBuffer)
 {
     const auto &size = frameBuffer.getSize();
@@ -700,7 +684,7 @@ void Streamer::_syncFrame()
     {
         const auto headRot =
             _api->getCamera().getPropertyOrValue<std::array<double, 4>>(
-                HEAD_ROTATION_PROP, {{0.0, 0.0, 0.0, 1.0}});
+                "headRotation", {{0.0, 0.0, 0.0, 1.0}});
 
         auto sunLight = _api->getScene().getLight(0);
         auto sun =
@@ -802,18 +786,13 @@ bool Streamer::FrameData::serialize(const size_t frameNumber) const
            << scene.isModified() << renderer.isModified();
     if (camera.isModified())
     {
-        const auto headPos =
-            camera.getPropertyOrValue<std::array<double, 3>>(HEAD_POSITION_PROP,
-                                                             {{0.0, 0.0, 0.0}});
-        const auto headRot = camera.getPropertyOrValue<std::array<double, 4>>(
-            HEAD_ROTATION_PROP, {{0.0, 0.0, 0.0, 1.0}});
-
         stream << camera.getTarget() << camera.getPosition()
-               << camera.getOrientation() << headPos << headRot;
+               << camera.getOrientation() << camera.getPropertyMap();
     }
     if (rp.isModified())
     {
-        stream << rp.getSamplesPerPixel() << rp.getBackgroundColor();
+        stream << rp.getCurrentRenderer() << rp.getSamplesPerPixel()
+               << rp.getBackgroundColor();
     }
     if (scene.isModified())
         stream << scene.getEnvironmentMap();
@@ -833,22 +812,22 @@ bool Streamer::FrameData::deserialize(size_t &frameNumber)
     {
         brayns::Vector3d target, position;
         brayns::Quaterniond orientation;
-        std::array<double, 3> headPos;
-        std::array<double, 4> headRot;
+        brayns::PropertyMap props;
 
-        stream >> target >> position >> orientation >> headPos >> headRot;
+        stream >> target >> position >> orientation >> props;
 
         camera.setTarget(target);
         camera.setPosition(position);
         camera.setOrientation(orientation);
-        camera.updateProperty(HEAD_POSITION_PROP, headPos);
-        camera.updateProperty(HEAD_ROTATION_PROP, headRot);
+        camera.updateProperties(props);
     }
     if (rpModified)
     {
+        std::string renderer;
         uint32_t spp;
         brayns::Vector3d bgColor;
-        stream >> spp >> bgColor;
+        stream >> renderer >> spp >> bgColor;
+        rp.setCurrentRenderer(renderer);
         rp.setSamplesPerPixel(spp);
         rp.setBackgroundColor(bgColor);
     }

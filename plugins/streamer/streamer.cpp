@@ -363,9 +363,6 @@ void Streamer::init()
 
     pkt = av_packet_alloc();
 
-    auto &camera = _api->getCamera();
-    camera.updateProperty("segment", _props.getProperty<int>("segment"));
-
     if (asyncEncode())
     {
         _encodeThread =
@@ -680,7 +677,10 @@ void Streamer::_syncFrame()
         _frameData->deserialize(_frameNumber);
     mpiDuration = timer.elapsed();
 
-    if (_api->getCamera().isModified())
+    auto &camera = _api->getCamera();
+    camera.updateProperty("segment", _props.getProperty<int>("segment"), false);
+
+    if (camera.isModified())
     {
         const auto headRot =
             _api->getCamera().getPropertyOrValue<std::array<double, 4>>(

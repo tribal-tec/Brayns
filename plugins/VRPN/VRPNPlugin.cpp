@@ -57,8 +57,9 @@ constexpr std::array<double, 4> to_array_4d(const vrpn_float64* quat)
 void trackerCallback(void* userData, const vrpn_TRACKERCB tracker)
 {
     auto camera = static_cast<Camera*>(userData);
-    camera->updateProperty(HEAD_POSITION_PROP, to_array_3d(tracker.pos));
-    camera->updateProperty(HEAD_ROTATION_PROP, to_array_4d(tracker.quat));
+    camera->updateProperty(HEAD_POSITION_PROP, to_array_3d(tracker.pos), false);
+    camera->updateProperty(HEAD_ROTATION_PROP, to_array_4d(tracker.quat),
+                           false);
 }
 
 void joystickCallback(void* userData, const vrpn_ANALOGCB joystick)

@@ -63,12 +63,13 @@ vec4f skyboxMapping(const uniform Renderer* uniform renderer,
         return result; // Too close to intersection
 
     const varying vec3f intersection = normalize(ray.org + t * ray.dir);
-
+    const varying float u =
+        (atan2(intersection.x, -intersection.z) + PI) * 0.5f * one_over_pi;
+    const varying float theta = acos(intersection.y);
+    const varying float v = theta * one_over_pi;
     // Only st needs to be set to sample from Texture2D
     varying DifferentialGeometry dg;
-    dg.st =
-        make_vec2f(((atan2(-intersection.x, intersection.z) / PI) + 1.f) * .5f,
-                   -(asin(intersection.y) / PI) + .5f);
+    dg.st = make_vec2f(u, v);
 
     return get4f(bgMaterial->map_Kd.map, dg);
 }

@@ -38,10 +38,10 @@ RT_PROGRAM void envmap_miss()
 {
     if (use_envmap)
     {
-        float theta = atan2f(ray.direction.x, ray.direction.z);
-        float phi = M_PIf * 0.5f - acosf(ray.direction.y);
-        float u = (theta + M_PIf) * (0.5f * M_1_PIf);
-        float v = -0.5f * (1.0f + sin(phi));
+        const float3 R = ray.direction;
+        const float u     = (atan2f(R.x, -R.z) + M_PIf) * 0.5f * M_1_PIf;
+        const float theta = acosf(R.y);
+        const float v     = theta * M_1_PIf;
         prd_radiance.result = make_float3(tex2D(envmap, u, v));
     }
     else

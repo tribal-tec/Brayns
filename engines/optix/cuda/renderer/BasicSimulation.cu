@@ -39,7 +39,7 @@ rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, );
 rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 
 // Textures
-rtTextureSampler<float4, 2> diffuse_map;
+rtTextureSampler<float4, 2> albedoMetallic_map;
 rtDeclareVariable(float3, texcoord, attribute texcoord, );
 
 // Simulation data
@@ -65,7 +65,7 @@ static __device__ inline void shade(bool textured)
                                          simulation_data[simulation_idx],
                                          colors, opacities);
     else if (textured)
-        p_Kd = make_float3(tex2D(diffuse_map, texcoord.x, texcoord.y));
+        p_Kd = make_float3(tex2D(albedoMetallic_map, texcoord.x, texcoord.y));
     else
         p_Kd = Kd;
 

@@ -423,6 +423,7 @@ size_t MeshLoader::_getQuality(const GeometryQuality geometryQuality) const
     switch (geometryQuality)
     {
     case GeometryQuality::low:
+        return aiProcess_Triangulate;
     case GeometryQuality::medium:
         return aiProcessPreset_TargetRealtime_Fast;
     case GeometryQuality::high:

@@ -34,7 +34,13 @@ rtBuffer<float3> normal_buffer;
 rtBuffer<float2> texcoord_buffer;
 rtBuffer<int3> indices_buffer;
 
-rtDeclareVariable(float3, texcoord, attribute texcoord, );
+rtDeclareVariable(float2, texcoord, attribute texcoord, );
+rtDeclareVariable(float3, v0, attribute v0, );
+rtDeclareVariable(float3, v1, attribute v1, );
+rtDeclareVariable(float3, v2, attribute v2, );
+rtDeclareVariable(float2, t0, attribute t0, );
+rtDeclareVariable(float2, t1, attribute t1, );
+rtDeclareVariable(float2, t2, attribute t2, );
 rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, );
 rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 
@@ -60,6 +66,9 @@ static __device__ void meshIntersect(int primIdx)
     {
         if (rtPotentialIntersection(t))
         {
+            v0 = p0;
+            v1 = p1;
+            v2 = p2;
             geometric_normal = normalize(n);
             if (normal_buffer.size() == 0)
                 shading_normal = geometric_normal;
@@ -73,14 +82,18 @@ static __device__ void meshIntersect(int primIdx)
             }
 
             if (texcoord_buffer.size() == 0)
-                texcoord = make_float3(0.f, 0.f, 0.f);
+            {
+                //texcoord = make_float3(0.f, 0.f, 0.f);
+                texcoord.x = 0.0f;
+                texcoord.y = 0.0f;
+            }
             else
             {
-                float2 t0 = texcoord_buffer[v_idx.x];
-                float2 t1 = texcoord_buffer[v_idx.y];
-                float2 t2 = texcoord_buffer[v_idx.z];
-                texcoord = make_float3(t1 * beta + t2 * gamma +
-                                       t0 * (1.f - beta - gamma));
+                t0 = texcoord_buffer[v_idx.x];
+                t1 = texcoord_buffer[v_idx.y];
+                t2 = texcoord_buffer[v_idx.z];
+                texcoord = t1 * beta + t2 * gamma +
+                                       t0 * (1.f - beta - gamma);
             }
 
             if (DO_REFINE)

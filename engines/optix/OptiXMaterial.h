@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <map>
+
 #include <brayns/engine/Material.h>
 
 #include <optixu/optixpp_namespace.h>
@@ -38,6 +40,7 @@ public:
     ::optix::Material getOptixMaterial() { return _optixMaterial; }
 private:
     ::optix::Material _optixMaterial{nullptr};
-    ::optix::TextureSampler _textureSampler{nullptr};
+    //::optix::TextureSampler _baseColorSampler{nullptr};
+    std::map<TextureType,::optix::TextureSampler> _textureSamplers; 
 };
 } // namespace brayns

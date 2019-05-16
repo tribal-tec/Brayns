@@ -30,7 +30,7 @@ SERIALIZATION_ACCESS(Material)
 
 namespace brayns
 {
-enum TextureType
+enum class TextureType : uint8_t
 {
     TT_DIFFUSE = 0,
     TT_NORMALS,

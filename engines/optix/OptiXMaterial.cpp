@@ -27,21 +27,22 @@
 
 namespace brayns
 {
-
-static std::string textureTypeToString[8] = {
-    "albedoMetallic_map",
-    "normalRoughness_map",
-    "bump_map",
-    "map_ks",
-    "map_ns",
-    "map_d",
-    "map_reflection",
-    "map_refraction"};
+static std::string textureTypeToString[12] = {"albedoMetallic_map",
+                                              "normalRoughness_map",
+                                              "bump_map",
+                                              "map_ks",
+                                              "map_ns",
+                                              "map_d",
+                                              "map_reflection",
+                                              "map_refraction",
+                                              "map_occlusion",
+                                              "radiance_map",
+                                              "irradiance_map",
+                                              "brdf_lut"};
 
 OptiXMaterial::~OptiXMaterial()
 {
-
-    for(auto& i : _textureSamplers )
+    for (auto& i : _textureSamplers)
         i.second->destroy();
 
     if (_optixMaterial)
@@ -69,14 +70,16 @@ void OptiXMaterial::commit()
     _optixMaterial["refraction_index"]->setFloat(_refractionIndex);
     _optixMaterial["glossiness"]->setFloat(_glossiness);
 
-    for(const auto& i : getTextureDescriptors())
+    for (const auto& i : getTextureDescriptors())
     {
-        if(!_textureSamplers.count(i.first))
+        if (!_textureSamplers.count(i.first))
         {
-            auto textureSampler = OptiXContext::get().createTextureSampler(i.second);
+            auto textureSampler =
+                OptiXContext::get().createTextureSampler(i.second);
             _textureSamplers.insert(std::make_pair(i.first, textureSampler));
-            _optixMaterial[textureTypeToString[(uint8_t)i.first]]->setTextureSampler(textureSampler);
-        } 
+            _optixMaterial[textureTypeToString[(uint8_t)i.first]]
+                ->setTextureSampler(textureSampler);
+        }
     }
 }
 } // namespace brayns

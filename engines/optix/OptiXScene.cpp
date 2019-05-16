@@ -161,17 +161,24 @@ void OptiXScene::commit()
 
     auto context = OptiXContext::get().getOptixContext();
 
+    auto values = std::map<TextureType, std::string>{
+        {TextureType::diffuse, "envmap"},
+        {TextureType::radiance, "envmap_radiance"},
+        {TextureType::irradiance, "envmap_irradiance"},
+        {TextureType::brdf_lut, "envmap_brdf_lut"}};
     if (hasEnvironmentMap())
+        _backgroundMaterial->commit();
+
+    auto optixMat =
+        std::static_pointer_cast<OptiXMaterial>(_backgroundMaterial);
+    for (const auto& i : values)
     {
-        auto texture = _backgroundMaterial->getTexture(TextureType::TT_DIFFUSE);
-        if (_backgroundTextureSampler)
-            _backgroundTextureSampler->destroy();
-        _backgroundTextureSampler =
-            OptiXContext::get().createTextureSampler(texture);
+        auto sampler = _dummyTextureSampler;
+        if (hasEnvironmentMap() && optixMat->hasTexture(i.first))
+            sampler = optixMat->getTextureSampler(i.first);
+        context[i.second]->setTextureSampler(sampler);
     }
 
-    context["envmap"]->setTextureSampler(
-        hasEnvironmentMap() ? _backgroundTextureSampler : _dummyTextureSampler);
     context["use_envmap"]->setUint(hasEnvironmentMap() ? 1 : 0);
 
     // Geometry

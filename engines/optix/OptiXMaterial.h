@@ -38,9 +38,14 @@ public:
     bool isTextured() const;
 
     ::optix::Material getOptixMaterial() { return _optixMaterial; }
+    auto getTextureSampler(const TextureType type) const
+    {
+        return _textureSamplers.at(type);
+    }
+
 private:
     ::optix::Material _optixMaterial{nullptr};
     //::optix::TextureSampler _baseColorSampler{nullptr};
-    std::map<TextureType,::optix::TextureSampler> _textureSamplers; 
+    std::map<TextureType, ::optix::TextureSampler> _textureSamplers;
 };
 } // namespace brayns

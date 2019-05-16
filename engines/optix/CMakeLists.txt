@@ -15,6 +15,7 @@ if(CUDA_FOUND)
 endif()
 message(STATUS "Using CUDA version ${CUDA_VERSION}")
 
+set(CUDA_NVCC_FLAGS "--use_fast_math")
 # Patch for cmake 3.7->3.9
 if(CMAKE_VERSION VERSION_GREATER "3.6" AND CMAKE_VERSION VERSION_LESS "3.10")
   set(CUDA_run_nvcc "${CMAKE_CURRENT_SOURCE_DIR}/CMake/run_nvcc.cmake")
@@ -37,6 +38,7 @@ set(BRAYNSOPTIXENGINE_CU
   cuda/geometry/TriangleMesh.cu
   cuda/renderer/AdvancedSimulation.cu
   cuda/renderer/BasicSimulation.cu
+  cuda/renderer/PBR.cu
 )
 
 CUDA_GET_SOURCES_AND_OPTIONS(source_files cmake_options options ${ARGN})
@@ -54,6 +56,7 @@ set(BRAYNSOPTIXENGINE_PTX
   braynsOptixEngine_generated_TriangleMesh.cu.ptx
   braynsOptixEngine_generated_AdvancedSimulation.cu.ptx
   braynsOptixEngine_generated_BasicSimulation.cu.ptx
+  braynsOptixEngine_generated_PBR.cu.ptx
 )
 
 include(StringifyPtx)

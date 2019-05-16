@@ -136,11 +136,17 @@ const OptixShaderProgram& OptiXContext::getRenderer(const std::string& name)
 
 ::optix::TextureSampler OptiXContext::createTextureSampler(Texture2DPtr texture)
 {
-    const uint16_t nx = texture->getWidth();
-    const uint16_t ny = texture->getHeight();
+    uint16_t nx = texture->getWidth();
+    uint16_t ny = texture->getHeight();
     const uint16_t channels = texture->getNbChannels();
     const uint16_t optixChannels = 4;
     const bool hasAlpha = optixChannels == channels;
+
+    const uint16_t smallestSize = std::min(nx, ny);
+    const uint16_t mipMapLevels = std::log2(smallestSize) + 0.5f;
+
+    if (texture->getDepth() != 1u)
+        throw std::runtime_error("Non 8-bits textures are not supported");
 
     // Create texture sampler
     ::optix::TextureSampler sampler = _optixContext->createTextureSampler();
@@ -149,42 +155,86 @@ const OptixShaderProgram& OptiXContext::getRenderer(const std::string& name)
     sampler->setWrapMode(2, RT_WRAP_REPEAT);
     sampler->setIndexingMode(RT_TEXTURE_INDEX_NORMALIZED_COORDINATES);
     sampler->setReadMode(RT_TEXTURE_READ_NORMALIZED_FLOAT);
-    sampler->setMaxAnisotropy(1.0f);
-    sampler->setMipLevelCount(1u);
+    sampler->setMaxAnisotropy(8.0f);
     sampler->setArraySize(1u);
+    sampler->setMipLevelClamp(0.0f, mipMapLevels);
 
     // Create buffer and populate with texture data
     optix::Buffer buffer =
-        _optixContext->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_FLOAT4, nx, ny);
-    float* buffer_data = static_cast<float*>(buffer->map());
+        _optixContext->createMipmappedBuffer(RT_BUFFER_INPUT,
+                                             RT_FORMAT_UNSIGNED_BYTE4, nx, ny,
+                                             mipMapLevels);
 
+    std::vector<uint8_t*> mipMapBuffers(mipMapLevels);
+    for (uint8_t currentLevel = 0u; currentLevel < mipMapLevels; ++currentLevel)
+        mipMapBuffers[currentLevel] =
+            static_cast<uint8_t*>(buffer->map(currentLevel));
+
+    uint8_t* ptr_dst = mipMapBuffers[0];
     size_t idx_src = 0;
     size_t idx_dst = 0;
     const auto rawData = texture->getRawData();
-    constexpr auto FRACTION = 1.0f / 255.f;
     for (uint16_t y = 0; y < ny; ++y)
     {
         for (uint16_t x = 0; x < nx; ++x)
         {
-            buffer_data[idx_dst + 0] =
-                static_cast<float>(rawData[idx_src + 0]) * FRACTION;
-            buffer_data[idx_dst + 1] =
-                static_cast<float>(rawData[idx_src + 1]) * FRACTION;
-            buffer_data[idx_dst + 2] =
-                static_cast<float>(rawData[idx_src + 2]) * FRACTION;
-            buffer_data[idx_dst + 3] =
-                hasAlpha ? static_cast<float>(rawData[idx_src + 4]) * FRACTION
-                         : 1.f;
-            idx_dst += 4;
-            idx_src += hasAlpha ? 4 : 3;
+            ptr_dst[idx_dst] = rawData[idx_src];
+            ptr_dst[idx_dst + 1u] = rawData[idx_src + 1u];
+            ptr_dst[idx_dst + 2u] = rawData[idx_src + 2u];
+            ptr_dst[idx_dst + 3u] = hasAlpha ? rawData[idx_src + 3u] : 255u;
+            idx_dst += 4u;
+            idx_src += hasAlpha ? 4u : 3u;
         }
     }
-    buffer->unmap();
+    ny /= 2u;
+    nx /= 2u;
+
+    for (uint8_t currentLevel = 1u; currentLevel < mipMapLevels; ++currentLevel)
+    {
+        ptr_dst = mipMapBuffers[currentLevel];
+        uint8_t* ptr_src = mipMapBuffers[currentLevel - 1u];
+        for (uint16_t y = 0u; y < ny; ++y)
+        {
+            for (uint16_t x = 0u; x < nx; ++x)
+            {
+                ptr_dst[(y * nx + x) * 4u] =
+                    (ptr_src[(y * 2u * nx + x) * 8u] +
+                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u] +
+                     ptr_src[((y * 2u + 1u) * nx + x) * 8u] +
+                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u]) /
+                    4.0f;
+                ptr_dst[(y * nx + x) * 4u + 1u] =
+                    (ptr_src[(y * 2u * nx + x) * 8u + 1u] +
+                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 1u] +
+                     ptr_src[((y * 2u + 1u) * nx + x) * 8u + 1u] +
+                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 1u]) /
+                    4.0f;
+                ptr_dst[(y * nx + x) * 4u + 2u] =
+                    (ptr_src[(y * 2u * nx + x) * 8u + 2u] +
+                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 2u] +
+                     ptr_src[((y * 2u + 1u) * nx + x) * 8u + 2u] +
+                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 2u]) /
+                    4.0f;
+                ptr_dst[(y * nx + x) * 4u + 3u] =
+                    (ptr_src[(y * 2u * nx + x) * 8u + 3u] +
+                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 3u] +
+                     ptr_src[((y * 2u + 1u) * nx + x) * 8u + 3u] +
+                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 3u]) /
+                    4.0f;
+            }
+        }
+        ny /= 2u;
+        nx /= 2u;
+    }
+
+    for (uint8_t currentLevel = 0u; currentLevel < mipMapLevels; ++currentLevel)
+        buffer->unmap(currentLevel);
 
     // Assign buffer to sampler
     sampler->setBuffer(buffer);
     sampler->setFilteringModes(RT_FILTER_LINEAR, RT_FILTER_LINEAR,
-                               RT_FILTER_NONE);
+                               RT_FILTER_LINEAR);
+    sampler->validate();
     return sampler;
 }
 

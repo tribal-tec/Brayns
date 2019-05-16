@@ -31,6 +31,8 @@
 
 #include <fstream>
 
+#include <boost/filesystem.hpp>
+
 namespace
 {
 template <typename T, typename U = T> // U seems to be needed when getID is a
@@ -386,19 +388,41 @@ bool Scene::setEnvironmentMap(const std::string& envMap)
 {
     bool success = true;
     if (envMap.empty())
-        _backgroundMaterial->removeTexture(TT_DIFFUSE);
+        _backgroundMaterial->clearTextures();
     else
     {
         try
         {
-            _backgroundMaterial->setTexture(envMap, TT_DIFFUSE);
+            _backgroundMaterial->setTexture(envMap, TextureType::diffuse);
         }
         catch (const std::runtime_error& e)
         {
             BRAYNS_DEBUG << "Cannot load environment map: " << e.what()
                          << std::endl;
-            _backgroundMaterial->removeTexture(TT_DIFFUSE);
+            _backgroundMaterial->clearTextures();
             success = false;
+        }
+
+        try
+        {
+            const auto path =
+                boost::filesystem::path(envMap).parent_path().string();
+            const auto basename = boost::filesystem::basename(envMap);
+            const auto ext = boost::filesystem::extension(envMap);
+            auto values = std::map<std::string, TextureType>{
+                {"-diffuse-RGBM", TextureType::irradiance},
+                {"-specular-RGBM", TextureType::radiance}};
+            for (const auto i : values)
+            {
+                _backgroundMaterial->setTexture(path + "/" + basename +
+                                                    i.first + ext,
+                                                i.second);
+            }
+            _backgroundMaterial->setTexture(path + "/" + "ibl_brdf_lut.png",
+                                            TextureType::brdf_lut);
+        }
+        catch (...)
+        {
         }
     }
 

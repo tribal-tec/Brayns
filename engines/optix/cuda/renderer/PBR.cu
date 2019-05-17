@@ -22,13 +22,6 @@
 
 using namespace optix;
 
-struct PerRayData_radiance
-{
-    float3 result;
-    float importance;
-    int depth;
-};
-
 // Scene
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 rtDeclareVariable(PerRayData_radiance, prd, rtPayload, );
@@ -43,7 +36,7 @@ rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 rtTextureSampler<uchar4, 2, cudaReadModeNormalizedFloat> albedoMetallic_map;
 rtDeclareVariable(rtTextureId, albedoMetallic_map_id, , );
 rtTextureSampler<uchar4, 2, cudaReadModeNormalizedFloat> normalRoughness_map;
-rtDeclareVariable(float2, texcoord, attribute texcoord, ); // why float3 !!1
+rtDeclareVariable(float2, texcoord, attribute texcoord, );
 
 //rtBuffer<int, 1> tex_id_buffer;
 

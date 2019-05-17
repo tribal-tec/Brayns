@@ -21,15 +21,9 @@
 #include "../Random.h"
 #include <optix.h>
 #include <optixu/optixu_math_namespace.h>
+#include "../../CommonStructs.h"
 
 using namespace optix;
-
-struct PerRayData_radiance
-{
-    float3 result;
-    float importance;
-    int depth;
-};
 
 rtDeclareVariable(float3, eye, , );
 rtDeclareVariable(float3, U, , );
@@ -82,14 +76,18 @@ __device__ float3 launch(unsigned int& seed, const float2 screen,
         use_randomness ? make_float2(rnd(seed) - 0.5f, rnd(seed) - 0.5f)
                        : make_float2(0.f, 0.f);
 
-    float2 d =
+    float2 p =
         (make_float2(launch_index) + subpixel_jitter) / screen * 2.f - 1.f;
 
+    // We compute approximate partial derivative according to "Tracing Ray Diffentials by Homan Igehy" paper.
     float3 ray_origin = eye;
-    float3 ray_direction = d.x * U + d.y * V + W;
-
-    float fs = focal_scale == 0.f ? 1.f : focal_scale;
-    float3 ray_target = ray_origin + fs * ray_direction;
+    const float fs = focal_scale == 0.f ? 1.f : focal_scale;
+    const float3 d = fs * (p.x * U + p.y * V + W);
+    const float3 ray_direction = normalize(d);
+    const float dotD = dot(d,d);
+    const float denom = pow(dotD, 1.5f);
+    const float3 dx = (dotD * U - dot(d,U) * d) / denom;
+    const float3 dy = (dotD * V - dot(d,V) * d) / denom;
 
     // lens sampling
     float2 sample = optix::square_to_disk(make_float2(jitter4.z, jitter4.w));
@@ -97,8 +95,6 @@ __device__ float3 launch(unsigned int& seed, const float2 screen,
     ray_origin =
         ray_origin +
         aperture_radius * (sample.x * normalize(U) + sample.y * normalize(V));
-
-    ray_direction = normalize(ray_target - ray_origin);
 
     float near = scene_epsilon;
     float far = INFINITY;
@@ -109,6 +105,8 @@ __device__ float3 launch(unsigned int& seed, const float2 screen,
     PerRayData_radiance prd;
     prd.importance = 1.f;
     prd.depth = 0;
+    prd.rayDx = dx / screen.x;
+    prd.rayDy = dy / screen.y;
 
     rtTrace(top_object, ray, prd);
 

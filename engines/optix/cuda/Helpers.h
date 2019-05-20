@@ -257,5 +257,16 @@ static __host__ __device__ __inline__ optix::float3 tonemap(
     return mapped_rgb;
 }
 
+static __device__ inline optix::float2 getEquirectangularUV(
+    const optix::float3& R)
+{
+    const optix::float2 longlat =
+        optix::make_float2(atan2f(R.z, R.x), acosf(R.y));
+
+    optix::float2 uv = longlat / optix::make_float2(2.f * M_PIf, M_PIf);
+    uv.x += 0.5;
+    return uv;
+}
+
 #define OPTIX_DUMP_FLOAT(VALUE) rtPrintf(#VALUE " %f\n", VALUE)
 #define OPTIX_DUMP_INT(VALUE) rtPrintf(#VALUE " %i\n", VALUE)

@@ -116,10 +116,9 @@ bool OptiXScene::commitLights()
         _lightBuffer->destroy();
 
     auto context = OptiXContext::get().getOptixContext();
-    _lightBuffer = context->createBuffer(RT_BUFFER_INPUT);
-    _lightBuffer->setFormat(RT_FORMAT_USER);
+    _lightBuffer = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_USER,
+                                         _optixLights.size());
     _lightBuffer->setElementSize(sizeof(BasicLight));
-    _lightBuffer->setSize(_optixLights.size());
     memcpy(_lightBuffer->map(), _optixLights.data(),
            _optixLights.size() * sizeof(_optixLights[0]));
     _lightBuffer->unmap();
@@ -176,7 +175,7 @@ void OptiXScene::commit()
         auto sampler = _dummyTextureSampler;
         if (hasEnvironmentMap() && optixMat->hasTexture(i.first))
             sampler = optixMat->getTextureSampler(i.first);
-        context[i.second]->setTextureSampler(sampler);
+        context[i.second]->setInt(sampler->getId());
     }
 
     context["use_envmap"]->setUint(hasEnvironmentMap() ? 1 : 0);

@@ -77,8 +77,8 @@ void OptiXMaterial::commit()
             auto textureSampler =
                 OptiXContext::get().createTextureSampler(i.second);
             _textureSamplers.insert(std::make_pair(i.first, textureSampler));
-            _optixMaterial[textureTypeToString[(uint8_t)i.first]]
-                ->setTextureSampler(textureSampler);
+            _optixMaterial[textureTypeToString[(uint8_t)i.first]]->setInt(
+                textureSampler->getId());
         }
     }
 }

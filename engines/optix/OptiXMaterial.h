@@ -45,7 +45,6 @@ public:
 
 private:
     ::optix::Material _optixMaterial{nullptr};
-    //::optix::TextureSampler _baseColorSampler{nullptr};
     std::map<TextureType, ::optix::TextureSampler> _textureSamplers;
 };
 } // namespace brayns

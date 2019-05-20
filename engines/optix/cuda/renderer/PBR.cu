@@ -33,12 +33,9 @@ rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, );
 rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 
 // Textures
-rtTextureSampler<uchar4, 2, cudaReadModeNormalizedFloat> albedoMetallic_map;
-rtDeclareVariable(rtTextureId, albedoMetallic_map_id, , );
-rtTextureSampler<uchar4, 2, cudaReadModeNormalizedFloat> normalRoughness_map;
+rtDeclareVariable(int, albedoMetallic_map, , );
+rtDeclareVariable(int, normalRoughness_map, , );
 rtDeclareVariable(float2, texcoord, attribute texcoord, );
-
-//rtBuffer<int, 1> tex_id_buffer;
 
 // Lights
 rtBuffer<BasicLight> lights;
@@ -50,6 +47,14 @@ rtDeclareVariable(float3, v2, attribute v2, );
 rtDeclareVariable(float2, t0, attribute t0, );
 rtDeclareVariable(float2, t1, attribute t1, );
 rtDeclareVariable(float2, t2, attribute t2, );
+
+rtDeclareVariable(float2, ddx, attribute ddx, );
+rtDeclareVariable(float2, ddy, attribute ddy, );
+
+rtDeclareVariable(uint, use_envmap, , );
+rtDeclareVariable(int, envmap_radiance, , );
+rtDeclareVariable(int, envmap_irradiance, , );
+rtDeclareVariable(int, envmap_brdf_lut, , );
 
 static __device__ inline float calculateAttenuation(float3 WorldPos, float3 lightPos)
 {
@@ -63,10 +68,10 @@ static __device__ inline float distributionGGX(float3 N, float3 H, float roughne
     const float a2 = a*a;
     const float NdotH  = max(dot(N, H), 0.0f);
     const float NdotH2 = NdotH * NdotH;
-	
+
     float denom = (NdotH2 * (a2 - 1.0f) + 1.0f);
     denom = M_PIf * denom * denom;
-	
+
     return a2 / denom;
 }
 
@@ -76,23 +81,33 @@ static __device__ inline float GeometrySchlickGGX(float NdotV, float roughness)
     const float k = (r*r) / 8.0f;
 
     float denom = NdotV * (1.0 - k) + k;
-	
+
     return NdotV / denom;
 }
-        
+
 static __device__ inline float geometrySmith(float3 N, float3 V, float3 L, float roughness)
 {
     const float NdotV = max(dot(N, V), 0.0f);
     const float NdotL = max(dot(N, L), 0.0f);
     const float ggx2  = GeometrySchlickGGX(NdotV, roughness);
     const float ggx1  = GeometrySchlickGGX(NdotL, roughness);
-	
+
     return ggx1 * ggx2;
 }
-      
+
 static __device__ inline float3 fresnelSchlick(float cosTheta, float3 F0)
 {
     return F0 + (1.0f - F0) * pow(1.0f - cosTheta, 5.0f);
+}
+
+static __device__ inline float3 max(const float3& a, const float3& b)
+{
+    return make_float3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+}
+
+static __device__ inline float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+{
+    return F0 + (max(make_float3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
 static __device__ inline void shade()
@@ -102,14 +117,14 @@ static __device__ inline void shade()
 
     //float3 N = optix::faceforward(world_geometric_normal, -ray.direction,
     //                              world_geometric_normal);
-    float3 N = world_shading_normal; 
+    float3 N = world_shading_normal;
 
     const float3 edge1 = v1 - v0;
     const float3 edge2 = v2 - v0;
     const float2 deltaUV1 = t1 - t0;
     const float2 deltaUV2 = t2 - t0;
 
-    
+
     float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
 
     float3 tangent;
@@ -124,14 +139,13 @@ static __device__ inline void shade()
 
     const float3 WorldPos = ray.origin + t_hit * ray.direction;
     const float3 V = -ray.direction;
-    const float4 albedoMetallic = tex2D(albedoMetallic_map, texcoord.x, texcoord.y);
-    //const float4 albedoMetallic = tex2DGrad(albedoMetallic_map, texcoord.x, texcoord.y, make_float2(0.0f), make_float2(0.0f));
+    const float4 albedoMetallic = rtTex2DGrad<float4>(albedoMetallic_map, texcoord.x, texcoord.y, ddx, ddy);
     float3 albedo = make_float3(albedoMetallic);
     albedo.x = pow(albedo.x, 2.2f);
     albedo.y = pow(albedo.y, 2.2f);
-    albedo.z = pow(albedo.z, 2.2f); 
+    albedo.z = pow(albedo.z, 2.2f);
 
-    const float4 normalRoughness = tex2D(normalRoughness_map, texcoord.x, texcoord.y);
+    const float4 normalRoughness = rtTex2D<float4>(normalRoughness_map, texcoord.x, texcoord.y);
     const float3 normal = make_float3(normalRoughness);
     optix::Matrix3x3 TBN;
     TBN.setCol(0,tangent);
@@ -140,9 +154,9 @@ static __device__ inline void shade()
 
     N = normalize(TBN * (normal * 2.0f - 1.0f));
 
-    const float3 F0 = lerp(make_float3(0.04f), albedo, albedoMetallic.w); 
+    const float3 F0 = lerp(make_float3(0.04f), albedo, albedoMetallic.w);
 
-    float3 Lo = make_float3(0.0f);  
+    float3 Lo = make_float3(0.0f);
     unsigned int num_lights = lights.size();
     for (int i = 0; i < num_lights; ++i)
     {
@@ -156,12 +170,12 @@ static __device__ inline void shade()
         const float3 radiance = light.color * attenuation * 20.0f; // 20.0f is shit !!!
 
         // cook-torrance brdf
-        const float NDF = distributionGGX(N, H, normalRoughness.w);        
-        const float G = geometrySmith(N, V, L, normalRoughness.w);      
+        const float NDF = distributionGGX(N, H, normalRoughness.w);
+        const float G = geometrySmith(N, V, L, normalRoughness.w);
         const float3 F = fresnelSchlick(max(dot(H, V), 0.0f), F0);
 
         const float3 kD = (make_float3(1.0f) - F) * (1.0f - albedoMetallic.w);
-         
+
         const float3 numerator = NDF * G * F;
         const float NdotL = max(dot(N, L), 0.0f);
         const float denominator = 4.0f * max(dot(N, V), 0.0f) * NdotL;

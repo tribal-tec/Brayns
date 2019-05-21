@@ -23,6 +23,8 @@
 
 using namespace optix;
 
+//#define TEST
+
 // Scene
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 rtDeclareVariable(PerRayData_radiance, prd, rtPayload, );
@@ -34,9 +36,13 @@ rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, );
 rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 
 // Textures
+#ifndef TEST
 rtDeclareVariable(int, albedoMetallic_map, , );
 rtDeclareVariable(int, normalRoughness_map, , );
 rtDeclareVariable(float2, texcoord, attribute texcoord, );
+#endif
+rtDeclareVariable(float, metalness, , );
+rtDeclareVariable(float, roughness, , );
 
 // Lights
 rtBuffer<BasicLight> lights;
@@ -56,6 +62,7 @@ rtDeclareVariable(uint, use_envmap, , );
 rtDeclareVariable(int, envmap_radiance, , );
 rtDeclareVariable(int, envmap_irradiance, , );
 rtDeclareVariable(int, envmap_brdf_lut, , );
+rtDeclareVariable(uint, radianceLODs, , );
 
 static __device__ inline float calculateAttenuation(float3 WorldPos, float3 lightPos)
 {
@@ -101,15 +108,51 @@ static __device__ inline float3 fresnelSchlick(float cosTheta, float3 F0)
     return F0 + (1.0f - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
-static __device__ inline float3 max(const float3& a, const float3& b)
+//static __device__ inline float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+//{
+//    return F0 + (max(make_float3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
+//}
+
+static __device__ inline float3 getIBLContribution(float NdV, float roughness, const float3& n, const float3& reflection, const float3& diffuseColor, const float3& specularColor)
 {
-    return make_float3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+    // Sample 2 levels and mix between to get smoother degradation
+    const float ENV_LODS = 6.0f;
+    float blend = roughness * ENV_LODS;
+    float level0 = floor(blend);
+    float level1 = min(ENV_LODS, level0 + 1.0f);
+    blend -= level0;
+
+    // Sample the specular env map atlas depending on the roughness value
+    float2 uvSpec = getEquirectangularUV(reflection);
+    uvSpec.y /= 2.0f;
+
+    float2 uv0 = uvSpec;
+    float2 uv1 = uvSpec;
+
+    uv0 /= pow(2.0f, level0);
+    uv0.y += 1.0f - exp(-M_LN2f * level0);
+
+    uv1 /= pow(2.0f, level1);
+    uv1.y += 1.0f - exp(-M_LN2f * level1);
+
+    float2 irradianceUV = getEquirectangularUV(n);
+
+    float3 diffuseLight = make_float3(RGBMToLinear(rtTex2D<float4>(envmap_irradiance, irradianceUV.x, 1.f-irradianceUV.y)));
+    float3 specular0 = make_float3(RGBMToLinear(rtTex2D<float4>(envmap_radiance, uv0.x, 1.f-uv0.y)));
+    float3 specular1 = make_float3(RGBMToLinear(rtTex2D<float4>(envmap_radiance, uv1.x, 1.f-uv1.y)));
+
+    float3 specularLight = lerp(specular0, specular1, blend);
+    float3 diffuse = diffuseLight * diffuseColor;
+
+    const float3 brdf = make_float3(SRGBtoLinear(rtTex2D<float4>(envmap_brdf_lut, NdV, roughness)));
+
+    // Bit of extra reflection for smooth materials
+    float reflectivity = pow((1.0 - roughness), 2.0) * 0.05;
+    float3 specular = specularLight * (specularColor * brdf.x + brdf.y + reflectivity);
+
+    return diffuse + specular;
 }
 
-static __device__ inline float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-    return F0 + (max(make_float3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
-}
 
 static __device__ inline void shade()
 {
@@ -120,12 +163,11 @@ static __device__ inline void shade()
     //                              world_geometric_normal);
     float3 N = world_shading_normal;
 
+#ifndef TEST
     const float3 edge1 = v1 - v0;
     const float3 edge2 = v2 - v0;
     const float2 deltaUV1 = t1 - t0;
     const float2 deltaUV2 = t2 - t0;
-
-
     float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
 
     float3 tangent;
@@ -137,29 +179,34 @@ static __device__ inline void shade()
     tangent = normalize(tangent - dot(tangent, N) * N);
 
     float3 bitangent = cross(N,tangent);
+#endif
 
     const float3 WorldPos = ray.origin + t_hit * ray.direction;
     const float3 V = -ray.direction;
-    const float4 albedoMetallic = rtTex2DGrad<float4>(albedoMetallic_map, texcoord.x, texcoord.y, ddx, ddy);
-    float3 albedo = make_float3(albedoMetallic);
-    albedo.x = pow(albedo.x, 2.2f);
-    albedo.y = pow(albedo.y, 2.2f);
-    albedo.z = pow(albedo.z, 2.2f);
+
+#ifdef TEST
+    const float4 albedoMetallic = make_float4(1.f, 0.f, 0.f, metalness);
+    const float3 albedo = make_float3(albedoMetallic);
+    const float4 normalRoughness = make_float4(0.f, 0.f, 0.f, roughness);
+#else
+    const float4 albedoMetallic = SRGBtoLinear(rtTex2DGrad<float4>(albedoMetallic_map, texcoord.x, texcoord.y, ddx, ddy));
+    const float3 albedo = make_float3(albedoMetallic);
 
     const float4 normalRoughness = rtTex2DGrad<float4>(normalRoughness_map, texcoord.x, texcoord.y, ddx, ddy);
-    //const float4 normalRoughness = rtTex2D<float4>(normalRoughness_map, texcoord.x, texcoord.y);
-    const float3 normal = make_float3(normalRoughness);
+    const float3 normal = normalize(make_float3(normalRoughness));
+
     optix::Matrix3x3 TBN;
     TBN.setCol(0,tangent);
     TBN.setCol(1,bitangent);
     TBN.setCol(2,N);
 
     N = normalize(TBN * (normal * 2.0f - 1.0f));
+#endif
 
     const float3 F0 = lerp(make_float3(0.04f), albedo, albedoMetallic.w);
 
     float3 Lo = make_float3(0.0f);
-    unsigned int num_lights = lights.size();
+    unsigned int num_lights = 0;//lights.size();
     for (int i = 0; i < num_lights; ++i)
     {
         // per-light radiance
@@ -189,33 +236,35 @@ static __device__ inline void shade()
     float3 ambient = make_float3(0.03f) * albedo /* * ao*/;
     if (use_envmap)
     {
-        const float2 irradianceUV = getEquirectangularUV(N);
-        const float2 radianceUV = getEquirectangularUV(reflect(-V, N));
+        float NdV = clamp(fabs(dot(N, V)), 0.001f, 1.0f);
+        float3 reflection = normalize(reflect(-V, N));
 
-        const float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, normalRoughness.w);
-        const float3 kD = (make_float3(1.0f) - F) * (1.0f - albedoMetallic.w);
+        float3 f0 = make_float3(0.04);
+        float3 diffuseColor = albedo * (make_float3(1.f) - f0) * (1.0 - albedoMetallic.w);
+        float3 specularColor = lerp(f0, albedo, albedoMetallic.w);
 
-        const float3 irradiance = make_float3(rtTex2D<float4>(envmap_irradiance, irradianceUV.x, irradianceUV.y));
+        ambient = getIBLContribution(NdV, normalRoughness.w, N, reflection, diffuseColor, specularColor);
+//        const float2 irradianceUV = getEquirectangularUV(N);
+//        const float2 radianceUV = getEquirectangularUV(reflect(-V, N));
 
-        // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-        const float MAX_REFLECTION_LOD = 4.0f;
-        const float3 prefilteredColor = make_float3(rtTex2DLod<float4>(envmap_radiance, radianceUV.x, radianceUV.y, normalRoughness.w * MAX_REFLECTION_LOD));
-        const float2 brdf = make_float2(rtTex2D<float4>(envmap_brdf_lut, max(dot(N, V), 0.0), normalRoughness.w));
-        const float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+//        const float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, normalRoughness.w);
+//        const float3 kD = (make_float3(1.0f) - F) * (1.0f - albedoMetallic.w);
 
-        const float3 diffuse = irradiance * albedo;
-        ambient = (kD * diffuse + specular)/* * ao*/;
+//        float3 irradiance = make_float3(rtTex2D<float4>(envmap_irradiance, irradianceUV.x, irradianceUV.y));
+//        //irradiance = pow(irradiance, 1.f/2.2f);
+//        const float3 diffuse = irradiance * albedo;
+
+//        // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+//        float3 prefilteredColor = make_float3(rtTex2DLod<float4>(envmap_radiance, radianceUV.x, radianceUV.y, normalRoughness.w * float(radianceLODs)));
+//        //prefilteredColor = pow(prefilteredColor, 1.f/2.2f);
+//        const float2 brdf = make_float2(rtTex2D<float4>(envmap_brdf_lut, max(dot(N, V), 0.0), normalRoughness.w));
+//        const float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+//        ambient = (kD * diffuse + specular)/* * ao*/;
     }
 
-    float3 color = ambient + Lo;
-
-    color = color / (color + make_float3(1.0f));
-    color.x = pow(color.x, 1.0f / 2.2f);
-    color.y = pow(color.y, 1.0f / 2.2f);
-    color.z = pow(color.z, 1.0f / 2.2f);
-    //color = pow(color, make_float3(1.0f / 2.2f)); // SHIT !!!
-
-    prd.result = color;
+    const float3 color = ambient + Lo;
+    prd.result = linearToSRGB(color / (color + make_float3(1.0f)));;
 }
 
 RT_PROGRAM void any_hit_shadow()

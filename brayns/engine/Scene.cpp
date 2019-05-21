@@ -410,15 +410,16 @@ bool Scene::setEnvironmentMap(const std::string& envMap)
             const auto basename = boost::filesystem::basename(envMap);
             const auto ext = boost::filesystem::extension(envMap);
             auto values = std::map<std::string, TextureType>{
-                {"_irradiance", TextureType::irradiance},
-                {"_radiance", TextureType::radiance},
-                {"_brdf_lut", TextureType::brdf_lut}};
+                {"-diffuse-RGBM", TextureType::irradiance},
+                {"-specular-RGBM", TextureType::radiance}};
             for (const auto i : values)
             {
                 _backgroundMaterial->setTexture(path + "/" + basename +
                                                     i.first + ext,
                                                 i.second);
             }
+            _backgroundMaterial->setTexture(path + "/" + "ibl_brdf_lut.png",
+                                            TextureType::brdf_lut);
         }
         catch (...)
         {

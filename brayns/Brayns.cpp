@@ -288,6 +288,13 @@ private:
 
         _engine->getCamera().setCurrentType(
             _parametersManager.getRenderingParameters().getCurrentCamera());
+
+        //_engine->getScene().setEnvironmentMap("/home/nachbaur/Downloads/HDR_111_Parking_Lot_2/HDR_111_Parking_Lot_2/HDR_111_Parking_Lot_2_Ref.png");
+
+        _engine->getScene().setEnvironmentMap(
+            "/gpfs/bbp.cscs.ch/project/proj3/resources/envmap/Parking_Lot/"
+            "HDR_111_Parking_Lot_2_Ref.png");
+        //_engine->getScene().setEnvironmentMap("/gpfs/bbp.cscs.ch/project/proj3/resources/envmap/Brooklyn_Bridge_Planks/Brooklyn_Bridge_Planks_2k.png");
     }
 
     void _createFrameBuffer()

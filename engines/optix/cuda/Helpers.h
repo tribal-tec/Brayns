@@ -260,12 +260,38 @@ static __host__ __device__ __inline__ optix::float3 tonemap(
 static __device__ inline optix::float2 getEquirectangularUV(
     const optix::float3& R)
 {
-    const optix::float2 longlat =
-        optix::make_float2(atan2f(R.z, R.x), acosf(R.y));
+    //    const float u = (atan2f(R.x, -R.z) + M_PIf) / (2.0f * M_PIf);
+    //    const float v = acosf(R.y) / M_PIf;
+    //    return make_float2(u, v);
+    return make_float2(atan2f(R.z, R.x) * M_1_PIf / 2.f + 0.5f,
+                       asinf(R.y) * M_1_PIf + 0.5f);
+}
 
-    optix::float2 uv = longlat / optix::make_float2(2.f * M_PIf, M_PIf);
-    uv.x += 0.5;
-    return uv;
+static __device__ inline float3 max(const float3& a, const float3& b)
+{
+    return make_float3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+}
+
+static __device__ inline float3 pow(const float3& a, const float exp)
+{
+    return make_float3(pow(a.x, exp), pow(a.y, exp), pow(a.z, exp));
+}
+
+static __device__ inline float4 SRGBtoLinear(const float4& srgb)
+{
+    float3 linOut = pow(make_float3(srgb), 2.2f);
+    return make_float4(linOut, srgb.w);
+}
+
+static __device__ inline float3 linearToSRGB(const float3& color)
+{
+    return pow(color, 1.f / 2.2f);
+}
+
+static __device__ inline float4 RGBMToLinear(const float4& value)
+{
+    float maxRange = 6.0f;
+    return make_float4(make_float3(value) * value.w * maxRange, 1.0f);
 }
 
 #define OPTIX_DUMP_FLOAT(VALUE) rtPrintf(#VALUE " %f\n", VALUE)

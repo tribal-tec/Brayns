@@ -146,7 +146,8 @@ static __device__ inline void shade()
     albedo.y = pow(albedo.y, 2.2f);
     albedo.z = pow(albedo.z, 2.2f);
 
-    const float4 normalRoughness = rtTex2D<float4>(normalRoughness_map, texcoord.x, texcoord.y);
+    const float4 normalRoughness = rtTex2DGrad<float4>(normalRoughness_map, texcoord.x, texcoord.y, ddx, ddy);
+    //const float4 normalRoughness = rtTex2D<float4>(normalRoughness_map, texcoord.x, texcoord.y);
     const float3 normal = make_float3(normalRoughness);
     optix::Matrix3x3 TBN;
     TBN.setCol(0,tangent);

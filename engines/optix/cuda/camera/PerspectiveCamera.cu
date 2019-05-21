@@ -86,8 +86,12 @@ __device__ float3 launch(unsigned int& seed, const float2 screen,
     const float3 ray_direction = normalize(d);
     const float dotD = dot(d,d);
     const float denom = pow(dotD, 1.5f);
-    const float3 dx = (dotD * U - dot(d,U) * d) / denom;
-    const float3 dy = (dotD * V - dot(d,V) * d) / denom;
+
+    PerRayData_radiance prd;
+    prd.importance = 1.f;
+    prd.depth = 0;
+    prd.rayDdx = (dotD * U - dot(d,U) * d) / (denom * screen.x);
+    prd.rayDdy = (dotD * V - dot(d,V) * d) / (denom * screen.y);
 
     // lens sampling
     float2 sample = optix::square_to_disk(make_float2(jitter4.z, jitter4.w));
@@ -101,12 +105,6 @@ __device__ float3 launch(unsigned int& seed, const float2 screen,
 
     getClippingValues(ray_origin, ray_direction, near, far);
     optix::Ray ray(ray_origin, ray_direction, radiance_ray_type, near, far);
-
-    PerRayData_radiance prd;
-    prd.importance = 1.f;
-    prd.depth = 0;
-    prd.rayDx = dx / screen.x;
-    prd.rayDy = dy / screen.y;
 
     rtTrace(top_object, ray, prd);
 

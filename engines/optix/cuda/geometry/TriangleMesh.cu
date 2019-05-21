@@ -58,12 +58,14 @@ static __device__ bool intersect_triangle_filtered(const Ray&    ray,
                                                    const float3& p0,
                                                    const float3& p1,
                                                    const float3& p2,
-                                                   const float3& rayDx,
-                                                   const float3& rayDy, 
+                                                   const float3& rayDdx,
+                                                   const float3& rayDdy, 
                                                    float3& n,
                                                    float&  t,
-                                                   float3&  beta,
-                                                   float3&  gamma)
+                                                   float&  beta,
+                                                   float&  gamma,
+                                                   float2&  betaDerivative,
+                                                   float2&  gammaDerivative)
 {
   const float3 e0 = p1 - p0;
   const float3 e1 = p0 - p2;
@@ -71,27 +73,24 @@ static __device__ bool intersect_triangle_filtered(const Ray&    ray,
 
   const float3 g0 = p0 - ray.origin;
 
-  float3 e2 = ( 1.0f / dot( n, ray.direction ) ) * g0;
+  const float NdotRay = dot(n, ray.direction);
+
+  float3 e2 = g0 / NdotRay;
   float3 i  = cross( ray.direction, e2 );
 
-  beta.x  = dot( i, e1 );
-  gamma.x = dot( i, e0 );
+  beta  = dot( i, e1 );
+  gamma = dot( i, e0 );
   t     = dot( n, e2 );
 
-  if(!((t<ray.tmax) & (t>ray.tmin) & (beta.x>=0.0f) & (gamma.x>=0.0f) & (beta.x+gamma.x<=1)))
+  if(!((t<ray.tmax) & (t>ray.tmin) & (beta>=0.0f) & (gamma>=0.0f) & (beta+gamma<=1)))
       return false;
 
-  float3 dirX = ray.direction + rayDx;
-  e2 = ( 1.0f / dot( n, dirX ) ) * g0;
-  i  = cross( dirX, e2 );
-  beta.y  = dot( i, e1 );
-  gamma.y = dot( i, e0 );
-
-  float3 dirY = ray.direction + rayDy;
-  e2 = ( 1.0f / dot( n, dirY ) ) * g0;
-  i  = cross( dirY, e2 );
-  beta.z  = dot( i, e1 );
-  gamma.z = dot( i, e0 );
+  const float3 differentialX = cross(rayDdx, e2) + cross(ray.direction, -e2 * dot(rayDdx, n) / NdotRay);
+  const float3 differentialY = cross(rayDdy, e2) + cross(ray.direction, -e2 * dot(rayDdy, n) / NdotRay);
+  betaDerivative.x = dot(differentialX, e1);
+  betaDerivative.y = dot(differentialY, e1);
+  gammaDerivative.x = dot(differentialX, e0);
+  gammaDerivative.y = dot(differentialY, e0);
 
   return true; 
 }
@@ -108,8 +107,9 @@ static __device__ void meshIntersect(int primIdx)
     // Intersect ray with triangle
     float3 n;
     float t;
-    float3 beta, gamma;
-    if (intersect_triangle_filtered(ray, p0, p1, p2, prd.rayDx, prd.rayDy, n, t, beta, gamma))
+    float beta, gamma;
+    float2 betaDerivative, gammaDerivative;
+    if (intersect_triangle_filtered(ray, p0, p1, p2, prd.rayDdx, prd.rayDdy, n, t, beta, gamma, betaDerivative, gammaDerivative))
     {
         if (rtPotentialIntersection(t))
         {
@@ -124,8 +124,8 @@ static __device__ void meshIntersect(int primIdx)
                 float3 n0 = normal_buffer[v_idx.x];
                 float3 n1 = normal_buffer[v_idx.y];
                 float3 n2 = normal_buffer[v_idx.z];
-                shading_normal = normalize(n1 * beta.x + n2 * gamma.x +
-                                           n0 * (1.f - beta.x - gamma.x));
+                shading_normal = normalize(n1 * beta + n2 * gamma +
+                                           n0 * (1.f - beta - gamma));
             }
 
             if (texcoord_buffer.size() == 0)
@@ -137,16 +137,11 @@ static __device__ void meshIntersect(int primIdx)
                 t0 = texcoord_buffer[v_idx.x];
                 t1 = texcoord_buffer[v_idx.y];
                 t2 = texcoord_buffer[v_idx.z];
-                texcoord = t1 * beta.x + t2 * gamma.x +
-                                       t0 * (1.f - beta.x - gamma.x);
-
-                const float2 texcoordX = t1 * beta.y + t2 * gamma.y +
-                                         t0 * (1.f - beta.y - gamma.y);
-                const float2 texcoordY = t1 * beta.z + t2 * gamma.z +
-                                         t0 * (1.f - beta.z - gamma.z);
-
-                ddx = texcoordX - texcoord;
-                ddy = texcoordY - texcoord;
+                texcoord = t1 * beta + t2 * gamma +
+                           t0 * (1.f - beta - gamma);
+ 
+                ddx = t1 * betaDerivative.x + t2 * gammaDerivative.x + t0 * (-betaDerivative.x - gammaDerivative.x);
+                ddy = t1 * betaDerivative.y + t2 * gammaDerivative.y + t0 * (-betaDerivative.y - gammaDerivative.y);
             }
 
             if (DO_REFINE)

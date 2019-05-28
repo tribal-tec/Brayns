@@ -134,6 +134,42 @@ const OptixShaderProgram& OptiXContext::getRenderer(const std::string& name)
     return camera;
 }
 
+template<typename T>
+T white();
+
+template<>
+uint8 white() { return 255; }
+
+template<>
+float white() { return 1.f; }
+
+template<typename T>
+void copyToTexture(T* ptr_dst, const Texture2D& texture, const uint8_t mipLevel, const bool hasAlpha)
+{
+    uint16_t width = texture.getWidth();
+    uint16_t height = texture.getHeight();
+    for(uint8_t i=0; i < mipLevel; ++i)
+    {
+        width /= 2;
+        height /= 2;
+    }
+    size_t idx_src = 0;
+    size_t idx_dst = 0;
+    const auto rawData = texture.getRawData<T>(mipLevel);
+    for (uint16_t y = 0; y < height; ++y)
+    {
+        for (uint16_t x = 0; x < width; ++x)
+        {
+            ptr_dst[idx_dst] = rawData[idx_src];
+            ptr_dst[idx_dst + 1u] = rawData[idx_src + 1u];
+            ptr_dst[idx_dst + 2u] = rawData[idx_src + 2u];
+            ptr_dst[idx_dst + 3u] = hasAlpha ? rawData[idx_src + 3u] : white<T>();
+            idx_dst += 4u;
+            idx_src += hasAlpha ? 4u : 3u;
+        }
+    }
+}
+
 ::optix::TextureSampler OptiXContext::createTextureSampler(Texture2DPtr texture)
 {
     uint16_t nx = texture->getWidth();
@@ -142,87 +178,112 @@ const OptixShaderProgram& OptiXContext::getRenderer(const std::string& name)
     const uint16_t optixChannels = 4;
     const bool hasAlpha = optixChannels == channels;
 
-    const uint16_t smallestSize = std::min(nx, ny);
-    const uint16_t mipMapLevels = std::log2(smallestSize) + 0.5f;
+    const bool useFloat = texture->getDepth() == 4;
+    const bool useByte = texture->getDepth() == 1;
 
-    if (texture->getDepth() != 1u)
-        throw std::runtime_error("Non 8-bits textures are not supported");
+    if(!useFloat && !useByte)
+        throw std::runtime_error("Only byte or float textures are supported");
+
+    const bool createMipmaps = texture->getMipLevels() == 1 && useByte;
+    uint16_t mipMapLevels = texture->getMipLevels();
+    std::cout << texture->getFilename() << std::endl;
+    if(createMipmaps)
+    {
+        const uint16_t smallestSize = std::min(nx, ny);
+        mipMapLevels = std::log2(smallestSize) + 0.5f;
+    }
+
+    if (createMipmaps && !useByte)
+        throw std::runtime_error("Non 8-bits textures are not supported for automatic mipmaps generation");
+
+    RTformat optixFormat = useByte ? RT_FORMAT_UNSIGNED_BYTE4 : RT_FORMAT_FLOAT4;
 
     // Create texture sampler
     ::optix::TextureSampler sampler = _optixContext->createTextureSampler();
     sampler->setWrapMode(0, RT_WRAP_REPEAT);
     sampler->setWrapMode(1, RT_WRAP_REPEAT);
+    sampler->setWrapMode(2, RT_WRAP_REPEAT);
     sampler->setIndexingMode(RT_TEXTURE_INDEX_NORMALIZED_COORDINATES);
     sampler->setReadMode(RT_TEXTURE_READ_NORMALIZED_FLOAT);
     sampler->setMaxAnisotropy(8.0f);
-    sampler->setMipLevelClamp(0.0f, mipMapLevels);
 
     // Create buffer and populate with texture data
-    optix::Buffer buffer =
-        _optixContext->createMipmappedBuffer(RT_BUFFER_INPUT,
-                                             RT_FORMAT_UNSIGNED_BYTE4, nx, ny,
+    optix::Buffer buffer = _optixContext->createMipmappedBuffer(RT_BUFFER_INPUT,
+                                             optixFormat, nx, ny,
                                              mipMapLevels);
 
-    std::vector<uint8_t*> mipMapBuffers(mipMapLevels);
+    std::vector<void*> mipMapBuffers(mipMapLevels);
     for (uint8_t currentLevel = 0u; currentLevel < mipMapLevels; ++currentLevel)
-        mipMapBuffers[currentLevel] =
-            static_cast<uint8_t*>(buffer->map(currentLevel));
+        mipMapBuffers[currentLevel] = buffer->map(currentLevel);
 
-    uint8_t* ptr_dst = mipMapBuffers[0];
-    size_t idx_src = 0;
-    size_t idx_dst = 0;
-    const auto rawData = texture->getRawData();
-    for (uint16_t y = 0; y < ny; ++y)
+    if(createMipmaps)
     {
-        for (uint16_t x = 0; x < nx; ++x)
+        auto ptr_dst = (uint8_t*)mipMapBuffers[0];
+        size_t idx_src = 0;
+        size_t idx_dst = 0;
+        const auto rawData = texture->getRawData();
+        for (uint16_t y = 0; y < ny; ++y)
         {
-            ptr_dst[idx_dst] = rawData[idx_src];
-            ptr_dst[idx_dst + 1u] = rawData[idx_src + 1u];
-            ptr_dst[idx_dst + 2u] = rawData[idx_src + 2u];
-            ptr_dst[idx_dst + 3u] = hasAlpha ? rawData[idx_src + 3u] : 255u;
-            idx_dst += 4u;
-            idx_src += hasAlpha ? 4u : 3u;
-        }
-    }
-    ny /= 2u;
-    nx /= 2u;
-
-    for (uint8_t currentLevel = 1u; currentLevel < mipMapLevels; ++currentLevel)
-    {
-        ptr_dst = mipMapBuffers[currentLevel];
-        uint8_t* ptr_src = mipMapBuffers[currentLevel - 1u];
-        for (uint16_t y = 0u; y < ny; ++y)
-        {
-            for (uint16_t x = 0u; x < nx; ++x)
+            for (uint16_t x = 0; x < nx; ++x)
             {
-                ptr_dst[(y * nx + x) * 4u] =
-                    (ptr_src[(y * 2u * nx + x) * 8u] +
-                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u] +
-                     ptr_src[((y * 2u + 1u) * nx + x) * 8u] +
-                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u]) /
-                    4.0f;
-                ptr_dst[(y * nx + x) * 4u + 1u] =
-                    (ptr_src[(y * 2u * nx + x) * 8u + 1u] +
-                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 1u] +
-                     ptr_src[((y * 2u + 1u) * nx + x) * 8u + 1u] +
-                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 1u]) /
-                    4.0f;
-                ptr_dst[(y * nx + x) * 4u + 2u] =
-                    (ptr_src[(y * 2u * nx + x) * 8u + 2u] +
-                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 2u] +
-                     ptr_src[((y * 2u + 1u) * nx + x) * 8u + 2u] +
-                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 2u]) /
-                    4.0f;
-                ptr_dst[(y * nx + x) * 4u + 3u] =
-                    (ptr_src[(y * 2u * nx + x) * 8u + 3u] +
-                     ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 3u] +
-                     ptr_src[((y * 2u + 1u) * nx + x) * 8u + 3u] +
-                     ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 3u]) /
-                    4.0f;
+                ptr_dst[idx_dst] = rawData[idx_src];
+                ptr_dst[idx_dst + 1u] = rawData[idx_src + 1u];
+                ptr_dst[idx_dst + 2u] = rawData[idx_src + 2u];
+                ptr_dst[idx_dst + 3u] = hasAlpha ? rawData[idx_src + 3u] : 255u;
+                idx_dst += 4u;
+                idx_src += hasAlpha ? 4u : 3u;
             }
         }
         ny /= 2u;
         nx /= 2u;
+
+        for (uint8_t currentLevel = 1u; currentLevel < mipMapLevels; ++currentLevel)
+        {
+            ptr_dst = (uint8_t*)mipMapBuffers[currentLevel];
+            uint8_t* ptr_src = (uint8_t*)mipMapBuffers[currentLevel - 1u];
+            for (uint16_t y = 0u; y < ny; ++y)
+            {
+                for (uint16_t x = 0u; x < nx; ++x)
+                {
+                    ptr_dst[(y * nx + x) * 4u] =
+                        (ptr_src[(y * 2u * nx + x) * 8u] +
+                         ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u] +
+                         ptr_src[((y * 2u + 1u) * nx + x) * 8u] +
+                         ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u]) /
+                        4.0f;
+                    ptr_dst[(y * nx + x) * 4u + 1u] =
+                        (ptr_src[(y * 2u * nx + x) * 8u + 1u] +
+                         ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 1u] +
+                         ptr_src[((y * 2u + 1u) * nx + x) * 8u + 1u] +
+                         ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 1u]) /
+                        4.0f;
+                    ptr_dst[(y * nx + x) * 4u + 2u] =
+                        (ptr_src[(y * 2u * nx + x) * 8u + 2u] +
+                         ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 2u] +
+                         ptr_src[((y * 2u + 1u) * nx + x) * 8u + 2u] +
+                         ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 2u]) /
+                        4.0f;
+                    ptr_dst[(y * nx + x) * 4u + 3u] =
+                        (ptr_src[(y * 2u * nx + x) * 8u + 3u] +
+                         ptr_src[((y * 2u * nx + x) * 2u + 1u) * 4u + 3u] +
+                         ptr_src[((y * 2u + 1u) * nx + x) * 8u + 3u] +
+                         ptr_src[(((y * 2u + 1u) * nx + x) * 2u + 1u) * 4u + 3u]) /
+                        4.0f;
+                }
+            }
+            ny /= 2u;
+            nx /= 2u;
+        }
+    }
+    else
+    {
+        for(uint16_t i = 0; i < mipMapLevels; ++i)
+        {
+            if(useByte)
+                copyToTexture<uint8_t>((uint8_t*)mipMapBuffers[i], *texture, i, hasAlpha);
+            else if(useFloat)
+                copyToTexture<float>((float*)mipMapBuffers[i], *texture, i, hasAlpha);
+        }
     }
 
     for (uint8_t currentLevel = 0u; currentLevel < mipMapLevels; ++currentLevel)
@@ -231,7 +292,7 @@ const OptixShaderProgram& OptiXContext::getRenderer(const std::string& name)
     // Assign buffer to sampler
     sampler->setBuffer(buffer);
     sampler->setFilteringModes(RT_FILTER_LINEAR, RT_FILTER_LINEAR,
-                               RT_FILTER_LINEAR);
+                               mipMapLevels > 1 ? RT_FILTER_LINEAR : RT_FILTER_NONE);
     sampler->validate();
     return sampler;
 }

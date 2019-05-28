@@ -395,10 +395,6 @@ bool Scene::setEnvironmentMap(const std::string& envMap)
         try
         {
             _backgroundMaterial->setTexture(envMap, TextureType::diffuse);
-
-            auto tex = _backgroundMaterial->getTexture(TextureType::diffuse);
-            iblUtils::computeIrradianceMap(*tex);
-            iblUtils::computeRadianceMap(*tex);
         }
         catch (const std::runtime_error& e)
         {
@@ -410,21 +406,26 @@ bool Scene::setEnvironmentMap(const std::string& envMap)
 
         try
         {
+            auto tex = _backgroundMaterial->getTexture(TextureType::diffuse);
+
             const auto path =
                 boost::filesystem::path(envMap).parent_path().string();
             const auto basename = boost::filesystem::basename(envMap);
-            const auto ext = boost::filesystem::extension(envMap);
-            auto values = std::map<std::string, TextureType>{
-                {"-diffuse-RGBM", TextureType::irradiance},
-                {"-specular-RGBM", TextureType::radiance}};
-            for (const auto i : values)
-            {
-                _backgroundMaterial->setTexture(path + "/" + basename +
-                                                    i.first + ext,
-                                                i.second);
-            }
-            _backgroundMaterial->setTexture(path + "/" + "ibl_brdf_lut.png",
-                                            TextureType::brdf_lut);
+
+            const std::string irradianceMap = path + "/" + basename + "-irradiance";
+            if(!boost::filesystem::exists(irradianceMap+".hdr"))
+                iblUtils::computeIrradianceMap(*tex, irradianceMap);
+            _backgroundMaterial->setTexture(irradianceMap+".hdr", TextureType::irradiance);
+
+            const std::string radianceMap = path + "/" + basename + "-radiance";
+            if(!boost::filesystem::exists(radianceMap+".hdr"))
+                iblUtils::computeRadianceMap(*tex, radianceMap);
+            _backgroundMaterial->setTexture(radianceMap+".hdr", TextureType::radiance);
+
+            const std::string brdf = path + "/ibl_brdf_lut";
+            if(!boost::filesystem::exists(brdf+".hdr"))
+                iblUtils::computeBRDF(brdf);
+            _backgroundMaterial->setTexture(brdf+".hdr", TextureType::brdf_lut);
         }
         catch (...)
         {

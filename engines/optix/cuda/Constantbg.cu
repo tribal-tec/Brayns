@@ -39,7 +39,7 @@ RT_PROGRAM void envmap_miss()
     if (use_envmap)
     {
         const float2 uv = getEquirectangularUV(ray.direction);
-        prd_radiance.result = make_float3(optix::rtTex2D<float4>(envmap, uv.x, 1.f -uv.y));
+        prd_radiance.result = linearToSRGB(make_float3(optix::rtTex2D<float4>(envmap, uv.x, uv.y)));
     }
     else
     {

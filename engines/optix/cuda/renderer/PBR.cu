@@ -236,35 +236,35 @@ static __device__ inline void shade()
     float3 ambient = make_float3(0.03f) * albedo /* * ao*/;
     if (use_envmap)
     {
-        float NdV = clamp(fabs(dot(N, V)), 0.001f, 1.0f);
-        float3 reflection = normalize(reflect(-V, N));
+//        float NdV = clamp(fabs(dot(N, V)), 0.001f, 1.0f);
+//        float3 reflection = normalize(reflect(-V, N));
 
-        float3 f0 = make_float3(0.04);
-        float3 diffuseColor = albedo * (make_float3(1.f) - f0) * (1.0 - albedoMetallic.w);
-        float3 specularColor = lerp(f0, albedo, albedoMetallic.w);
+//        float3 f0 = make_float3(0.04);
+//        float3 diffuseColor = albedo * (make_float3(1.f) - f0) * (1.0 - albedoMetallic.w);
+//        float3 specularColor = lerp(f0, albedo, albedoMetallic.w);
 
-        ambient = getIBLContribution(NdV, normalRoughness.w, N, reflection, diffuseColor, specularColor);
-//        const float2 irradianceUV = getEquirectangularUV(N);
-//        const float2 radianceUV = getEquirectangularUV(reflect(-V, N));
+//        ambient = getIBLContribution(NdV, normalRoughness.w, N, reflection, diffuseColor, specularColor);
 
-//        const float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, normalRoughness.w);
-//        const float3 kD = (make_float3(1.0f) - F) * (1.0f - albedoMetallic.w);
+        const float2 irradianceUV = getEquirectangularUV(N);
+        const float2 radianceUV = getEquirectangularUV(reflect(-V, N));
 
-//        float3 irradiance = make_float3(rtTex2D<float4>(envmap_irradiance, irradianceUV.x, irradianceUV.y));
-//        //irradiance = pow(irradiance, 1.f/2.2f);
-//        const float3 diffuse = irradiance * albedo;
+        const float NdotV = dot(N, V);
+        const float3 F = fresnelSchlickRoughness(max(NdotV, 0.0f), F0, normalRoughness.w);
+        const float3 kD = (make_float3(1.0f) - F) * (1.0f - albedoMetallic.w);
 
-//        // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-//        float3 prefilteredColor = make_float3(rtTex2DLod<float4>(envmap_radiance, radianceUV.x, radianceUV.y, normalRoughness.w * float(radianceLODs)));
-//        //prefilteredColor = pow(prefilteredColor, 1.f/2.2f);
-//        const float2 brdf = make_float2(rtTex2D<float4>(envmap_brdf_lut, max(dot(N, V), 0.0), normalRoughness.w));
-//        const float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+        const float3 irradiance = make_float3(rtTex2D<float4>(envmap_irradiance, irradianceUV.x, irradianceUV.y));
+        const float3 diffuse = irradiance * albedo;
 
-//        ambient = (kD * diffuse + specular)/* * ao*/;
+        // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+        const float3 prefilteredColor = make_float3(rtTex2DLod<float4>(envmap_radiance, radianceUV.x, radianceUV.y, normalRoughness.w * float(radianceLODs)));
+        const float2 brdf = make_float2(rtTex2D<float4>(envmap_brdf_lut, max(NdotV, 0.0), normalRoughness.w));
+        const float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+        ambient = (kD * diffuse + specular)/* * ao*/;
     }
 
     const float3 color = ambient + Lo;
-    prd.result = linearToSRGB(color / (color + make_float3(1.0f)));;
+    prd.result = linearToSRGB(color / (color + make_float3(1.0f)));
 }
 
 RT_PROGRAM void any_hit_shadow()

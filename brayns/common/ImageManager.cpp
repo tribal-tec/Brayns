@@ -22,6 +22,8 @@
 #include <brayns/common/log.h>
 #include <brayns/common/utils/imageUtils.h>
 
+#include <boost/filesystem.hpp>
+
 namespace brayns
 {
 Texture2DPtr ImageManager::importTextureFromFile(
@@ -74,7 +76,7 @@ Texture2DPtr ImageManager::importTextureFromFile(
         return {};
     }
 
-    FreeImage_FlipVertical(image.get());
+    // FreeImage_FlipVertical(image.get());
 
     unsigned char* temppix = FreeImage_GetBits(image.get());
     std::vector<unsigned char> rawData(temppix,
@@ -88,6 +90,33 @@ Texture2DPtr ImageManager::importTextureFromFile(
     texture->setNbChannels(bytesPerPixel / depth);
     texture->setDepth(depth);
     texture->setRawData(std::move(rawData));
+
+    const auto path = boost::filesystem::path(filename).parent_path().string();
+    const auto basename = path + "/" + boost::filesystem::basename(filename);
+    const auto ext = boost::filesystem::extension(filename);
+
+    size_t mipLevels = 1;
+    while (
+        boost::filesystem::exists(basename + std::to_string(mipLevels) + ext))
+        ++mipLevels;
+
+    texture->setMipLevels(mipLevels);
+
+    for (size_t i = 1; i < mipLevels; ++i)
+    {
+        freeimage::ImagePtr mipImage(
+            FreeImage_Load(format,
+                           (basename + std::to_string(i) + ext).c_str()));
+        const auto mipWidth = FreeImage_GetWidth(mipImage.get());
+        const auto mipHeight = FreeImage_GetHeight(mipImage.get());
+        // FreeImage_FlipVertical(mipImage.get());
+
+        unsigned char* mipPix = FreeImage_GetBits(mipImage.get());
+        std::vector<unsigned char> rawDataMip(mipPix, mipPix +
+                                                          mipWidth * mipHeight *
+                                                              bytesPerPixel);
+        texture->setRawData(std::move(rawDataMip), i);
+    }
     return texture;
 #else
     BRAYNS_ERROR << "FreeImage is required to load images from file"

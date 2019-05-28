@@ -46,22 +46,35 @@ public:
     {
         return _height * _width * _depth * _nbChannels;
     }
-    const unsigned char* getRawData() const { return _rawData.data(); }
-    template <typename T>
-    const T* getRawData() const
+    void setMipLevels(const size_t mips)
     {
-        return reinterpret_cast<const T*>(_rawData.data());
+        if (mips == _mipLevels)
+            return;
+        _mipLevels = mips;
+        _rawData.resize(mips);
     }
-    void setRawData(unsigned char* data, size_t size);
-    void setRawData(std::vector<unsigned char>&& rawData);
+    size_t getMipLevels() const { return _mipLevels; }
+    const unsigned char* getRawData(const size_t mip = 0) const
+    {
+        return _rawData[mip].data();
+    }
+    template <typename T>
+    const T* getRawData(const size_t mip = 0) const
+    {
+        return reinterpret_cast<const T*>(_rawData[mip].data());
+    }
+    void setRawData(unsigned char* data, size_t size, const size_t mip = 0);
+    void setRawData(std::vector<unsigned char>&& rawData, const size_t mip = 0);
 
 private:
     std::string _filename;
-    size_t _nbChannels;                  // Number of color channels per pixel
-    size_t _depth;                       // Bytes per color channel
-    size_t _width;                       // Pixels per row
-    size_t _height;                      // Pixels per column
-    std::vector<unsigned char> _rawData; // Binary texture raw data;
+    size_t _nbChannels; // Number of color channels per pixel
+    size_t _depth;      // Bytes per color channel
+    size_t _width;      // Pixels per row
+    size_t _height;     // Pixels per column
+    size_t _mipLevels{1};
+    std::vector<std::vector<unsigned char>> _rawData; // Binary texture raw
+                                                      // data;
 };
 }
 

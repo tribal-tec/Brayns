@@ -99,7 +99,7 @@ inline BilinCoords bilinear_coords(const Vector2i& size, const Vector2f& p)
 Vector3f getTexel(const Texture2D& tex, const Vector2i& uv)
 {
     const auto index = (uv.x + uv.y * tex.getWidth()) * tex.getNbChannels();
-    switch(tex.getDepth())
+    switch (tex.getDepth())
     {
     case 1:
     {
@@ -112,7 +112,8 @@ Vector3f getTexel(const Texture2D& tex, const Vector2i& uv)
         return {*ptr, *(ptr + 1), *(ptr + 2)};
     }
     default:
-        throw std::runtime_error("Depths other than 1 and 4 are not supported for IBL");
+        throw std::runtime_error(
+            "Depths other than 1 and 4 are not supported for IBL");
     }
 }
 
@@ -169,6 +170,28 @@ Vector3f importanceSampleGGX(const Vector2f& uv, const Vector3f& N,
     return glm::normalize(sampleVec);
 }
 
+float GeometrySchlickGGX(const float NdotV, const float roughness)
+{
+    // note that we use a different k for IBL
+    const float a = roughness;
+    const float k = (a * a) / 2.0f;
+
+    const float nom = NdotV;
+    const float denom = NdotV * (1.0f - k) + k;
+
+    return nom / denom;
+}
+// ----------------------------------------------------------------------------
+float GeometrySmith(const Vector3f& N, const Vector3f& V, const Vector3f& L,
+                    const float roughness)
+{
+    const float NdotV = std::max(dot(N, V), 0.0f);
+    const float NdotL = std::max(dot(N, L), 0.0f);
+    const float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    const float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
 #ifdef HAVE_TEX2LOD
 float DistributionGGX(const Vector3f& N, const Vector3f& H,
                       const float roughness)
@@ -189,31 +212,49 @@ float DistributionGGX(const Vector3f& N, const Vector3f& H,
 void saveToFile(const std::vector<Vector3f>& texture, const size_t width,
                 const size_t height, const std::string& outfile)
 {
-    auto img = FreeImage_Allocate(width, height, 24);
-    RGBQUAD color;
-    for (size_t y = 0; y < height; y++)
+    auto img =
+        FreeImage_AllocateT(FIT_RGBF, width, height, 8 * 3 * sizeof(float));
+    //    RGBQUAD color;
+    //    for (size_t y = 0; y < height; y++)
+    //    {
+    //        for (size_t x = 0; x < width; x++)
+    //        {
+    //            const auto& val = texture[x + y * width];
+    //            color.rgbRed = std::pow(val.x/(val.x+1.f), .5f) * 255;
+    //            color.rgbGreen = std::pow(val.y/(val.y+1.f), .5f) * 255;
+    //            color.rgbBlue = std::pow(val.z/(val.z+1.f), .5f) * 255;
+    //            FreeImage_SetPixelColor(img, x, y, &color);
+    //        }
+    //    }
+    const Vector3f* src = texture.data();
+    for (unsigned y = 0; y < height; y++)
     {
-        for (size_t x = 0; x < width; x++)
-        {
-            const auto& val = texture[x + y * width];
-            color.rgbRed = std::pow(val.x/(val.x+1.f), .5f) * 255;
-            color.rgbGreen = std::pow(val.y/(val.y+1.f), .5f) * 255;
-            color.rgbBlue = std::pow(val.z/(val.z+1.f), .5f) * 255;
-            FreeImage_SetPixelColor(img, x, y, &color);
-        }
+        float* dst_bits = (float*)FreeImage_GetScanLine(img, y);
+        memcpy(dst_bits, src, width * 3 * sizeof(float));
+        src += width;
     }
-    FreeImage_FlipVertical(img);
-    FreeImage_Save(FIF_PNG, img, outfile.c_str());
+    // FreeImage_FlipVertical(img);
+    FreeImage_Save(FIF_HDR, img, (outfile + ".hdr").c_str());
     FreeImage_Unload(img);
+}
+
+void saveToFile(const Texture2D tex, const size_t width, const size_t height,
+                const std::string& outfile)
+{
+    std::vector<Vector3f> buffer(width * height);
+    memcpy(buffer.data(), tex.getRawData(), width * height * 3 * sizeof(float));
+    saveToFile(buffer, width, height, outfile);
 }
 
 } // anonymous namespace
 
 namespace iblUtils
 {
-void computeIrradianceMap(const Texture2D& tex)
+void computeIrradianceMap(const Texture2D& tex, const std::string& filename)
 {
-    const size_t width = 32;
+    //    const size_t width = 512;
+    //    const size_t height = 256;
+    const size_t width = 64;
     const size_t height = 32;
     boost::progress_display progress(height);
     std::vector<Vector3f> outtexture(width * height);
@@ -262,11 +303,11 @@ void computeIrradianceMap(const Texture2D& tex)
     }
     BRAYNS_INFO << "Irradiance map computed in " << timer.elapsed()
                 << " seconds" << std::endl;
-    saveToFile(outtexture, width, height, "/tmp/irradiance.png");
+    saveToFile(outtexture, width, height, filename);
 }
 
 void computeRadianceMap(const Texture2D& tex, const size_t mip,
-                        const float roughness)
+                        const float roughness, const std::string& filename)
 {
     const size_t width = tex.getWidth() * std::pow(0.5, mip);
     const size_t height = tex.getHeight() * std::pow(0.5, mip);
@@ -325,18 +366,74 @@ void computeRadianceMap(const Texture2D& tex, const size_t mip,
     }
     BRAYNS_INFO << "Radiance map " << mip << " computed in " << timer.elapsed()
                 << " seconds" << std::endl;
-    saveToFile(outtexture, width, height,
-               "/tmp/radiance" + std::to_string(mip) + ".png");
+    saveToFile(outtexture, width, height, filename + std::to_string(mip));
 }
 
-void computeRadianceMap(const Texture2D& tex)
+void computeRadianceMap(const Texture2D& tex, const std::string& filename)
 {
+    saveToFile(tex, tex.getWidth(), tex.getHeight(), filename);
     const size_t maxMipLevels = 5;
     for (size_t mip = 1; mip < maxMipLevels; ++mip)
     {
         const float roughness = (float)mip / (float)(maxMipLevels - 1);
-        computeRadianceMap(tex, mip, roughness);
+        computeRadianceMap(tex, mip, roughness, filename);
     }
+}
+
+void computeBRDF(const std::string& filename)
+{
+    const size_t width = 512;
+    const size_t height = 512;
+    const uint SAMPLE_COUNT = 1024u;
+    boost::progress_display progress(height);
+    std::vector<Vector3f> outtexture(width * height);
+    Timer timer;
+    timer.start();
+    for (size_t y = 0; y < height; ++y)
+    {
+#pragma omp parallel for
+        for (size_t x = 0; x < width; ++x)
+        {
+            const float NdotV = float(x) / width;
+            const float roughness = float(y) / height;
+            Vector3f V(std::sqrt(1.0f - NdotV * NdotV), 0.f, NdotV);
+
+            float A = 0.0f;
+            float B = 0.0f;
+
+            Vector3f N(0.0f, 0.0f, 1.0f);
+            for (uint i = 0u; i < SAMPLE_COUNT; ++i)
+            {
+                // generates a sample vector that's biased towards the
+                // preferred alignment direction (importance sampling).
+                const Vector2f Xi = Hammersley(i, SAMPLE_COUNT);
+                const Vector3f H = importanceSampleGGX(Xi, N, roughness);
+                const Vector3f L =
+                    glm::normalize(2.0f * glm::dot(V, H) * H - V);
+
+                const float NdotL = std::max(L.z, 0.0f);
+
+                if (NdotL > 0.0f)
+                {
+                    const float NdotH = std::max(H.z, 0.0f);
+                    const float VdotH = std::max(dot(V, H), 0.0f);
+                    const float G = GeometrySmith(N, V, L, roughness);
+                    const float G_Vis = (G * VdotH) / (NdotH * NdotV);
+                    const float Fc = std::pow(1.0f - VdotH, 5.0f);
+
+                    A += (1.0f - Fc) * G_Vis;
+                    B += Fc * G_Vis;
+                }
+            }
+            A /= float(SAMPLE_COUNT);
+            B /= float(SAMPLE_COUNT);
+            outtexture[y * width + x] = Vector3f(A, B, 0.f);
+        }
+        ++progress;
+    }
+    BRAYNS_INFO << "BRDF computed in " << timer.elapsed() << " seconds"
+                << std::endl;
+    saveToFile(outtexture, width, height, filename);
 }
 }
 } // namespace brayns

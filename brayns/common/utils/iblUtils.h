@@ -26,7 +26,8 @@ namespace brayns
 {
 namespace iblUtils
 {
-void computeRadianceMap(const Texture2D& tex);
-void computeIrradianceMap(const Texture2D& tex);
+void computeRadianceMap(const Texture2D& tex, const std::string& filename);
+void computeIrradianceMap(const Texture2D& tex, const std::string& filename);
+void computeBRDF(const std::string& filename);
 }
 } // namespace brayns

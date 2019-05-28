@@ -105,7 +105,7 @@ static __device__ inline float geometrySmith(float3 N, float3 V, float3 L, float
 
 static __device__ inline float3 fresnelSchlick(float cosTheta, float3 F0)
 {
-    return F0 + (1.0f - F0) * pow(1.0f - cosTheta, 5.0f);
+    return F0 + (make_float3(1.0f) - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
 //static __device__ inline float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)

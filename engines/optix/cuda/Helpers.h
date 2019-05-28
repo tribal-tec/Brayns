@@ -279,8 +279,7 @@ static __device__ inline float3 pow(const float3& a, const float exp)
 
 static __device__ inline float4 SRGBtoLinear(const float4& srgb)
 {
-    float3 linOut = pow(make_float3(srgb), 2.2f);
-    return make_float4(linOut, srgb.w);
+    return make_float4(pow(make_float3(srgb), 2.2f), srgb.w);
 }
 
 static __device__ inline float3 linearToSRGB(const float3& color)
@@ -288,10 +287,10 @@ static __device__ inline float3 linearToSRGB(const float3& color)
     return pow(color, 1.f / 2.2f);
 }
 
-static __device__ inline float4 RGBMToLinear(const float4& value)
+static __device__ inline float3 RGBMToLinear(const float4& value)
 {
-    float maxRange = 6.0f;
-    return make_float4(make_float3(value) * value.w * maxRange, 1.0f);
+    const float maxRange = 6.0f;
+    return make_float3(value) * value.w * maxRange;
 }
 
 #define OPTIX_DUMP_FLOAT(VALUE) rtPrintf(#VALUE " %f\n", VALUE)

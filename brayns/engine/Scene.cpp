@@ -24,6 +24,7 @@
 #include <brayns/common/log.h>
 #include <brayns/common/scene/ClipPlane.h>
 #include <brayns/common/utils/utils.h>
+#include <brayns/common/utils/iblUtils.h>
 #include <brayns/engine/Material.h>
 #include <brayns/engine/Model.h>
 
@@ -394,6 +395,10 @@ bool Scene::setEnvironmentMap(const std::string& envMap)
         try
         {
             _backgroundMaterial->setTexture(envMap, TextureType::diffuse);
+
+            auto tex = _backgroundMaterial->getTexture(TextureType::diffuse);
+            iblUtils::computeIrradianceMap(*tex);
+            iblUtils::computeRadianceMap(*tex);
         }
         catch (const std::runtime_error& e)
         {

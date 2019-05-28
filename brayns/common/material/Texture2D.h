@@ -47,6 +47,11 @@ public:
         return _height * _width * _depth * _nbChannels;
     }
     const unsigned char* getRawData() const { return _rawData.data(); }
+    template <typename T>
+    const T* getRawData() const
+    {
+        return reinterpret_cast<const T*>(_rawData.data());
+    }
     void setRawData(unsigned char* data, size_t size);
     void setRawData(std::vector<unsigned char>&& rawData);
 

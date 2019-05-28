@@ -28,42 +28,71 @@ Texture2DPtr ImageManager::importTextureFromFile(
     const std::string& filename BRAYNS_UNUSED)
 {
 #ifdef BRAYNS_USE_FREEIMAGE
-    freeimage::ImagePtr image;
-    if (auto temporary = FreeImage_Load(FreeImage_GetFileType(filename.c_str()),
-                                        filename.c_str()))
-    {
-        image.reset(FreeImage_ConvertTo32Bits(temporary));
-        FreeImage_Unload(temporary);
-    }
-    else
-        return nullptr;
+    auto format = FreeImage_GetFileType(filename.c_str());
+    if (format == FIF_UNKNOWN)
+        format = FreeImage_GetFIFFromFilename(filename.c_str());
+    if (format == FIF_UNKNOWN)
+        return {};
+
+    freeimage::ImagePtr image(FreeImage_Load(format, filename.c_str()));
+    if (!image)
+        return {};
 
 #if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
-    freeimage::SwapRedBlue32(image.get());
+// freeimage::SwapRedBlue32(image.get());
 #endif
 
     const auto width = FreeImage_GetWidth(image.get());
     const auto height = FreeImage_GetHeight(image.get());
-    const auto pitch = FreeImage_GetPitch(image.get());
-    const auto channels = 4;
+    const auto bytesPerPixel = FreeImage_GetBPP(image.get()) / 8;
+    size_t depth = 1;
+    switch (FreeImage_GetImageType(image.get()))
+    {
+    case FIT_BITMAP:
+        depth = 1;
+        break;
+    case FIT_UINT16:
+    case FIT_INT16:
+    case FIT_RGB16:
+        depth = 2;
+        break;
+    case FIT_UINT32:
+    case FIT_INT32:
+    case FIT_RGBA16:
+        depth = 4;
+        break;
+    case FIT_FLOAT:
+    case FIT_RGBF:
+    case FIT_RGBAF:
+        depth = 4;
+        break;
+    case FIT_DOUBLE:
+    case FIT_COMPLEX:
+        depth = 8;
+        break;
+    default:
+        return {};
+    }
 
-    std::vector<unsigned char> rawData(height * pitch);
-    FreeImage_ConvertToRawBits(rawData.data(), image.get(), pitch, channels * 8,
-                               FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK,
-                               FI_RGBA_BLUE_MASK, TRUE);
+    FreeImage_FlipVertical(image.get());
+
+    unsigned char* temppix = FreeImage_GetBits(image.get());
+    std::vector<unsigned char> rawData(temppix,
+                                       temppix +
+                                           width * height * bytesPerPixel);
 
     auto texture = std::make_shared<Texture2D>();
     texture->setFilename(filename);
     texture->setWidth(width);
     texture->setHeight(height);
-    texture->setNbChannels(channels);
-    texture->setDepth(1);
+    texture->setNbChannels(bytesPerPixel / depth);
+    texture->setDepth(depth);
     texture->setRawData(std::move(rawData));
     return texture;
 #else
     BRAYNS_ERROR << "FreeImage is required to load images from file"
                  << std::endl;
-    return nullptr;
+    return {};
 #endif
 }
 }

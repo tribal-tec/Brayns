@@ -152,11 +152,9 @@ const OptixShaderProgram& OptiXContext::getRenderer(const std::string& name)
     ::optix::TextureSampler sampler = _optixContext->createTextureSampler();
     sampler->setWrapMode(0, RT_WRAP_REPEAT);
     sampler->setWrapMode(1, RT_WRAP_REPEAT);
-    sampler->setWrapMode(2, RT_WRAP_REPEAT);
     sampler->setIndexingMode(RT_TEXTURE_INDEX_NORMALIZED_COORDINATES);
     sampler->setReadMode(RT_TEXTURE_READ_NORMALIZED_FLOAT);
     sampler->setMaxAnisotropy(8.0f);
-    sampler->setArraySize(1u);
     sampler->setMipLevelClamp(0.0f, mipMapLevels);
 
     // Create buffer and populate with texture data

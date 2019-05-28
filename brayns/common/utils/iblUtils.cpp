@@ -25,8 +25,6 @@
 #include <brayns/common/log.h>
 #include <brayns/common/material/Texture2D.h>
 
-//#define ALT_GGX
-
 namespace brayns
 {
 namespace
@@ -40,22 +38,6 @@ Vector3f polarToCartesian(const Vector2f& uv)
                      sinPhi * std::sin(theta));
     return glm::normalize(n);
 }
-
-// static inline float fast_atan2(float y, float x){
-//    static const float c1 = M_PI / 4.0;
-//    static const float c2 = M_PI * 3.0 / 4.0;
-//    if (y == 0 && x == 0)
-//        return 0;
-//    float abs_y = fabsf(y);
-//    float angle;
-//    if (x >= 0)
-//        angle = c1 - c1 * ((x - abs_y) / (x + abs_y));
-//    else
-//        angle = c2 - c1 * ((x + abs_y) / (abs_y - x));
-//    if (y < 0)
-//        return -angle;
-//    return angle;
-//}
 
 const float RECIPROCAL_PI2 = 0.15915494f;
 
@@ -117,8 +99,21 @@ inline BilinCoords bilinear_coords(const Vector2i& size, const Vector2f& p)
 Vector3f getTexel(const Texture2D& tex, const Vector2i& uv)
 {
     const auto index = (uv.x + uv.y * tex.getWidth()) * tex.getNbChannels();
-    const auto ptr = &tex.getRawData()[index];
-    return {*ptr / 255.f, *(ptr + 1) / 255.f, *(ptr + 2) / 255.f};
+    switch(tex.getDepth())
+    {
+    case 1:
+    {
+        const auto ptr = &tex.getRawData()[index];
+        return {*ptr / 255.f, *(ptr + 1) / 255.f, *(ptr + 2) / 255.f};
+    }
+    case 4:
+    {
+        const auto ptr = &tex.getRawData<float>()[index];
+        return {*ptr, *(ptr + 1), *(ptr + 2)};
+    }
+    default:
+        throw std::runtime_error("Depths other than 1 and 4 are not supported for IBL");
+    }
 }
 
 Vector3f tex2D(const Texture2D& tex, const Vector2f& uv)
@@ -137,43 +132,6 @@ Vector3f tex2D(const Texture2D& tex, const Vector2f& uv)
 #endif
 }
 
-#ifdef ALT_GGX
-glm::mat3 matrixFromVector(const Vector3f& n)
-{
-    const float a = 1.0f / (1.0f + n.z);
-    const float b = -n.x * n.y * a;
-    const Vector3f b1(1.0f - n.x * n.x * a, b, -n.x);
-    const Vector3f b2(b, 1.0f - n.y * n.y * a, -n.y);
-    return glm::mat3(b1, b2, n);
-}
-#endif
-
-#if 0
-float mymod(float x, float y)
-{
-    return x - y * floor(x/y);
-}
-
-float VanDerCorpus(uint n, uint base) {
-    float invBase = 1.0f / float(base);
-    float denom = 1.0f;
-    float result = 0.0;
-    for(int i = 0; i < 32; ++i) {
-        if(n > 0) {
-            denom = mymod(float(n), 2.0f);
-            result += denom * invBase;
-            invBase = invBase / 2.0f;
-            n = int(float(n) / 2.0f);
-        }
-    }
-    return result;
-}
-
-Vector2f Hammersley(uint i, uint N)
-{
-    return Vector2f(float(i) / float(N), VanDerCorpus(i, 2));
-}
-#else
 float RadicalInverse_VdC(uint bits)
 {
     bits = (bits << 16u) | (bits >> 16u);
@@ -188,23 +146,7 @@ Vector2f Hammersley(const uint i, const uint N)
 {
     return {float(i) / float(N), RadicalInverse_VdC(i)};
 }
-#endif
 
-#ifdef ALT_GGX
-Vector3f importanceSampleGGX(const Vector2f& uv, const glm::mat3& mNormal,
-                             const float roughness)
-{
-    const float a = roughness * roughness;
-    const float phi = 2.0f * M_PI * uv.x;
-    const float cosTheta =
-        std::sqrt((1.0f - uv.y) / (1.0f + (a * a - 1.0f) * uv.y));
-    const float sinTheta = std::sqrt(1.0f - cosTheta * cosTheta);
-    const Vector3f sampleVec =
-        mNormal *
-        Vector3f(sinTheta * std::cos(phi), sinTheta * std::sin(phi), cosTheta);
-    return glm::normalize(sampleVec);
-}
-#else
 Vector3f importanceSampleGGX(const Vector2f& uv, const Vector3f& N,
                              const float roughness)
 {
@@ -226,7 +168,24 @@ Vector3f importanceSampleGGX(const Vector2f& uv, const Vector3f& N,
     const Vector3f sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
     return glm::normalize(sampleVec);
 }
+
+#ifdef HAVE_TEX2LOD
+float DistributionGGX(const Vector3f& N, const Vector3f& H,
+                      const float roughness)
+{
+    const float a = roughness * roughness;
+    const float a2 = a * a;
+    const float NdotH = std::max(glm::dot(N, H), 0.0f);
+    const float NdotH2 = NdotH * NdotH;
+
+    const float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0f) + 1.0f);
+    denom = M_PI * denom * denom;
+
+    return nom / denom;
+}
 #endif
+
 void saveToFile(const std::vector<Vector3f>& texture, const size_t width,
                 const size_t height, const std::string& outfile)
 {
@@ -237,9 +196,9 @@ void saveToFile(const std::vector<Vector3f>& texture, const size_t width,
         for (size_t x = 0; x < width; x++)
         {
             const auto& val = texture[x + y * width];
-            color.rgbRed = val.x * 255;
-            color.rgbGreen = val.y * 255;
-            color.rgbBlue = val.z * 255;
+            color.rgbRed = std::pow(val.x/(val.x+1.f), .5f) * 255;
+            color.rgbGreen = std::pow(val.y/(val.y+1.f), .5f) * 255;
+            color.rgbBlue = std::pow(val.z/(val.z+1.f), .5f) * 255;
             FreeImage_SetPixelColor(img, x, y, &color);
         }
     }
@@ -266,35 +225,36 @@ void computeIrradianceMap(const Texture2D& tex)
         for (size_t x = 0; x < width; ++x)
         {
             const Vector2f uv(float(x) / width, float(y) / height);
-            Vector3f irradiance;
+            const Vector3f N = polarToCartesian(uv);
 
-            const Vector3f normal = polarToCartesian(uv);
+            Vector3f irradiance;
 #if 1
             Vector3f up(0.f, 1.f, 0.f);
-            const Vector3f right = glm::cross(up, normal);
-            up = glm::cross(normal, right);
-            const float delta = 0.025f;
+            const Vector3f right = glm::cross(up, N);
+            up = glm::cross(N, right);
+            const float sampleDelta = 0.025f;
             size_t samples = 0;
-            for (float phi = 0.0f; phi < M_PI * 2.f; phi += delta)
+            for (float phi = 0.0f; phi < M_PI * 2.f; phi += sampleDelta)
             {
                 const float sinPhi = std::sin(phi);
                 const float cosPhi = std::cos(phi);
-                for (float theta = 0.0f; theta < M_PI_2; theta += delta)
+                for (float theta = 0.0f; theta < M_PI_2; theta += sampleDelta)
                 {
                     const float sinTheta = std::sin(theta);
                     const float cosTheta = std::cos(theta);
-                    const Vector3f tangent(sinTheta * cosPhi, sinTheta * sinPhi,
-                                           cosTheta);
-                    const Vector3f dir =
-                        tangent.x * right + tangent.y * up + tangent.z * normal;
-                    const Vector3f sample = tex2D(tex, cartesianToPolar(dir));
-                    irradiance += sample * cosTheta * sinTheta;
+                    const Vector3f tangentSample(sinTheta * cosPhi,
+                                                 sinTheta * sinPhi, cosTheta);
+                    const Vector3f dir = tangentSample.x * right +
+                                         tangentSample.y * up +
+                                         tangentSample.z * N;
+                    irradiance +=
+                        tex2D(tex, cartesianToPolar(dir)) * cosTheta * sinTheta;
                     samples++;
                 }
             }
             irradiance = M_PI * irradiance / (float)samples;
 #else
-            irradiance = tex2D(*tex, cartesianToPolar(normal));
+            irradiance = tex2D(*tex, cartesianToPolar(N));
 #endif
             outtexture[y * width + x] = irradiance;
         }
@@ -305,16 +265,14 @@ void computeIrradianceMap(const Texture2D& tex)
     saveToFile(outtexture, width, height, "/tmp/irradiance.png");
 }
 
-void computeRadianceMap(const Texture2D& tex)
+void computeRadianceMap(const Texture2D& tex, const size_t mip,
+                        const float roughness)
 {
-    size_t fraction = 1;
-    size_t width = tex.getWidth() / fraction;
-    size_t height = tex.getHeight() / fraction;
-
+    const size_t width = tex.getWidth() * std::pow(0.5, mip);
+    const size_t height = tex.getHeight() * std::pow(0.5, mip);
     boost::progress_display progress(height);
     std::vector<Vector3f> outtexture(width * height);
-    const size_t SAMPLES = 1000;
-    const float uRoughness = .5f;
+    const size_t SAMPLE_COUNT = 1024;
     Timer timer;
     timer.start();
     for (size_t y = 0; y < height; ++y)
@@ -323,40 +281,62 @@ void computeRadianceMap(const Texture2D& tex)
         for (size_t x = 0; x < width; ++x)
         {
             const Vector2f uv(float(x) / width, float(y) / height);
-            Vector3f color;
-
             const Vector3f N = polarToCartesian(uv);
-#ifdef ALT_GGX
-            const glm::mat3 mNormal = matrixFromVector(normal);
-#endif
 
+            Vector3f prefilteredColor;
             float totalWeight = 0.0f;
-            for (size_t i = 0; i < SAMPLES; i++)
+
+            for (size_t i = 0; i < SAMPLE_COUNT; ++i)
             {
-                const Vector2f r = Hammersley(i, SAMPLES);
-#ifdef ALT_GGX
-                const Vector3f dir =
-                    importanceSampleGGX(r, mNormal, uRoughness);
-#else
-                const Vector3f dir = importanceSampleGGX(r, N, uRoughness);
-#endif
+                const Vector2f Xi = Hammersley(i, SAMPLE_COUNT);
+                const Vector3f H = importanceSampleGGX(Xi, N, roughness);
 
                 const Vector3f L =
-                    glm::normalize(2.0f * glm::dot(N, dir) * dir - N);
+                    glm::normalize(2.0f * glm::dot(N, H) * H - N);
                 const float NdotL = std::max(glm::dot(N, L), 0.0f);
                 if (NdotL > 0.0f)
                 {
-                    color += tex2D(tex, cartesianToPolar(dir)) * NdotL;
+#ifdef HAVE_TEX2LOD
+                    // sample from the environment's mip level based on
+                    // roughness/pdf
+                    const float D = DistributionGGX(N, H, roughness);
+                    const float NdotH = std::max(glm::dot(N, H), 0.0f);
+                    const float HdotV = std::max(glm::dot(H, N), 0.0f);
+                    const float pdf = D * NdotH / (4.0f * HdotV) + 0.0001f;
+
+                    const float saTexel =
+                        4.0f * M_PI / (tex.getWidth() * tex.getHeight());
+                    const float saSample =
+                        1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+
+                    const float mipLevel =
+                        roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel);
+                    prefilteredColor +=
+                        tex2DLod(tex, cartesianToPolar(L), mipLevel) * NdotL;
+#else
+                    prefilteredColor += tex2D(tex, cartesianToPolar(L)) * NdotL;
+#endif
                     totalWeight += NdotL;
                 }
             }
-            outtexture[y * width + x] = color / totalWeight;
+            outtexture[y * width + x] = prefilteredColor / totalWeight;
         }
         ++progress;
     }
-    BRAYNS_INFO << "Radiance map computed in " << timer.elapsed() << " seconds"
-                << std::endl;
-    saveToFile(outtexture, width, height, "/tmp/radiance.png");
+    BRAYNS_INFO << "Radiance map " << mip << " computed in " << timer.elapsed()
+                << " seconds" << std::endl;
+    saveToFile(outtexture, width, height,
+               "/tmp/radiance" + std::to_string(mip) + ".png");
+}
+
+void computeRadianceMap(const Texture2D& tex)
+{
+    const size_t maxMipLevels = 5;
+    for (size_t mip = 1; mip < maxMipLevels; ++mip)
+    {
+        const float roughness = (float)mip / (float)(maxMipLevels - 1);
+        computeRadianceMap(tex, mip, roughness);
+    }
 }
 }
 } // namespace brayns

@@ -257,6 +257,11 @@ static __host__ __device__ __inline__ optix::float3 tonemap(
     return mapped_rgb;
 }
 
+static __device__ inline optix::float3 tonemap(const optix::float3& color)
+{
+    return color / (color + make_float3(1.0f));
+}
+
 static __device__ inline optix::float2 getEquirectangularUV(
     const optix::float3& R)
 {

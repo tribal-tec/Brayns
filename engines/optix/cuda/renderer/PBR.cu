@@ -108,51 +108,10 @@ static __device__ inline float3 fresnelSchlick(float cosTheta, float3 F0)
     return F0 + (make_float3(1.0f) - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
-//static __device__ inline float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-//{
-//    return F0 + (max(make_float3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
-//}
-
-static __device__ inline float3 getIBLContribution(float NdV, float roughness, const float3& n, const float3& reflection, const float3& diffuseColor, const float3& specularColor)
+static __device__ inline float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 {
-    // Sample 2 levels and mix between to get smoother degradation
-    const float ENV_LODS = 6.0f;
-    float blend = roughness * ENV_LODS;
-    float level0 = floor(blend);
-    float level1 = min(ENV_LODS, level0 + 1.0f);
-    blend -= level0;
-
-    // Sample the specular env map atlas depending on the roughness value
-    float2 uvSpec = getEquirectangularUV(reflection);
-    uvSpec.y /= 2.0f;
-
-    float2 uv0 = uvSpec;
-    float2 uv1 = uvSpec;
-
-    uv0 /= pow(2.0f, level0);
-    uv0.y += 1.0f - exp(-M_LN2f * level0);
-
-    uv1 /= pow(2.0f, level1);
-    uv1.y += 1.0f - exp(-M_LN2f * level1);
-
-    float2 irradianceUV = getEquirectangularUV(n);
-
-    float3 diffuseLight = make_float3(RGBMToLinear(rtTex2D<float4>(envmap_irradiance, irradianceUV.x, 1.f-irradianceUV.y)));
-    float3 specular0 = make_float3(RGBMToLinear(rtTex2D<float4>(envmap_radiance, uv0.x, 1.f-uv0.y)));
-    float3 specular1 = make_float3(RGBMToLinear(rtTex2D<float4>(envmap_radiance, uv1.x, 1.f-uv1.y)));
-
-    float3 specularLight = lerp(specular0, specular1, blend);
-    float3 diffuse = diffuseLight * diffuseColor;
-
-    const float3 brdf = make_float3(SRGBtoLinear(rtTex2D<float4>(envmap_brdf_lut, NdV, roughness)));
-
-    // Bit of extra reflection for smooth materials
-    float reflectivity = pow((1.0 - roughness), 2.0) * 0.05;
-    float3 specular = specularLight * (specularColor * brdf.x + brdf.y + reflectivity);
-
-    return diffuse + specular;
+    return F0 + (max(make_float3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
 }
-
 
 static __device__ inline void shade()
 {
@@ -185,15 +144,15 @@ static __device__ inline void shade()
     const float3 V = -ray.direction;
 
 #ifdef TEST
-    const float4 albedoMetallic = make_float4(1.f, 0.f, 0.f, metalness);
+    const float4 albedoMetallic = make_float4(.5f, 0.f, 0.f, metalness);
     const float3 albedo = make_float3(albedoMetallic);
-    const float4 normalRoughness = make_float4(0.f, 0.f, 0.f, roughness);
+    const float4 normalRoughness = make_float4(0.f, 0.f, 0.f, max(0.025f, roughness));
 #else
     const float4 albedoMetallic = SRGBtoLinear(rtTex2DGrad<float4>(albedoMetallic_map, texcoord.x, texcoord.y, ddx, ddy));
     const float3 albedo = make_float3(albedoMetallic);
 
-    const float4 normalRoughness = rtTex2DGrad<float4>(normalRoughness_map, texcoord.x, texcoord.y, ddx, ddy);
-    const float3 normal = normalize(make_float3(normalRoughness));
+    const float4 normalRoughness = rtTex2D<float4>(normalRoughness_map, texcoord.x, texcoord.y);
+    const float3 normal = make_float3(normalRoughness);
 
     optix::Matrix3x3 TBN;
     TBN.setCol(0,tangent);
@@ -236,15 +195,6 @@ static __device__ inline void shade()
     float3 ambient = make_float3(0.03f) * albedo /* * ao*/;
     if (use_envmap)
     {
-//        float NdV = clamp(fabs(dot(N, V)), 0.001f, 1.0f);
-//        float3 reflection = normalize(reflect(-V, N));
-
-//        float3 f0 = make_float3(0.04);
-//        float3 diffuseColor = albedo * (make_float3(1.f) - f0) * (1.0 - albedoMetallic.w);
-//        float3 specularColor = lerp(f0, albedo, albedoMetallic.w);
-
-//        ambient = getIBLContribution(NdV, normalRoughness.w, N, reflection, diffuseColor, specularColor);
-
         const float2 irradianceUV = getEquirectangularUV(N);
         const float2 radianceUV = getEquirectangularUV(reflect(-V, N));
 
@@ -264,7 +214,7 @@ static __device__ inline void shade()
     }
 
     const float3 color = ambient + Lo;
-    prd.result = linearToSRGB(color / (color + make_float3(1.0f)));
+    prd.result = linearToSRGB(tonemap(color));
 }
 
 RT_PROGRAM void any_hit_shadow()

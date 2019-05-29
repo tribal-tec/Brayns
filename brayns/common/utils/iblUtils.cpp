@@ -394,7 +394,7 @@ void computeBRDF(const std::string& filename)
 #pragma omp parallel for
         for (size_t x = 0; x < width; ++x)
         {
-            const float NdotV = float(x) / width;
+            const float NdotV = std::max(0.001f, float(x) / width);
             const float roughness = float(y) / height;
             Vector3f V(std::sqrt(1.0f - NdotV * NdotV), 0.f, NdotV);
 

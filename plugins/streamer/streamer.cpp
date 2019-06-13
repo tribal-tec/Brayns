@@ -772,13 +772,16 @@ Streamer::FrameData::FrameData(ospcommon::networking::Fabric &mpiFabric_,
     : mpiFabric(mpiFabric_)
     , rp(api.getParametersManager().getRenderingParameters())
     , camera(api.getCamera())
+    , scene(api.getScene())
+    , renderer(api.getRenderer())
 {
 }
 
 bool Streamer::FrameData::serialize(const size_t frameNumber) const
 {
     ospcommon::networking::BufferedWriteStream stream(mpiFabric);
-    stream << frameNumber << rp.isModified() << camera.isModified();
+    stream << frameNumber << rp.isModified() << camera.isModified()
+           << scene.isModified() << renderer.isModified();
     if (camera.isModified())
     {
         stream << camera.getTarget() << camera.getPosition()
@@ -789,6 +792,10 @@ bool Streamer::FrameData::serialize(const size_t frameNumber) const
         stream << rp.getCurrentRenderer() << rp.getSamplesPerPixel()
                << rp.getBackgroundColor();
     }
+    if (scene.isModified())
+        stream << scene.getEnvironmentMap();
+    if (renderer.isModified())
+        stream << renderer.getPropertyMap();
     stream.flush();
     return rp.isModified();
 }
@@ -796,8 +803,9 @@ bool Streamer::FrameData::serialize(const size_t frameNumber) const
 bool Streamer::FrameData::deserialize(size_t &frameNumber)
 {
     ospcommon::networking::BufferedReadStream stream(mpiFabric);
-    bool rpModified, camModified;
-    stream >> frameNumber >> rpModified >> camModified;
+    bool rpModified, camModified, sceneModified, rendererModified;
+    stream >> frameNumber >> rpModified >> camModified >> sceneModified >>
+        rendererModified;
     if (camModified)
     {
         brayns::Vector3d target, position;
@@ -821,7 +829,20 @@ bool Streamer::FrameData::deserialize(size_t &frameNumber)
         rp.setSamplesPerPixel(spp);
         rp.setBackgroundColor(bgColor);
     }
-    return rpModified;
+    if (sceneModified)
+    {
+        std::string envMap;
+        stream >> envMap;
+        scene.setEnvironmentMap(envMap);
+    }
+    if (rendererModified)
+    {
+        brayns::PropertyMap props;
+        stream >> props;
+        renderer.updateProperties(props);
+    }
+
+    return rpModified || camModified || sceneModified;
 }
 #endif
 }

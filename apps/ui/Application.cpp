@@ -274,18 +274,14 @@ void Application::toggleFullscreen()
 
 brayns::Vector2ui Application::getWindowSize() const
 {
-    //    brayns::Vector2ui newWindowSize;
-    //    auto frameBuffer =
-    //    m_brayns.getEngine().getFrameBuffers()[m_brayns.getParametersManager()
-    //            .getApplicationParameters().fb()];
-    //    {
-    //        newWindowSize.x += frameBuffer->getFrameSize().x;
-    //        newWindowSize.y =
-    //            std::max(newWindowSize.y, frameBuffer->getFrameSize().y);
-    //    }
-    return m_brayns.getParametersManager()
-        .getApplicationParameters()
-        .getWindowSize();
+    brayns::Vector2ui newWindowSize;
+    for (auto frameBuffer : m_brayns.getEngine().getFrameBuffers())
+    {
+        newWindowSize.x += frameBuffer->getFrameSize().x;
+        newWindowSize.y =
+            std::max(newWindowSize.y, frameBuffer->getFrameSize().y);
+    }
+    return newWindowSize;
 }
 
 void Application::guiNewFrame()
@@ -350,11 +346,7 @@ void Application::render()
     m_brayns.render();
 
     size_t offset = 0;
-    // for (auto frameBuffer : m_brayns.getEngine().getFrameBuffers())
-    ;
-    auto frameBuffer =
-        m_brayns.getEngine().getFrameBuffers()
-            [m_brayns.getParametersManager().getApplicationParameters().fb()];
+    for (auto frameBuffer : m_brayns.getEngine().getFrameBuffers())
     {
         GLenum format = GL_RGBA;
         switch (frameBuffer->getFrameBufferFormat())
@@ -369,9 +361,7 @@ void Application::render()
             format = GL_RGBA;
         }
 
-        const auto& frameSize = m_brayns.getParametersManager()
-                                    .getApplicationParameters()
-                                    .getWindowSize();
+        const auto& frameSize = frameBuffer->getFrameSize();
 
         frameBuffer->map();
         glMatrixMode(GL_PROJECTION);
@@ -406,13 +396,13 @@ void Application::render()
                          frameBuffer->getSize().y, 0, format, type, buffer);
 
             glBegin(GL_QUADS);
-            glTexCoord2f(0.f, 1.f);
-            glVertex3f(0, 0, 0);
             glTexCoord2f(0.f, 0.f);
+            glVertex3f(0, 0, 0);
+            glTexCoord2f(0.f, 1.f);
             glVertex3f(0, frameSize.y, 0);
-            glTexCoord2f(1.f, 0.f);
-            glVertex3f(frameSize.x, frameSize.y, 0);
             glTexCoord2f(1.f, 1.f);
+            glVertex3f(frameSize.x, frameSize.y, 0);
+            glTexCoord2f(1.f, 0.f);
             glVertex3f(frameSize.x, 0, 0);
             glEnd();
 

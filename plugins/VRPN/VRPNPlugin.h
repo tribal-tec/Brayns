@@ -25,6 +25,7 @@
 #include <brayns/common/types.h>
 #include <brayns/pluginapi/ExtensionPlugin.h>
 
+#include <vrpn_Analog.h>
 #include <vrpn_Button.h>
 #include <vrpn_Tracker.h>
 
@@ -42,6 +43,7 @@ struct VrpnStates
     float axisZ = 0.0f;
     glm::quat flyStickOrientation;
 };
+
 using FuncTable = std::unordered_map<vrpn_int32, std::function<void()>>;
 
 class VRPNPlugin : public ExtensionPlugin
@@ -60,6 +62,7 @@ public:
 
 private:
     std::unique_ptr<vrpn_Tracker_Remote> _vrpnTracker;
+    std::unique_ptr<vrpn_Analog_Remote> _vrpnAnalog;
     std::unique_ptr<vrpn_Button_Remote> _vrpnButton;
     const std::string _vrpnName;
     Timer _timer;

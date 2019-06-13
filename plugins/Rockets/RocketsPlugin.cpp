@@ -204,8 +204,7 @@ public:
     {
         _setupRocketsServer();
 #ifdef BRAYNS_USE_LIBUV
-        if (_parametersManager.getApplicationParameters().eventDriven() &&
-            uvw::Loop::getDefault()->alive())
+        if (uvw::Loop::getDefault()->alive())
         {
             _processDelayedNotifies =
                 uvw::Loop::getDefault()->resource<uvw::AsyncHandle>();
@@ -385,8 +384,7 @@ public:
             const auto& appParams =
                 _parametersManager.getApplicationParameters();
 #ifdef BRAYNS_USE_LIBUV
-            if (_parametersManager.getApplicationParameters().eventDriven() &&
-                uvw::Loop::getDefault()->alive())
+            if (uvw::Loop::getDefault()->alive())
             {
                 _rocketsServer = std::make_unique<rockets::Server>(
                     uv_default_loop(), appParams.getHttpServerURI(), "rockets");
@@ -818,9 +816,7 @@ public:
 
 // setup periodic progress reporting if we have libuv running
 #ifdef BRAYNS_USE_LIBUV
-                if (_parametersManager.getApplicationParameters()
-                        .eventDriven() &&
-                    uvw::Loop::getDefault()->alive())
+                if (uvw::Loop::getDefault()->alive())
                 {
                     auto progressUpdate =
                         uvw::Loop::getDefault()->resource<uvw::TimerHandle>();
@@ -1151,10 +1147,11 @@ public:
 
     void _handleQuit()
     {
-        _handleRPC({METHOD_QUIT, "Quit the application"}, [& engine = _engine] {
-            engine.setKeepRunning(false);
-            engine.triggerRender();
-        });
+        _handleRPC({METHOD_QUIT, "Quit the application"},
+                   [& engine = _engine] {
+                       engine.setKeepRunning(false);
+                       engine.triggerRender();
+                   });
     }
 
     void _handleResetCamera()
@@ -1660,7 +1657,8 @@ public:
     void _handleGetLoaders()
     {
         _handleRPC<std::vector<LoaderInfo>>(
-            {METHOD_GET_LOADERS, "Get all loaders"}, [&]() {
+            {METHOD_GET_LOADERS, "Get all loaders"},
+            [&]() {
                 auto& scene = _engine.getScene();
                 return scene.getLoaderRegistry().getLoaderInfos();
             });

@@ -32,88 +32,53 @@ static const uint8 RIGHT_WALL = 1;
 static const uint8 LEFT_FLOOR = 2;
 static const uint8 RIGHT_FLOOR = 3;
 
-// void CylindricStereoTrackedCamera_initRay(uniform Camera* uniform _self,
-//                                          varying Ray& ray,
-//                                          const varying CameraSample& sample)
-//{
-//    uniform CylindricStereoTrackedCamera* uniform self =
-//        (uniform CylindricStereoTrackedCamera * uniform)_self;
-
-//    const vec2f screen = Camera_subRegion(_self, sample.screen);
-
-//    float eyeDelta = 0.0f;
-//    float alpha = 0.0f;
-//    if (self->bufferId == LEFT_WALL)
-//    {
-//        eyeDelta = -self->half_ipd;
-//        alpha = screen.x * pi;
-//    }
-//    else if (self->bufferId == RIGHT_WALL)
-//    {
-//        eyeDelta = self->half_ipd;
-//        alpha = screen.x * pi;
-//    }
-//    else if (self->bufferId == LEFT_FLOOR)
-//    {
-//        eyeDelta = -self->half_ipd;
-//    }
-//    else if (self->bufferId == RIGHT_FLOOR)
-//    {
-//        eyeDelta = self->half_ipd;
-//    }
-
-//    vec3f pixelPos;
-//    if (self->bufferId == LEFT_WALL || self->bufferId == RIGHT_WALL)
-//    {
-//        pixelPos.x = self->opendeck_radius * -cosf(alpha);
-//        // pixelPos.y = OPENDECK_METALSTRIPE_HEIGHT + OPENDECK_HEIGHT *
-//        // screen.y;
-//        pixelPos.y = self->opendeck_metal_stripe_height +
-//                     self->opendeck_height - self->opendeck_height * screen.y;
-//        pixelPos.z = self->opendeck_radius * -sinf(alpha);
-//    }
-//    else if (self->bufferId == LEFT_FLOOR || self->bufferId == RIGHT_FLOOR)
-//    {
-//        pixelPos.x = 2.0f * self->opendeck_radius * (screen.x - 0.5f);
-//        pixelPos.y = 0.0f;
-//        pixelPos.z = -self->opendeck_radius + self->opendeck_radius *
-//        screen.y;
-//        // pixelPos.z = -OPENDECK_RADIUS * screen.y;
-//    }
-
-//    const vec3f eyeAxis = self->od_dir_du;
-//    const vec3f eyeDeltaPos = eyeAxis * eyeDelta;
-
-//    const LinearSpace3f cameraSpace =
-//        make_LinearSpace3f(self->dir_du, self->dir_dv, self->dir_cam);
-
-//    vec3f dir = normalize(pixelPos - self->headPos + eyeDeltaPos);
-//    dir = normalize(cameraSpace * dir);
-
-//    const vec3f org = self->org + self->headPos - eyeDeltaPos;
-//    const float time = Camera_shutterTime(_self, sample.time);
-//    setRay(ray, org, dir, self->super.nearClip, infinity, time);
-//}
-
-void CylindricStereoTrackedCamera_initRay_leftWall(
-    uniform Camera* uniform _self, varying Ray& ray,
-    const varying CameraSample& sample)
+void CylindricStereoTrackedCamera_initRay(uniform Camera* uniform _self,
+                                          varying Ray& ray,
+                                          const varying CameraSample& sample)
 {
     uniform CylindricStereoTrackedCamera* uniform self =
         (uniform CylindricStereoTrackedCamera * uniform)_self;
 
     const vec2f screen = Camera_subRegion(_self, sample.screen);
 
-    float eyeDelta = -self->half_ipd;
-    float alpha = (pi / 7.f) * 3.f + screen.x * pi / 7;
+    float eyeDelta = 0.0f;
+    float alpha = 0.0f;
+    if (self->bufferId == LEFT_WALL)
+    {
+        eyeDelta = -self->half_ipd;
+        alpha = screen.x * pi;
+    }
+    else if (self->bufferId == RIGHT_WALL)
+    {
+        eyeDelta = self->half_ipd;
+        alpha = screen.x * pi;
+    }
+    else if (self->bufferId == LEFT_FLOOR)
+    {
+        eyeDelta = -self->half_ipd;
+    }
+    else if (self->bufferId == RIGHT_FLOOR)
+    {
+        eyeDelta = self->half_ipd;
+    }
 
     vec3f pixelPos;
-    pixelPos.x = self->opendeck_radius * -cosf(alpha);
-    // pixelPos.y = OPENDECK_METALSTRIPE_HEIGHT + OPENDECK_HEIGHT *
-    // screen.y;
-    pixelPos.y = self->opendeck_metal_stripe_height + self->opendeck_height -
-                 self->opendeck_height * screen.y;
-    pixelPos.z = self->opendeck_radius * -sinf(alpha);
+    if (self->bufferId == LEFT_WALL || self->bufferId == RIGHT_WALL)
+    {
+        pixelPos.x = self->opendeck_radius * -cosf(alpha);
+        // pixelPos.y = OPENDECK_METALSTRIPE_HEIGHT + OPENDECK_HEIGHT *
+        // screen.y;
+        pixelPos.y = self->opendeck_metal_stripe_height +
+                     self->opendeck_height - self->opendeck_height * screen.y;
+        pixelPos.z = self->opendeck_radius * -sinf(alpha);
+    }
+    else if (self->bufferId == LEFT_FLOOR || self->bufferId == RIGHT_FLOOR)
+    {
+        pixelPos.x = 2.0f * self->opendeck_radius * (screen.x - 0.5f);
+        pixelPos.y = 0.0f;
+        pixelPos.z = -self->opendeck_radius + self->opendeck_radius * screen.y;
+        // pixelPos.z = -OPENDECK_RADIUS * screen.y;
+    }
 
     const vec3f eyeAxis = self->od_dir_du;
     const vec3f eyeDeltaPos = eyeAxis * eyeDelta;
@@ -121,104 +86,8 @@ void CylindricStereoTrackedCamera_initRay_leftWall(
     const LinearSpace3f cameraSpace =
         make_LinearSpace3f(self->dir_du, self->dir_dv, self->dir_cam);
 
-    vec3f dir = pixelPos - self->headPos + eyeDeltaPos;
-    dir = cameraSpace * dir;
-
-    const vec3f org = self->org + self->headPos - eyeDeltaPos;
-    const float time = Camera_shutterTime(_self, sample.time);
-    setRay(ray, org, normalize(dir), self->super.nearClip, infinity, time);
-}
-
-void CylindricStereoTrackedCamera_initRay_rightWall(
-    uniform Camera* uniform _self, varying Ray& ray,
-    const varying CameraSample& sample)
-{
-    uniform CylindricStereoTrackedCamera* uniform self =
-        (uniform CylindricStereoTrackedCamera * uniform)_self;
-
-    const vec2f screen = Camera_subRegion(_self, sample.screen);
-
-    float eyeDelta = self->half_ipd;
-    float alpha = (pi / 7.f) * 3.f + screen.x * pi / 7;
-
-    vec3f pixelPos;
-    pixelPos.x = self->opendeck_radius * -cosf(alpha);
-    // pixelPos.y = OPENDECK_METALSTRIPE_HEIGHT + OPENDECK_HEIGHT *
-    // screen.y;
-    pixelPos.y = self->opendeck_metal_stripe_height + self->opendeck_height -
-                 self->opendeck_height * screen.y;
-    pixelPos.z = self->opendeck_radius * -sinf(alpha);
-
-    const vec3f eyeAxis = self->od_dir_du;
-    const vec3f eyeDeltaPos = eyeAxis * eyeDelta;
-
-    const LinearSpace3f cameraSpace =
-        make_LinearSpace3f(self->dir_du, self->dir_dv, self->dir_cam);
-
-    vec3f dir = pixelPos - self->headPos + eyeDeltaPos;
-    dir = cameraSpace * dir;
-
-    const vec3f org = self->org + self->headPos - eyeDeltaPos;
-    const float time = Camera_shutterTime(_self, sample.time);
-    setRay(ray, org, normalize(dir), self->super.nearClip, infinity, time);
-}
-
-void CylindricStereoTrackedCamera_initRay_leftFloor(
-    uniform Camera* uniform _self, varying Ray& ray,
-    const varying CameraSample& sample)
-{
-    uniform CylindricStereoTrackedCamera* uniform self =
-        (uniform CylindricStereoTrackedCamera * uniform)_self;
-
-    const vec2f screen = Camera_subRegion(_self, sample.screen);
-
-    float eyeDelta = -self->half_ipd;
-
-    vec3f pixelPos;
-    pixelPos.x = 2.0f * self->opendeck_radius * (screen.x - 0.5f);
-    pixelPos.y = 0.0f;
-    pixelPos.z = -self->opendeck_radius + self->opendeck_radius * screen.y;
-    // pixelPos.z = -OPENDECK_RADIUS * screen.y
-
-    const vec3f eyeAxis = self->od_dir_du;
-    const vec3f eyeDeltaPos = eyeAxis * eyeDelta;
-
-    const LinearSpace3f cameraSpace =
-        make_LinearSpace3f(self->dir_du, self->dir_dv, self->dir_cam);
-
-    vec3f dir = pixelPos - self->headPos + eyeDeltaPos;
-    dir = cameraSpace * dir;
-
-    const vec3f org = self->org + self->headPos - eyeDeltaPos;
-    const float time = Camera_shutterTime(_self, sample.time);
-    setRay(ray, org, normalize(dir), self->super.nearClip, infinity, time);
-}
-
-void CylindricStereoTrackedCamera_initRay_rightFloor(
-    uniform Camera* uniform _self, varying Ray& ray,
-    const varying CameraSample& sample)
-{
-    uniform CylindricStereoTrackedCamera* uniform self =
-        (uniform CylindricStereoTrackedCamera * uniform)_self;
-
-    const vec2f screen = Camera_subRegion(_self, sample.screen);
-
-    float eyeDelta = self->half_ipd;
-    vec3f pixelPos;
-
-    pixelPos.x = 2.0f * self->opendeck_radius * (screen.x - 0.5f);
-    pixelPos.y = 0.0f;
-    pixelPos.z = -self->opendeck_radius + self->opendeck_radius * screen.y;
-    // pixelPos.z = -OPENDECK_RADIUS * screen.y;
-
-    const vec3f eyeAxis = self->od_dir_du;
-    const vec3f eyeDeltaPos = eyeAxis * eyeDelta;
-
-    const LinearSpace3f cameraSpace =
-        make_LinearSpace3f(self->dir_du, self->dir_dv, self->dir_cam);
-
-    vec3f dir = pixelPos - self->headPos + eyeDeltaPos;
-    dir = cameraSpace * dir;
+    vec3f dir = normalize(pixelPos - self->headPos + eyeDeltaPos);
+    dir = normalize(cameraSpace * dir);
 
     const vec3f org = self->org + self->headPos - eyeDeltaPos;
     const float time = Camera_shutterTime(_self, sample.time);
@@ -233,7 +102,7 @@ export void* uniform CylindricStereoTrackedCamera_create(void* uniform cppE)
     uniform CylindricStereoTrackedCamera* uniform self =
         uniform new uniform CylindricStereoTrackedCamera;
     self->super.cppEquivalent = cppE;
-    // self->super.initRay = CylindricStereoTrackedCamera_initRay;
+    self->super.initRay = CylindricStereoTrackedCamera_initRay;
     self->super.doesDOF = false;
     return self;
 }
@@ -255,14 +124,6 @@ export void CylindricStereoTrackedCamera_set(
     self->od_dir_du = od_dir_du;
     self->half_ipd = interpupillaryDistance * cameraScaling * 0.5f;
     self->bufferId = bufferId;
-    if (self->bufferId == LEFT_WALL)
-        self->super.initRay = CylindricStereoTrackedCamera_initRay_leftWall;
-    if (self->bufferId == RIGHT_WALL)
-        self->super.initRay = CylindricStereoTrackedCamera_initRay_rightWall;
-    if (self->bufferId == LEFT_FLOOR)
-        self->super.initRay = CylindricStereoTrackedCamera_initRay_leftFloor;
-    if (self->bufferId == RIGHT_FLOOR)
-        self->super.initRay = CylindricStereoTrackedCamera_initRay_rightFloor;
     self->opendeck_radius = OPENDECK_RADIUS * cameraScaling;
     self->opendeck_height = OPENDECK_HEIGHT * cameraScaling;
     self->opendeck_metal_stripe_height =

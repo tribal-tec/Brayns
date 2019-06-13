@@ -82,10 +82,8 @@ public:
 
         if (_params.usePixelOp() && _params.isModified())
         {
-            for (size_t i = 0;
-                 i < std::min(_engine.getFrameBuffers().size(), 2ul); ++i)
-                _engine.getFrameBuffers()[i]->updatePixelOp(
-                    _params.getPropertyMap());
+            for (auto frameBuffer : _engine.getFrameBuffers())
+                frameBuffer->updatePixelOp(_params.getPropertyMap());
         }
 
         _params.resetModified();
@@ -135,12 +133,10 @@ private:
             // from DEFLECT_ID env variable or from here)
             if (_params.usePixelOp() && !_params.getId().empty())
             {
-                for (size_t i = 0;
-                     i < std::min(_engine.getFrameBuffers().size(), 2ul); ++i)
+                for (auto frameBuffer : _engine.getFrameBuffers())
                 {
                     // Use format 'none' for the per-tile streaming to avoid
                     // tile readback to the MPI master
-                    auto& frameBuffer = _engine.getFrameBuffers()[i];
                     frameBuffer->setFormat(FrameBufferFormat::none);
                     frameBuffer->createPixelOp(TEXTIFY(deflectPixelOp));
                     frameBuffer->updatePixelOp(_params.getPropertyMap());
@@ -314,7 +310,7 @@ private:
         }
 
         const auto& frameBuffers = engine.getFrameBuffers();
-        for (size_t i = 0; i < std::min(frameBuffers.size(), 2ul); ++i)
+        for (size_t i = 0; i < frameBuffers.size(); ++i)
         {
             auto frameBuffer = frameBuffers[i];
             frameBuffer->map();

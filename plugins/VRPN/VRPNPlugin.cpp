@@ -102,6 +102,10 @@ void VRPNPlugin::init()
     if (!_vrpnTracker->connectionPtr()->doing_okay())
         return;
 
+    _vrpnAnalog = std::make_unique<vrpn_Analog_Remote>(_vrpnName.c_str());
+    if (!_vrpnAnalog->connectionPtr()->doing_okay())
+        return;
+
     _vrpnButton = std::make_unique<vrpn_Button_Remote>(_vrpnName.c_str());
     if (!_vrpnButton->connectionPtr()->doing_okay())
         return;
@@ -117,7 +121,7 @@ void VRPNPlugin::init()
     _vrpnTracker->register_change_handler(&(_api->getCamera()), trackerCallback,
                                           HEAD_SENSOR_ID);
     _vrpnTracker->register_change_handler(&_states, flyStickCallback,
-                                          HEAD_SENSOR_ID);
+                                          FLYSTICK_SENSOR_ID);
     _vrpnAnalog->register_change_handler(&_states, joystickCallback);
     _vrpnButton->register_change_handler(&_buttonFuncs, buttonCallback);
 
@@ -137,7 +141,9 @@ void VRPNPlugin::preRender()
     if (!_vrpnTracker->connectionPtr()->doing_okay())
         return;
 
+    _timer.stop();
     _vrpnTracker->mainloop();
+    _vrpnAnalog->mainloop();
     _vrpnButton->mainloop();
 
     double frameTime = _timer.seconds();

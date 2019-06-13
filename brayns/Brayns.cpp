@@ -170,6 +170,7 @@ struct Brayns::Impl : public PluginAPI
         return true;
     }
 
+    void preRender() { _pluginManager.preRender(); }
     void render()
     {
         std::lock_guard<std::mutex> lock{_renderMutex};
@@ -264,7 +265,7 @@ struct Brayns::Impl : public PluginAPI
         _actionInterface = interface;
     }
     Scene& getScene() final { return _engine->getScene(); }
-    // private:
+private:
     void _createEngine()
     {
         auto engineName =
@@ -340,7 +341,7 @@ struct Brayns::Impl : public PluginAPI
     void _loadData()
     {
         auto& scene = _engine->getScene();
-        //        const auto& registry = scene.getLoaderRegistry();
+        const auto& registry = scene.getLoaderRegistry();
 
         const auto& paths =
             _parametersManager.getApplicationParameters().getInputPaths();
@@ -352,18 +353,12 @@ struct Brayns::Impl : public PluginAPI
                 return;
             }
 
-            //            for (const auto& path : paths)
-            //                if (!registry.isSupportedFile(path))
-            //                    throw std::runtime_error("No loader found for
-            //                    '" + path +
-            //                                             "'");
+            for (const auto& path : paths)
+                if (!registry.isSupportedFile(path))
+                    throw std::runtime_error("No loader found for '" + path +
+                                             "'");
 
-            for (const auto& path :
-                 paths[0] == "test"
-                     ? parseFolder("/gpfs/bbp.cscs.ch/project/proj3/resources/"
-                                   "surface/cortex/ply-meshes/meshes",
-                                   {})
-                     : paths)
+            for (const auto& path : paths)
             {
                 int percentageLast = 0;
                 std::string msgLast;
@@ -814,7 +809,7 @@ void Brayns::render()
 }
 void Brayns::preRender()
 {
-    _impl->_pluginManager.preRender();
+    _impl->preRender();
 }
 void Brayns::postRender()
 {

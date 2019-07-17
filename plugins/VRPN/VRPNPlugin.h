@@ -42,10 +42,12 @@ struct VrpnStates
     float axisX = 0.0f;
     float axisZ = 0.0f;
     glm::quat flyStickOrientation;
-    Camera* camera = nullptr;
+    PluginAPI* api = nullptr;
+    bool triggerPressed = false;
+    Vector3f prevPos;
 };
 
-using FuncTable = std::unordered_map<vrpn_int32, std::function<void()>>;
+using FuncTable = std::unordered_map<vrpn_int32, std::function<void(bool)>>;
 
 class VRPNPlugin : public ExtensionPlugin
 {

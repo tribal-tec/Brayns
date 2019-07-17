@@ -19,8 +19,11 @@
 
 #include "VRPNPlugin.h"
 
+#include <brayns/common/light/Light.h>
 #include <brayns/common/log.h>
 #include <brayns/engine/Camera.h>
+#include <brayns/engine/Model.h>
+#include <brayns/engine/Scene.h>
 #include <brayns/pluginapi/PluginAPI.h>
 
 namespace brayns
@@ -69,8 +72,27 @@ void flyStickCallback(void* userData, const vrpn_TRACKERCB tracker)
     VrpnStates* states = static_cast<VrpnStates*>(userData);
     states->flyStickOrientation = glm::quat(tracker.quat[3], tracker.quat[0],
                                             tracker.quat[1], tracker.quat[2]);
-    states->camera->updateProperty(FLYSTICK_ROTATION_PROP,
-                                   to_array_4d(tracker.quat), false);
+    states->api->getCamera().updateProperty(FLYSTICK_ROTATION_PROP,
+                                            to_array_4d(tracker.quat), false);
+
+    auto newPos = Vector3f(tracker.pos[0], tracker.pos[1], tracker.pos[2]);
+
+    auto model = states->api->getScene().getModel(0);
+    model->setVisible(states->triggerPressed);
+    if (states->triggerPressed)
+    {
+        auto delta = newPos - states->prevPos;
+        delta *= 2;
+        auto sunLight = states->api->getScene().getLightManager().getLight(0);
+        auto sun =
+            std::dynamic_pointer_cast<brayns::DirectionalLight>(sunLight);
+        if (sun)
+        {
+            sun->_direction += delta;
+            states->api->getScene().getLightManager().addLight(sun);
+        }
+    }
+    states->prevPos = newPos;
 }
 
 void joystickCallback(void* userData, const vrpn_ANALOGCB joystick)
@@ -83,7 +105,7 @@ void joystickCallback(void* userData, const vrpn_ANALOGCB joystick)
 void buttonCallback(void* userData, const vrpn_BUTTONCB button)
 {
     auto& functable = *static_cast<FuncTable*>(userData);
-    functable[button.button]();
+    functable[button.button](button.state == 1);
 }
 }
 
@@ -121,17 +143,34 @@ void VRPNPlugin::init()
 
     _vrpnTracker->register_change_handler(&(_api->getCamera()), trackerCallback,
                                           HEAD_SENSOR_ID);
-    _states.camera = &_api->getCamera();
+    _states.api = _api;
     _vrpnTracker->register_change_handler(&_states, flyStickCallback,
                                           FLYSTICK_SENSOR_ID);
     _vrpnAnalog->register_change_handler(&_states, joystickCallback);
     _vrpnButton->register_change_handler(&_buttonFuncs, buttonCallback);
 
-    _buttonFuncs[BUTTON_JOYSTICK] = [& camera = _api->getCamera()]
+    _buttonFuncs[BUTTON_JOYSTICK] =
+        [& camera = _api->getCamera(), this ](bool pressed)
     {
-        camera.reset();
+        if (pressed)
+        {
+            camera.reset();
+            auto sunLight = _api->getScene().getLightManager().getLight(0);
+            auto sun =
+                std::dynamic_pointer_cast<brayns::DirectionalLight>(sunLight);
+            if (sun)
+            {
+                //                sun->_direction = {5., 10., 15.};
+                sun->_direction = {0., 0., 0.};
+                _api->getScene().getLightManager().addLight(sun);
+            }
+        }
     };
-    _buttonFuncs[BUTTON_TRIGGER] = [] {};
+    _buttonFuncs[BUTTON_TRIGGER] = [& triggerPressed =
+                                        _states.triggerPressed](bool pressed)
+    {
+        triggerPressed = pressed;
+    };
 
     auto idpChange = [& camera = _api->getCamera()](const double delta)
     {
@@ -139,11 +178,18 @@ void VRPNPlugin::init()
             "interpupillaryDistance",
             camera.getProperty<double>("interpupillaryDistance") + delta);
     };
-    _buttonFuncs[BUTTON_1] = [idpChange] { idpChange(0.002); };
-    _buttonFuncs[BUTTON_2] = [idpChange] { idpChange(-0.002); };
+    _buttonFuncs[BUTTON_1] = [idpChange](bool pressed) {
+        if (pressed)
+            idpChange(0.002);
+    };
 
-    _buttonFuncs[BUTTON_3] = [] {};
-    _buttonFuncs[BUTTON_4] = [] {};
+    _buttonFuncs[BUTTON_2] = [idpChange](bool pressed) {
+        if (pressed)
+            idpChange(-0.002);
+    };
+
+    _buttonFuncs[BUTTON_3] = [](bool) {};
+    _buttonFuncs[BUTTON_4] = [](bool) {};
 }
 
 void VRPNPlugin::preRender()

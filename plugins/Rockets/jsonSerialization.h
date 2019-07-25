@@ -364,7 +364,7 @@ inline void init(brayns::ApplicationParameters* a, ObjectHandler* h)
     h->add_property("jpeg_compression", &a->_jpegCompression, Flags::Optional);
     h->add_property("image_stream_fps", &a->_imageStreamFPS, Flags::Optional);
     h->add_property("viewport", toArray<2, double>(a->_windowSize),
-                    Flags::Optional);
+                    Flags::Optional | Flags::IgnoreRead);
     h->set_flags(Flags::DisallowUnknownKey);
 }
 

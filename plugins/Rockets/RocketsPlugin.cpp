@@ -44,6 +44,9 @@
 #include "BinaryRequests.h"
 #include "ImageGenerator.h"
 #include "Throttle.h"
+#include "video/encoder.h"
+
+#include <fstream>
 
 namespace
 {
@@ -266,7 +269,8 @@ public:
         if (!_rocketsServer || _rocketsServer->getConnectionCount() == 0)
             return;
 
-        _broadcastImageJpeg();
+        //_broadcastImageJpeg();
+        _broadcastVideo();
     }
 
     void registerNotification(const RpcParameterDescription& desc,
@@ -417,6 +421,12 @@ public:
 
     void _setupWebsocket()
     {
+        _rocketsServer->handleOpen([this](const uintptr_t /*clientID*/) {
+            if (!_encoder)
+                _encoder =
+                    std::make_unique<Encoder>(1920, 1080, 30, 1000 * 1000 * 5);
+            return std::vector<rockets::ws::Response>{};
+        });
         _rocketsServer->handleClose([this](const uintptr_t clientID) {
             _binaryRequests.removeRequest(clientID);
             return std::vector<rockets::ws::Response>{};
@@ -445,26 +455,29 @@ public:
 #endif
     }
 
-    void _rebroadcast(const std::string& endpoint, const std::string& message,
-                      const std::set<uintptr_t>& filter)
+    void _rebroadcast(const std::string& /*endpoint*/,
+                      const std::string& /*message*/,
+                      const std::set<uintptr_t>& /*filter*/)
     {
-        _delayedNotify([&, message, filter] {
-            if (_rocketsServer->getConnectionCount() > 1)
-            {
-                try
-                {
-                    const auto& msg =
-                        rockets::jsonrpc::makeNotification(endpoint, message);
-                    _rocketsServer->broadcastText(msg, filter);
-                }
-                catch (const std::exception& e)
-                {
-                    BRAYNS_ERROR
-                        << "Error rebroadcasting notification: " << e.what()
-                        << std::endl;
-                }
-            }
-        });
+        //        _delayedNotify([&, message, filter] {
+        //            if (_rocketsServer->getConnectionCount() > 1)
+        //            {
+        //                try
+        //                {
+        //                    const auto& msg =
+        //                        rockets::jsonrpc::makeNotification(endpoint,
+        //                        message);
+        //                    _rocketsServer->broadcastText(msg, filter);
+        //                }
+        //                catch (const std::exception& e)
+        //                {
+        //                    BRAYNS_ERROR
+        //                        << "Error rebroadcasting notification: " <<
+        //                        e.what()
+        //                        << std::endl;
+        //                }
+        //            }
+        //        });
     }
 
     // Utilty to change current client while we are handling a message to skip
@@ -607,7 +620,7 @@ public:
 
     template <class T>
     void _handleGET(const std::string& endpoint, T& obj,
-                    const int64_t throttleTime = DEFAULT_THROTTLE)
+                    const int64_t /*throttleTime*/ = DEFAULT_THROTTLE)
     {
         using namespace rockets::http;
 
@@ -630,48 +643,55 @@ public:
         // Create new throttle for that endpoint
         _throttle[endpoint];
 
-        obj.onModified([&, endpoint = getNotificationEndpointName(endpoint),
-                        throttleTime](const auto& base) {
-            auto& throttle = _throttle[endpoint];
+        //        obj.onModified([&, endpoint =
+        //        getNotificationEndpointName(endpoint),
+        //                        throttleTime](const auto& base) {
+        //            auto& throttle = _throttle[endpoint];
 
-            // throttle itself is not thread-safe, but we can get called
-            // from different threads (c.f. async model load)
-            std::lock_guard<std::mutex> lock(throttle.first);
+        //            // throttle itself is not thread-safe, but we can get
+        //            called
+        //            // from different threads (c.f. async model load)
+        //            std::lock_guard<std::mutex> lock(throttle.first);
 
-            const auto& castedObj = static_cast<const T&>(base);
-            const auto notify = [& rocketsServer = _rocketsServer,
-                                 clientID = _currentClientID, endpoint,
-                                 json = to_json(castedObj)] {
-                if (rocketsServer->getConnectionCount() == 0)
-                    return;
-                try
-                {
-                    const auto& msg =
-                        rockets::jsonrpc::makeNotification(endpoint, json);
-                    if (clientID == NO_CURRENT_CLIENT)
-                        rocketsServer->broadcastText(msg);
-                    else
-                        rocketsServer->broadcastText(msg, {clientID});
-                }
-                catch (const std::exception& e)
-                {
-                    BRAYNS_ERROR
-                        << "Error broadcasting notification: " << e.what()
-                        << std::endl;
-                }
-            };
-            const auto delayedNotify = [&, notify] {
-                this->_delayedNotify(notify);
-            };
+        //            const auto& castedObj = static_cast<const T&>(base);
+        //            const auto notify = [& rocketsServer = _rocketsServer,
+        //                                 clientID = _currentClientID,
+        //                                 endpoint,
+        //                                 json = to_json(castedObj)] {
+        //                if (rocketsServer->getConnectionCount() == 0)
+        //                    return;
+        //                try
+        //                {
+        //                    const auto& msg =
+        //                        rockets::jsonrpc::makeNotification(endpoint,
+        //                        json);
+        //                    if (clientID == NO_CURRENT_CLIENT)
+        //                        rocketsServer->broadcastText(msg);
+        //                    else
+        //                        rocketsServer->broadcastText(msg, {clientID});
+        //                }
+        //                catch (const std::exception& e)
+        //                {
+        //                    BRAYNS_ERROR
+        //                        << "Error broadcasting notification: " <<
+        //                        e.what()
+        //                        << std::endl;
+        //                }
+        //            };
+        //            const auto delayedNotify = [&, notify] {
+        //                this->_delayedNotify(notify);
+        //            };
 
-            // non-throttled, direct notify can happen directly if we are
-            // not in the middle handling an incoming message; delayed
-            // notify must be dispatched to the main thread
-            if (_currentClientID == NO_CURRENT_CLIENT)
-                throttle.second(notify, delayedNotify, throttleTime);
-            else
-                throttle.second(delayedNotify, delayedNotify, throttleTime);
-        });
+        //            // non-throttled, direct notify can happen directly if we
+        //            are
+        //            // not in the middle handling an incoming message; delayed
+        //            // notify must be dispatched to the main thread
+        //            if (_currentClientID == NO_CURRENT_CLIENT)
+        //                throttle.second(notify, delayedNotify, throttleTime);
+        //            else
+        //                throttle.second(delayedNotify, delayedNotify,
+        //                throttleTime);
+        //        });
 
         _objects.push_back(&obj);
     }
@@ -1041,6 +1061,43 @@ public:
                                             image.size);
     }
 
+    void _broadcastVideo()
+    {
+        auto& frameBuffer = _engine.getFrameBuffer();
+        if (frameBuffer.getFrameBufferFormat() == FrameBufferFormat::none ||
+            !frameBuffer.isModified())
+        {
+            return;
+        }
+
+        const auto& params = _parametersManager.getApplicationParameters();
+        const auto fps = params.getImageStreamFPS();
+        if (fps == 0)
+            return;
+
+        const auto elapsed = _timer.elapsed() + _leftover;
+        const auto duration = 1.0 / fps;
+        if (elapsed < duration)
+            return;
+
+        _leftover = elapsed - duration;
+        for (; _leftover > duration;)
+            _leftover -= duration;
+
+        if (!_encoder)
+            return;
+        const auto bufferMP4 = _encoder->encode(frameBuffer);
+        if (!bufferMP4.empty())
+        {
+            // dump_ofs.write((char*)(bufferMP4.data()), bufferMP4.size());
+            _rocketsServer->broadcastBinary((const char*)bufferMP4.data(),
+                                            bufferMP4.size());
+            _encoder->bufferMP4.clear();
+        }
+
+        _timer.start();
+    }
+
     void _handleVersion()
     {
         static brayns::Version version;
@@ -1148,10 +1205,11 @@ public:
 
     void _handleQuit()
     {
-        _handleRPC({METHOD_QUIT, "Quit the application"}, [& engine = _engine] {
-            engine.setKeepRunning(false);
-            engine.triggerRender();
-        });
+        _handleRPC({METHOD_QUIT, "Quit the application"},
+                   [& engine = _engine] {
+                       engine.setKeepRunning(false);
+                       engine.triggerRender();
+                   });
     }
 
     void _handleResetCamera()
@@ -1657,7 +1715,8 @@ public:
     void _handleGetLoaders()
     {
         _handleRPC<std::vector<LoaderInfo>>(
-            {METHOD_GET_LOADERS, "Get all loaders"}, [&]() {
+            {METHOD_GET_LOADERS, "Get all loaders"},
+            [&]() {
                 auto& scene = _engine.getScene();
                 return scene.getLoaderRegistry().getLoaderInfos();
             });
@@ -1832,6 +1891,10 @@ public:
     bool _endpointsRegistered{false};
 
     std::vector<BaseObject*> _objects;
+
+    std::unique_ptr<Encoder> _encoder;
+    // std::ofstream dump_ofs{"/tmp/browserstreaming_dump.mp4", std::ios::out |
+    // std::ios::binary};
 };
 
 RocketsPlugin::~RocketsPlugin()

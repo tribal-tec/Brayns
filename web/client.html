@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+ 
+  <title>Video Streaming Server</title>
+  <style type="text/css">
+     ::-webkit-media-controls {
+        display:none !important;
+     }
+  </style>
+</head>
+
+<script src="vstream.js"></script>
+ 
+<body>
+    <div id="viddiv"></div>
+    <textarea rows="3" cols="60" id="logarea">
+    VStream log
+    </textarea>
+
+    <script>
+var url = "ws://localhost:8200"
+
+//attempt to get server name from URL
+var link = document.createElement('a');
+link.href = window.location.href;
+var servername = link.hostname;
+if(servername)
+{
+    console.log("Setting url based on server name: \""+servername+"\"");
+    url = "ws://"+servername+":8200"
+}
+
+//setup video stream element
+var viddiv = document.getElementById("viddiv");
+var vstream = new VStream(url, viddiv);
+vstream.render();
+    </script>
+</body>

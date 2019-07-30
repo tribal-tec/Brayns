@@ -46,8 +46,6 @@
 #include "Throttle.h"
 #include "video/encoder.h"
 
-#include <fstream>
-
 namespace
 {
 constexpr int64_t INTERACTIVE_THROTTLE = 1;
@@ -421,12 +419,6 @@ public:
 
     void _setupWebsocket()
     {
-        _rocketsServer->handleOpen([this](const uintptr_t /*clientID*/) {
-            if (!_encoder)
-                _encoder =
-                    std::make_unique<Encoder>(1920, 1080, 30, 1000 * 1000 * 5);
-            return std::vector<rockets::ws::Response>{};
-        });
         _rocketsServer->handleClose([this](const uintptr_t clientID) {
             _binaryRequests.removeRequest(clientID);
             return std::vector<rockets::ws::Response>{};
@@ -1085,15 +1077,15 @@ public:
             _leftover -= duration;
 
         if (!_encoder)
-            return;
-        const auto bufferMP4 = _encoder->encode(frameBuffer);
-        if (!bufferMP4.empty())
         {
-            // dump_ofs.write((char*)(bufferMP4.data()), bufferMP4.size());
-            _rocketsServer->broadcastBinary((const char*)bufferMP4.data(),
-                                            bufferMP4.size());
-            _encoder->bufferMP4.clear();
+            _encoder =
+                std::make_unique<Encoder>(1920, 1080, 60, 1000 * 1000 * 5,
+                                          [& rs = _rocketsServer](auto a,
+                                                                  auto b) {
+                                              rs->broadcastBinary(a, b);
+                                          });
         }
+        _encoder->encode(frameBuffer);
 
         _timer.start();
     }

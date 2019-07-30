@@ -25,23 +25,16 @@
 int custom_io_write(void *opaque, uint8_t *buffer, int32_t buffer_size)
 {
     auto encoder = (brayns::Encoder *)opaque;
-    if (encoder->bufferMP4.size() < (size_t)buffer_size)
-    {
-        auto tmp = encoder->bufferMP4;
-        encoder->bufferMP4.resize(tmp.size() + buffer_size);
-        memcpy(encoder->bufferMP4.data(), tmp.data(), tmp.size());
-        encoder->idx = tmp.size();
-    }
-    memcpy(encoder->bufferMP4.data() + encoder->idx, buffer, buffer_size);
-    encoder->idx += buffer_size;
+    encoder->_dataFunc((const char *)buffer, buffer_size);
     return buffer_size;
 }
 
 namespace brayns
 {
 Encoder::Encoder(const int width, const int height, const int fps,
-                 const int64_t kbps)
-    : _width(width)
+                 const int64_t kbps, const DataFunc &dataFunc)
+    : _dataFunc(dataFunc)
+    , _width(width)
     , _height(height)
     , _fps(fps)
 {
@@ -75,7 +68,7 @@ Encoder::Encoder(const int width, const int height, const int fps,
     codecContext->framerate = avFPS;
     codecContext->time_base = av_inv_q(avFPS);
     codecContext->bit_rate = kbps;
-    codecContext->max_b_frames = 1;
+    codecContext->max_b_frames = 0;
     codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
     codecContext->profile = 100;
@@ -119,7 +112,7 @@ Encoder::~Encoder()
     }
 }
 
-std::vector<uint8_t> Encoder::encode(FrameBuffer &fb)
+void Encoder::encode(FrameBuffer &fb)
 {
     sws_context =
         sws_getCachedContext(sws_context, fb.getSize().x, fb.getSize().y,
@@ -134,7 +127,7 @@ std::vector<uint8_t> Encoder::encode(FrameBuffer &fb)
     picture.frame->pts = _frameNumber++;
 
     if (avcodec_send_frame(codecContext, picture.frame) < 0)
-        return {};
+        return;
 
     AVPacket pkt;
     av_init_packet(&pkt);
@@ -142,14 +135,11 @@ std::vector<uint8_t> Encoder::encode(FrameBuffer &fb)
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
     {
         av_packet_unref(&pkt);
-        return {};
+        return;
     }
 
     av_packet_rescale_ts(&pkt, codecContext->time_base, stream->time_base);
     pkt.stream_index = this->stream->index;
     av_interleaved_write_frame(formatContext, &pkt);
-
-    idx = 0;
-    return bufferMP4;
 }
 }

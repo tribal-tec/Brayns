@@ -54,13 +54,15 @@ public:
 class Encoder
 {
 public:
+    using DataFunc = std::function<void(const char *data, size_t size)>;
+
     Encoder(const int width, const int height, const int fps,
-            const int64_t kbps);
+            const int64_t kbps, const DataFunc &dataFunc);
     ~Encoder();
 
-    std::vector<uint8_t> encode(FrameBuffer &fb);
-    std::vector<uint8_t> bufferMP4;
-    size_t idx = 0;
+    void encode(FrameBuffer &fb);
+
+    DataFunc _dataFunc;
 
 private:
     AVFormatContext *formatContext{nullptr};

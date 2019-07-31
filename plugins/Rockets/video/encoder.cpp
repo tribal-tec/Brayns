@@ -36,7 +36,6 @@ Encoder::Encoder(const int width, const int height, const int fps,
     : _dataFunc(dataFunc)
     , _width(width)
     , _height(height)
-    , _fps(fps)
 {
     formatContext = avformat_alloc_context();
     formatContext->oformat = av_guess_format("mp4", nullptr, nullptr);
@@ -49,6 +48,16 @@ Encoder::Encoder(const int width, const int height, const int fps,
             std::runtime_error(std::string("Could not find encoder for ") +
                                avcodec_get_name(codecID)));
 
+#if 0
+    const AVRational avFPS = {fps, 1};
+
+    codecContext = avcodec_alloc_context3(codec);
+    if (!codecContext)
+        BRAYNS_THROW(std::runtime_error("Could not create codec context"));
+ 
+    // if(avcodec_parameters_to_context(codecContext, stream->codecpar) < 0)
+    //      BRAYNS_THROW(std::runtime_error("Could not retrieve codec parameters"));
+#else
     if (!(stream = avformat_new_stream(formatContext, codec)))
         BRAYNS_THROW(std::runtime_error("Could not create stream"));
 
@@ -57,7 +66,7 @@ Encoder::Encoder(const int width, const int height, const int fps,
     stream->time_base = av_inv_q(avFPS);
 
     codecContext = stream->codec;
-
+#endif
     codecContext->codec_tag = 0;
     codecContext->codec_id = codecID;
     codecContext->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -79,6 +88,16 @@ Encoder::Encoder(const int width, const int height, const int fps,
     // av_opt_set(codecContext->priv_data, "profile", "main", 0);
     av_opt_set(codecContext->priv_data, "tune", "zerolatency", 0);
 
+#if 0
+    if (!(stream = avformat_new_stream(formatContext, codec)))
+        BRAYNS_THROW(std::runtime_error("Could not create stream"));
+
+    stream->avg_frame_rate = avFPS;
+    stream->time_base = av_inv_q(avFPS);
+
+    if ( avcodec_parameters_from_context( stream->codecpar, codecContext ) < 0 )
+        BRAYNS_THROW(std::runtime_error("Could not get params from context"));
+#endif
     if (avcodec_open2(codecContext, codec, NULL) < 0)
         BRAYNS_THROW(std::runtime_error("Could not open video encoder!"));
 

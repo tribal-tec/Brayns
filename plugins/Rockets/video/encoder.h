@@ -76,7 +76,6 @@ private:
 
     const int _width;
     const int _height;
-    const int _fps;
     int64_t _frameNumber{0};
 };
 }

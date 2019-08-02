@@ -28,6 +28,8 @@ extern "C" {
 
 #include <brayns/common/types.h>
 
+#include <thread>
+
 namespace brayns
 {
 class Picture
@@ -63,6 +65,8 @@ public:
     void encode(FrameBuffer &fb);
 
     DataFunc _dataFunc;
+    const int _width;
+    const int _height;
 
 private:
     AVFormatContext *formatContext{nullptr};
@@ -74,8 +78,22 @@ private:
     SwsContext *sws_context{nullptr};
     Picture picture;
 
-    const int _width;
-    const int _height;
     int64_t _frameNumber{0};
+
+    const bool _async = true;
+    std::thread _thread;
+    std::atomic_bool _running{true};
+
+    struct Image
+    {
+        int width{0};
+        int height{0};
+        std::vector<uint8_t> data;
+        bool empty() const { return width == 0 || height == 0; }
+    } _image;
+
+    void _runAsync();
+    void _encode();
+
 };
 }

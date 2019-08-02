@@ -1076,10 +1076,23 @@ public:
         for (; _leftover > duration;)
             _leftover -= duration;
 
+        int width = frameBuffer.getSize().x;
+        if(width % 2 != 0)
+            width += 1;
+        int height = frameBuffer.getSize().y;
+        if(height % 2 != 0)
+            height += 1;
+        if(_encoder)
+        {
+            if(_encoder->_width != width || _encoder->_height != height )
+                _encoder.reset();
+        }
         if (!_encoder)
         {
+            const int kbps = 5000;
+
             _encoder =
-                std::make_unique<Encoder>(1920, 1080, 60, 1000 * 1000 * 5,
+                std::make_unique<Encoder>(width, height, fps, kbps,
                                           [& rs = _rocketsServer](auto a,
                                                                   auto b) {
                                               rs->broadcastBinary(a, b);

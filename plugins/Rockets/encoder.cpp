@@ -66,7 +66,10 @@ Encoder::Encoder(const int width_, const int height_, const int fps,
     stream->avg_frame_rate = avFPS;
     stream->time_base = av_inv_q(avFPS);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     codecContext = stream->codec;
+#pragma GCC diagnostic pop
 #endif
     codecContext->codec_tag = 0;
     codecContext->codec_id = codecID;

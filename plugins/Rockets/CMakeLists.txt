@@ -14,7 +14,6 @@ set(BRAYNSROCKETS_HEADERS
   jsonPropertyMap.h
   jsonSerialization.h
   jsonUtils.h
-  video/encoder.h
 )
 
 set(BRAYNSROCKETS_SOURCES
@@ -23,16 +22,20 @@ set(BRAYNSROCKETS_SOURCES
   Throttle.cpp
   Timeout.cpp
   staticjson/staticjson.cpp
-  video/encoder.cpp
 )
 
 set_source_files_properties(staticjson/staticjson.cpp
   PROPERTIES COMPILE_FLAGS "-Wno-shadow")
 
 set(BRAYNSROCKETS_LINK_LIBRARIES PRIVATE Rockets braynsParameters braynsTasks
-  ${FREEIMAGE_LIBRARIES} ${FFMPEG_LIBRARIES})
+  ${FREEIMAGE_LIBRARIES})
 if(LibJpegTurbo_FOUND)
   list(APPEND BRAYNSROCKETS_LINK_LIBRARIES PRIVATE ${LibJpegTurbo_LIBRARIES})
+endif()
+if(FFMPEG_FOUND)
+  list(APPEND BRAYNSROCKETS_HEADERS encoder.h)
+  list(APPEND BRAYNSROCKETS_SOURCES encoder.cpp)
+  list(APPEND BRAYNSROCKETS_LINK_LIBRARIES PRIVATE ${FFMPEG_LIBRARIES})
 endif()
 
 if(libuv_FOUND)
@@ -44,8 +47,11 @@ set(BRAYNSROCKETS_OMIT_VERSION_HEADERS ON)
 set(BRAYNSROCKETS_OMIT_EXPORT ON)
 set(BRAYNSROCKETS_INCLUDE_NAME rocketsplugin)
 common_library(braynsRockets)
-target_include_directories(braynsRockets SYSTEM PRIVATE
-  ${FREEIMAGE_INCLUDE_DIRS} ${FFMPEG_INCLUDE_DIR})
+target_include_directories(braynsRockets SYSTEM PRIVATE ${FREEIMAGE_INCLUDE_DIRS})
+
+if(FFMPEG_FOUND)
+  target_include_directories(braynsRockets SYSTEM PRIVATE ${FFMPEG_INCLUDE_DIR})
+endif()
 
 # needed for staticjson and rapidjson
 target_include_directories(braynsRockets SYSTEM PRIVATE

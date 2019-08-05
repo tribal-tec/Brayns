@@ -44,7 +44,10 @@
 #include "BinaryRequests.h"
 #include "ImageGenerator.h"
 #include "Throttle.h"
-#include "video/encoder.h"
+
+#ifdef BRAYNS_USE_FFMPEG
+#include "encoder.h"
+#endif
 
 namespace
 {
@@ -267,8 +270,10 @@ public:
         if (!_rocketsServer || _rocketsServer->getConnectionCount() == 0)
             return;
 
-        //_broadcastImageJpeg();
+//_broadcastImageJpeg();
+#ifdef BRAYNS_USE_FFMPEG
         _broadcastVideo();
+#endif
     }
 
     void registerNotification(const RpcParameterDescription& desc,
@@ -419,6 +424,12 @@ public:
 
     void _setupWebsocket()
     {
+#ifdef BRAYNS_USE_FFMPEG
+        _rocketsServer->handleOpen([this](auto) {
+            _resetEncoder = true;
+            return std::vector<rockets::ws::Response>{};
+        });
+#endif
         _rocketsServer->handleClose([this](const uintptr_t clientID) {
             _binaryRequests.removeRequest(clientID);
             return std::vector<rockets::ws::Response>{};
@@ -1053,6 +1064,7 @@ public:
                                             image.size);
     }
 
+#ifdef BRAYNS_USE_FFMPEG
     void _broadcastVideo()
     {
         auto& frameBuffer = _engine.getFrameBuffer();
@@ -1075,7 +1087,8 @@ public:
             height += 1;
         if (_encoder)
         {
-            if (_encoder->width != width || _encoder->height != height)
+            if (_encoder->width != width || _encoder->height != height ||
+                _resetEncoder)
                 _encoder.reset();
         }
         if (!_encoder)
@@ -1089,8 +1102,10 @@ public:
                                               rs->broadcastBinary(a, b);
                                           });
         }
+        _resetEncoder = false;
         _encoder->encode(frameBuffer);
     }
+#endif
 
     void _handleVersion()
     {
@@ -1886,9 +1901,10 @@ public:
 
     std::vector<BaseObject*> _objects;
 
+#ifdef BRAYNS_USE_FFMPEG
     std::unique_ptr<Encoder> _encoder;
-    // std::ofstream dump_ofs{"/tmp/browserstreaming_dump.mp4", std::ios::out |
-    // std::ios::binary};
+    bool _resetEncoder{false};
+#endif
 };
 
 RocketsPlugin::~RocketsPlugin()

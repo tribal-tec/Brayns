@@ -26,10 +26,14 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include <brayns/common/Timer.h>
 #include <brayns/common/types.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
 #include <thread>
-
 namespace brayns
 {
 class Picture
@@ -53,6 +57,46 @@ public:
     }
 };
 
+template <typename T, size_t S = 2>
+class MTQueue
+{
+public:
+    explicit MTQueue(const size_t maxSize = S)
+        : _maxSize(maxSize)
+    {
+    }
+
+    void push(const T &element)
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        _condition.wait(lock, [&] { return _queue.size() < _maxSize; });
+        _queue.push(element);
+        _condition.notify_all();
+    }
+
+    T pop()
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        _condition.wait(lock, [&] { return !_queue.empty(); });
+
+        T element = _queue.front();
+        _queue.pop();
+        _condition.notify_all();
+        return element;
+    }
+    size_t size() const
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        return _queue.size();
+    }
+
+private:
+    std::queue<T> _queue;
+    mutable std::mutex _mutex;
+    mutable std::condition_variable _condition;
+    const size_t _maxSize;
+};
+
 class Encoder
 {
 public:
@@ -65,10 +109,11 @@ public:
     void encode(FrameBuffer &fb);
 
     DataFunc _dataFunc;
-    const int _width;
-    const int _height;
+    const int width;
+    const int height;
 
 private:
+    const int _fps;
     AVFormatContext *formatContext{nullptr};
     AVStream *stream{nullptr};
 
@@ -90,10 +135,18 @@ private:
         int height{0};
         std::vector<uint8_t> data;
         bool empty() const { return width == 0 || height == 0; }
-    } _image;
+        void clear() { width = height = 0; }
+    } _image[2];
+
+    MTQueue<int> _queue;
+    int _currentImage{0};
 
     void _runAsync();
     void _encode();
+    void _toPicture(const uint8_t *const data, const int width,
+                    const int height);
 
+    Timer _timer;
+    float _leftover{0.f};
 };
 }

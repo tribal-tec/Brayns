@@ -1067,24 +1067,15 @@ public:
         if (fps == 0)
             return;
 
-        const auto elapsed = _timer.elapsed() + _leftover;
-        const auto duration = 1.0 / fps;
-        if (elapsed < duration)
-            return;
-
-        _leftover = elapsed - duration;
-        for (; _leftover > duration;)
-            _leftover -= duration;
-
-        int width = frameBuffer.getSize().x;
-        if(width % 2 != 0)
+        int width = frameBuffer.getFrameSize().x;
+        if (width % 2 != 0)
             width += 1;
-        int height = frameBuffer.getSize().y;
-        if(height % 2 != 0)
+        int height = frameBuffer.getFrameSize().y;
+        if (height % 2 != 0)
             height += 1;
-        if(_encoder)
+        if (_encoder)
         {
-            if(_encoder->_width != width || _encoder->_height != height )
+            if (_encoder->width != width || _encoder->height != height)
                 _encoder.reset();
         }
         if (!_encoder)
@@ -1099,8 +1090,6 @@ public:
                                           });
         }
         _encoder->encode(frameBuffer);
-
-        _timer.start();
     }
 
     void _handleVersion()

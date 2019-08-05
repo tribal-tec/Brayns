@@ -31,11 +31,12 @@ int custom_io_write(void *opaque, uint8_t *buffer, int32_t buffer_size)
 
 namespace brayns
 {
-Encoder::Encoder(const int width, const int height, const int fps,
+Encoder::Encoder(const int width_, const int height_, const int fps,
                  const int64_t kbps, const DataFunc &dataFunc)
     : _dataFunc(dataFunc)
-    , _width(width)
-    , _height(height)
+    , width(width_)
+    , height(height_)
+    , _fps(fps)
 {
     formatContext = avformat_alloc_context();
     formatContext->oformat = av_guess_format("mp4", nullptr, nullptr);
@@ -54,7 +55,7 @@ Encoder::Encoder(const int width, const int height, const int fps,
     codecContext = avcodec_alloc_context3(codec);
     if (!codecContext)
         BRAYNS_THROW(std::runtime_error("Could not create codec context"));
- 
+
     // if(avcodec_parameters_to_context(codecContext, stream->codecpar) < 0)
     //      BRAYNS_THROW(std::runtime_error("Could not retrieve codec parameters"));
 #else
@@ -119,15 +120,18 @@ Encoder::Encoder(const int width, const int height, const int fps,
 
     picture.init(codecContext->pix_fmt, width, height);
 
-    if(_async)
+    if (_async)
         _thread = std::thread(std::bind(&Encoder::_runAsync, this));
+
+    _timer.start();
 }
 
 Encoder::~Encoder()
 {
-    if(_async)
+    if (_async)
     {
         _running = false;
+        _queue.push(-1);
         _thread.join();
     }
 
@@ -142,30 +146,28 @@ Encoder::~Encoder()
 
 void Encoder::encode(FrameBuffer &fb)
 {
+    if (_async && _queue.size() == 2)
+        return;
+
     fb.map();
     auto cdata = reinterpret_cast<const uint8_t *const>(fb.getColorBuffer());
-    if(_async)
+    if (_async)
     {
-        if(!_image.empty())
-            return;
-        _image.width = fb.getSize().x;
-        _image.height = fb.getSize().y;
-         const auto bufferSize = _image.width * _image.height * fb.getColorDepth();
+        auto &image = _image[_currentImage];
+        image.width = fb.getSize().x;
+        image.height = fb.getSize().y;
+        const auto bufferSize = image.width * image.height * fb.getColorDepth();
 
-        if (_image.data.size() < bufferSize)
-            _image.data.resize(bufferSize);
-        memcpy(_image.data.data(), cdata, bufferSize);
+        if (image.data.size() < bufferSize)
+            image.data.resize(bufferSize);
+        memcpy(image.data.data(), cdata, bufferSize);
+        _queue.push(_currentImage);
+        _currentImage = _currentImage == 0 ? 1 : 0;
         fb.unmap();
         return;
     }
 
-    sws_context =
-        sws_getCachedContext(sws_context, fb.getSize().x, fb.getSize().y,
-                             AV_PIX_FMT_RGBA, _width, _height,
-                             AV_PIX_FMT_YUV420P, SWS_FAST_BILINEAR, 0, 0, 0);
-    const int stride[] = {4 * (int)fb.getSize().x};
-    sws_scale(sws_context, &cdata, stride, 0, fb.getSize().y,
-              picture.frame->data, picture.frame->linesize);
+    _toPicture(cdata, fb.getSize().x, fb.getSize().y);
     fb.unmap();
 
     _encode();
@@ -173,6 +175,15 @@ void Encoder::encode(FrameBuffer &fb)
 
 void Encoder::_encode()
 {
+    const auto elapsed = _timer.elapsed() + _leftover;
+    const auto duration = 1.0 / _fps;
+    if (elapsed < duration)
+        return;
+
+    _leftover = elapsed - duration;
+    for (; _leftover > duration;)
+        _leftover -= duration;
+
     picture.frame->pts = _frameNumber++;
 
     if (avcodec_send_frame(codecContext, picture.frame) < 0)
@@ -190,25 +201,34 @@ void Encoder::_encode()
     av_packet_rescale_ts(&pkt, codecContext->time_base, stream->time_base);
     pkt.stream_index = stream->index;
     av_interleaved_write_frame(formatContext, &pkt);
+
+    _timer.start();
 }
 
 void Encoder::_runAsync()
 {
-    while(_running)
+    while (_running)
     {
-        if(_image.empty())
-            continue;
+        auto idx = _queue.pop();
+        if (idx < 0)
+            break;
 
-        sws_context =
-            sws_getCachedContext(sws_context, _image.width, _image.height,
-                             AV_PIX_FMT_RGBA, _width, _height,
-                             AV_PIX_FMT_YUV420P, SWS_FAST_BILINEAR, 0, 0, 0);
-        const int stride[] = {4 * (int)_image.width};
-        auto cdata = _image.data.data();//reinterpret_cast<const uint8_t *const>(fb.getColorBuffer());
-        sws_scale(sws_context, &cdata, stride, 0, _image.height,
-                  picture.frame->data, picture.frame->linesize);
+        auto &image = _image[idx];
+
+        _toPicture(image.data.data(), image.width, image.height);
         _encode();
-        _image.width = _image.height = 0;
     }
+}
+
+void Encoder::_toPicture(const uint8_t *const data, const int width_,
+                         const int height_)
+{
+    sws_context =
+        sws_getCachedContext(sws_context, width_, height_, AV_PIX_FMT_RGBA,
+                             width, height, AV_PIX_FMT_YUV420P,
+                             SWS_FAST_BILINEAR, 0, 0, 0);
+    const int stride[] = {4 * (int)width_};
+    sws_scale(sws_context, &data, stride, 0, height_, picture.frame->data,
+              picture.frame->linesize);
 }
 }

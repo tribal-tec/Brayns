@@ -123,6 +123,7 @@ void OptiXEngine::_createCameras()
             {"headRotation", std::array<double, 4>{{0.0, 0.0, 0.0, 1.0}}});
         properties.setProperty(
             {"flystickRotation", std::array<double, 4>{{0.0, 0.0, 0.0, 1.0}}});
+        properties.setProperty({"raydepth", 0, {"Ray depth"}});
         context.addCamera("opendeck", std::make_shared<OptiXOpenDeckCamera>());
         addCameraType("opendeck", properties);
     }

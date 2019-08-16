@@ -36,6 +36,7 @@ rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 // Textures
 rtDeclareVariable(int, albedoMetallic_map, , );
 rtDeclareVariable(int, normalRoughness_map, , );
+rtDeclareVariable(int, aoEmissive_map, , );
 rtDeclareVariable(float2, texcoord, attribute texcoord, );
 
 // Lights
@@ -57,6 +58,7 @@ rtDeclareVariable(int, envmap_radiance, , );
 rtDeclareVariable(int, envmap_irradiance, , );
 rtDeclareVariable(int, envmap_brdf_lut, , );
 rtDeclareVariable(uint, radianceLODs, , );
+rtDeclareVariable(uint, ray_depth,,);
 
 static __device__ inline float calculateAttenuation(float3 WorldPos,
                                                     float3 lightPos)
@@ -165,10 +167,15 @@ static __device__ inline void shade()
         // per-light radiance
         // const BasicLight& light = lights[i];
         BasicLight light = lights[i];
-        light.pos = make_float3(0.5f, 1.0f, 1.5f);
+//        light.pos = make_float3(0.5f, 1.0f, 1.5f);
+#ifdef POINT_LIGHT
         const float3 L = normalize(light.pos - WorldPos);
-        const float3 H = normalize(V + L);
         const float attenuation = calculateAttenuation(WorldPos, light.pos);
+#else
+        const float3 L = normalize(make_float3(-1.f, 3.f, 1.f));
+        const float attenuation = 0.25f;
+#endif
+        const float3 H = normalize(V + L);
         const float3 radiance =
             light.color * attenuation * 20.0f;
 
@@ -219,7 +226,13 @@ static __device__ inline void shade()
 
 RT_PROGRAM void any_hit_shadow()
 {
-    rtTerminateRay();
+    if(prd.depth >= ray_depth)
+        return;
+    prd.depth += 1;
+    float opacity = rtTex2DGrad<float4>(aoEmissive_map, texcoord.x,
+                                           texcoord.y, ddx, ddy).z;
+    if(opacity < 0.5f)
+        rtIgnoreIntersection();
 }
 
 RT_PROGRAM void closest_hit_radiance()

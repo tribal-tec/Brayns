@@ -173,7 +173,7 @@ void OptiXRenderer::commit()
                         0, textured ? renderProgram->closest_hit_textured
                                     : renderProgram->closest_hit);
                     optixMaterial->getOptixMaterial()->setAnyHitProgram(
-                        1, renderProgram->any_hit);
+                        0, renderProgram->any_hit);
                 }
                 else
                 {

@@ -139,7 +139,7 @@ static __device__ inline float3 fresnelSchlickRoughness(float cosTheta,
 static __device__ inline void shade()
 {
     const float3 world_shading_normal =
-        optix::normalize(rtTransformNormal(RT_OBJECT_TO_WORLD, shading_normal)); 
+        optix::normalize(rtTransformNormal(RT_OBJECT_TO_WORLD, shading_normal));
 
     float3 N = world_shading_normal;
 
@@ -150,10 +150,10 @@ static __device__ inline void shade()
     float3 triblend = N * N;
     triblend = triblend / (triblend.x + triblend.y + triblend.z);
 
-    const float planeSizeRatio = /*0.11f*/ 12.0f; // must be parameter
+    const float planeSizeRatio = 0.11f;// 12.0f; // must be parameter
     const float3 uv = planeSizeRatio * WorldPos;
     const float3 ddxuv = planeSizeRatio * ddxWPos;
-    const float3 ddyuv = planeSizeRatio * ddyWPos; 
+    const float3 ddyuv = planeSizeRatio * ddyWPos;
 
     const float2 ddxuvX = make_float2(ddxuv.z, ddxuv.y);
     const float2 ddxuvY = make_float2(ddxuv.x, ddxuv.z);
@@ -161,9 +161,9 @@ static __device__ inline void shade()
 
     const float2 ddyuvX = make_float2(ddyuv.z, ddyuv.y);
     const float2 ddyuvY = make_float2(ddyuv.x, ddyuv.z);
-    const float2 ddyuvZ = make_float2(ddyuv.x, ddyuv.y); 
+    const float2 ddyuvZ = make_float2(ddyuv.x, ddyuv.y);
 
-    const float4 albedoMetallicX = SRGBtoLinear(rtTex2DGrad<float4>(albedoMetallic_map, uv.z, uv.y, ddxuvX, ddyuvX)); 
+    const float4 albedoMetallicX = SRGBtoLinear(rtTex2DGrad<float4>(albedoMetallic_map, uv.z, uv.y, ddxuvX, ddyuvX));
     const float4 albedoMetallicY = SRGBtoLinear(rtTex2DGrad<float4>(albedoMetallic_map, uv.x, uv.z, ddxuvY, ddyuvY));
     const float4 albedoMetallicZ = SRGBtoLinear(rtTex2DGrad<float4>(albedoMetallic_map, uv.x, uv.y, ddxuvZ, ddyuvZ));
     const float4 albedoMetallic = triblend.y * albedoMetallicY + triblend.x * albedoMetallicX + triblend.z * albedoMetallicZ;
@@ -174,7 +174,7 @@ static __device__ inline void shade()
     const float4 aoEmissiveZ = rtTex2DGrad<float4>(aoEmissive_map, uv.x, uv.y, ddxuvZ, ddyuvZ);
     const float4 aoEmissive = triblend.y * aoEmissiveY + triblend.x * aoEmissiveX + triblend.z * aoEmissiveZ;
     const float ao = aoEmissive.x;
-    const float emissive = aoEmissive.y;    
+    const float emissive = aoEmissive.y;
 
     const float4 normalRoughnessX = rtTex2DGrad<float4>(normalRoughness_map, uv.z, uv.y, ddxuvX, ddyuvX );
     const float4 normalRoughnessY = rtTex2DGrad<float4>(normalRoughness_map, uv.x, uv.z, ddxuvY, ddyuvY );
@@ -193,7 +193,7 @@ static __device__ inline void shade()
 
     // Apply cotangent frame and triblend normals
     N = normalize(tbnX * normalX * triblend.x + tbnY * normalY * triblend.y + tbnZ * normalZ * triblend.z);
-   
+
     /*** TANGENT SPACE MATRIX TECHNIQUE ***/
 
     const float roughnessX = normalRoughnessX.w;
@@ -269,7 +269,7 @@ static __device__ inline void shade()
                             1.0f, 1.0f, 1.0f, 1.0f,
                             1.0f, 1.0f, 1.0f, 1.0f,
                             1.125f, 1.25f, 1.5f, 2.0f,
-                            3.0f, 5.0f, 8.0f, 13.0f, 
+                            3.0f, 5.0f, 8.0f, 13.0f,
                             21.0f, 34.0f, 55.0f, 89.0f};
     float period = 15.0f;
     float loopedTime = fmod(currentTime, period);
@@ -277,7 +277,7 @@ static __device__ inline void shade()
     int index = indexfloat;
     float frac = indexfloat - index;
     float3 emmissiveColor = ((1.0f - frac) * colormap[index] + frac * colormap[index + 1]) * ((1.0f - frac) * powermap[index] + frac * powermap[index + 1]);
-    
+
 
     const float3 color = ambient + Lo + emissive * emmissiveColor;
     prd.result = linearToSRGB(tonemap(color));

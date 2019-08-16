@@ -180,16 +180,27 @@ void VRPNPlugin::init()
     };
     _buttonFuncs[BUTTON_1] = [idpChange](bool pressed) {
         if (pressed)
-            idpChange(0.002);
+            idpChange(-0.002);
     };
 
     _buttonFuncs[BUTTON_2] = [idpChange](bool pressed) {
         if (pressed)
-            idpChange(-0.002);
+            idpChange(0.002);
     };
 
-    _buttonFuncs[BUTTON_3] = [](bool) {};
-    _buttonFuncs[BUTTON_4] = [](bool) {};
+    auto changedDepth = [& camera = _api->getCamera()](const int delta)
+    {
+        auto newVal = std::max(0, camera.getProperty<int>("raydepth") + delta);
+        camera.updateProperty("raydepth", newVal);
+    };
+    _buttonFuncs[BUTTON_3] = [changedDepth](bool pressed) {
+        if (pressed)
+            changedDepth(-1);
+    };
+    _buttonFuncs[BUTTON_4] = [changedDepth](bool pressed) {
+        if (pressed)
+            changedDepth(1);
+    };
 }
 
 void VRPNPlugin::preRender()

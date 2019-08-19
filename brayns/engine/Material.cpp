@@ -25,10 +25,17 @@
 
 namespace brayns
 {
+TexturesMap Material::_textures;
+
 Material::Material(const PropertyMap& properties)
 {
     setCurrentType("default");
     _properties.at(_currentType).merge(properties);
+}
+
+Material::~Material()
+{
+    clearTextures();
 }
 
 Texture2DPtr Material::getTexture(const TextureType type) const
@@ -43,6 +50,13 @@ Texture2DPtr Material::getTexture(const TextureType type) const
 void Material::clearTextures()
 {
     _textureDescriptors.clear();
+    for (auto it = _textures.cbegin(); it != _textures.cend();)
+    {
+        if (it->second.use_count() == 1)
+            _textures.erase(it++);
+        else
+            ++it;
+    }
     markModified();
 }
 
@@ -68,9 +82,8 @@ void Material::setTexture(const std::string& fileName, const TextureType type)
     if (i != _textureDescriptors.end() && i->second->filename == fileName)
         return;
 
-    if (_textures.find(fileName) == _textures.end())
-        if (!_loadTexture(fileName, type))
-            throw std::runtime_error("Failed to load texture from " + fileName);
+    if (!_loadTexture(fileName, type))
+        throw std::runtime_error("Failed to load texture from " + fileName);
     _textureDescriptors[type] = _textures[fileName];
     markModified();
 }

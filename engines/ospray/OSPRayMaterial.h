@@ -24,6 +24,8 @@
 #include <brayns/engine/Material.h>
 #include <ospray.h>
 
+#include <unordered_map>
+
 namespace brayns
 {
 class OSPRayMaterial : public Material
@@ -46,12 +48,15 @@ public:
     void commit(const std::string& renderer);
 
     OSPMaterial getOSPMaterial() { return _ospMaterial; }
+
 private:
     OSPTexture _createOSPTexture2D(Texture2DPtr texture);
     OSPMaterial _ospMaterial{nullptr};
     bool _isBackGroundMaterial{false};
     std::string _renderer;
+    using TextureCache = std::unordered_map<Texture2DPtr, OSPTexture>;
+    static TextureCache _textureCache;
 };
-}
+} // namespace brayns
 
 #endif // OSPRAYMATERIAL_H

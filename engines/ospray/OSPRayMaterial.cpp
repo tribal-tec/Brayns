@@ -45,8 +45,21 @@ static TextureTypeMaterialAttribute textureTypeMaterialAttribute[8] = {
     {TextureType::reflection, "map_reflection"},
     {TextureType::refraction, "map_refraction"}};
 
+OSPRayMaterial::TextureCache OSPRayMaterial::_textureCache;
+
 OSPRayMaterial::~OSPRayMaterial()
 {
+    for (auto it = _textureCache.cbegin(); it != _textureCache.cend();)
+    {
+        std::cout << it->first.use_count() << std::endl;
+        if (it->first.use_count() == 2)
+        {
+            ospRelease(it->second);
+            _textureCache.erase(it++);
+        }
+        else
+            ++it;
+    }
     ospRelease(_ospMaterial);
 }
 
@@ -90,7 +103,6 @@ void OSPRayMaterial::commit()
             const auto str =
                 textureTypeMaterialAttribute[int(texType)].attribute.c_str();
             ospSetObject(_ospMaterial, str, ospTexture);
-            ospRelease(ospTexture);
         }
     }
 
@@ -114,6 +126,9 @@ void OSPRayMaterial::commit(const std::string& renderer)
 
 OSPTexture OSPRayMaterial::_createOSPTexture2D(Texture2DPtr texture)
 {
+    if (_textureCache.count(texture))
+        return _textureCache[texture];
+
     OSPTextureFormat type = OSP_TEXTURE_R8; // smallest valid type as default
     if (texture->depth == 1)
     {
@@ -151,6 +166,7 @@ OSPTexture OSPRayMaterial::_createOSPTexture2D(Texture2DPtr texture)
     ospRelease(textureData);
     ospCommit(ospTexture);
 
+    _textureCache[texture] = ospTexture;
     return ospTexture;
 }
 } // namespace brayns

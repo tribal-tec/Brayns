@@ -118,7 +118,7 @@ Assimp::Importer createImporter(const LoaderProgress& callback,
     importer.RegisterLoader(new Assimp::ObjFileImporter());
     return importer;
 }
-}
+} // namespace
 
 MeshLoader::MeshLoader(Scene& scene)
     : Loader(scene)
@@ -257,6 +257,7 @@ void MeshLoader::_createMaterials(Model& model, const aiScene* aiScene,
                     {
                         file = file.substr(2);
                     }
+                    std::replace(file.begin(), file.end(), '\\', '/');
                     const std::string fileName = folder + "/" + file;
                     BRAYNS_DEBUG << "Loading texture: " << fileName
                                  << std::endl;

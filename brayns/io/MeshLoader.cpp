@@ -250,7 +250,14 @@ void MeshLoader::_createMaterials(Model& model, const aiScene* aiScene,
                         nullptr, nullptr, nullptr, nullptr,
                         nullptr) == AI_SUCCESS)
                 {
-                    const std::string fileName = folder + "/" + path.data;
+                    std::string file(path.data);
+                    // mtl texture files might have prefix "./" or ".\"
+                    if (strncmp(file.c_str(), "./", 2) == 0 ||
+                        strncmp(file.c_str(), ".\\", 2) == 0)
+                    {
+                        file = file.substr(2);
+                    }
+                    const std::string fileName = folder + "/" + file;
                     BRAYNS_DEBUG << "Loading texture: " << fileName
                                  << std::endl;
                     material->setTexture(fileName,

@@ -49,8 +49,8 @@ std::vector<unsigned char> getRawData(const freeimage::ImagePtr& image,
 void setRawData(Texture2DPtr texture, const freeimage::ImagePtr& image,
                 const uint8_t mip = 0)
 {
-    auto width = texture->getWidth();
-    auto height = texture->getHeight();
+    auto width = texture->width;
+    auto height = texture->height;
     for (uint8_t i = 0; i < mip; ++i)
     {
         width /= 2;
@@ -66,7 +66,7 @@ void setRawData(Texture2DPtr texture, const freeimage::ImagePtr& image,
         texture->setRawData(getRawData(faceImg, flipFace), face, mip);
     }
 }
-}
+} // namespace
 
 Texture2DPtr ImageManager::importTextureFromFile(
     const std::string& filename BRAYNS_UNUSED,
@@ -128,12 +128,9 @@ Texture2DPtr ImageManager::importTextureFromFile(
     else if (type == TextureType::specular) // TODO: only valid for BBP
         textureType = Texture2D::Type::aoe;
 
-    auto texture = std::make_shared<Texture2D>(textureType);
-    texture->setFilename(filename);
-    texture->setWidth(width);
-    texture->setHeight(height);
-    texture->setNbChannels(bytesPerPixel / depth);
-    texture->setDepth(depth);
+    auto texture = std::make_shared<Texture2D>(textureType, filename,
+                                               bytesPerPixel / depth, depth,
+                                               width, height);
     if (isCubeMap || type == TextureType::brdf_lut)
         texture->setWrapMode(TextureWrapMode::clamp_to_edge);
 
@@ -164,4 +161,4 @@ Texture2DPtr ImageManager::importTextureFromFile(
     return {};
 #endif
 }
-}
+} // namespace brayns

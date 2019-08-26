@@ -37,6 +37,11 @@ if(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
   target_compile_options(glm INTERFACE -Wno-error=class-memaccess)
 endif()
 
+option(NVPIPE_WITH_DECODER "Enables the NvPipe decoding interface." OFF)
+option(NVPIPE_WITH_OPENGL "Enables the NvPipe OpenGL interface." OFF)
+option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires both encoder and decoder)." OFF)
+add_subdirectory(NvPipe)
+
 if(BRAYNS_VIEWER_ENABLED)
   # GLFW
   set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
